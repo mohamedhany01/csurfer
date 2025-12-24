@@ -117,6 +117,14 @@ target_link_libraries(skia INTERFACE
 # ------------------------------------------------------------------------------
 add_executable(c_surfer
     src/main.cpp
+    src/browser/Browser.cpp
+    src/url/Url.cpp
+    src/request/HttpRequest.cpp
+)
+
+# Add include directories for src/
+target_include_directories(c_surfer PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_link_libraries(c_surfer PRIVATE
