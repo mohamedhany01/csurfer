@@ -1,0 +1,3 @@
+- [Using the Berkeley Socket API in the C Programming Language](https://www.youtube.com/watch?v=U28svzb1WUs)
+- [99% of Developers Don't Get Sockets](https://www.youtube.com/watch?v=D26sUZ6DHNQ)
+- [Socket Programming](https://www.youtube.com/watch?v=JgsfWw8WKGA)
