@@ -72,46 +72,46 @@ find_package(SDL2_ttf REQUIRED)
 # ------------------------------------------------------------------------------
 # Skia (external build)
 # ------------------------------------------------------------------------------
-include(ExternalProject)
+# include(ExternalProject)
 
-set(SKIA_DIR "${PROJECT_SOURCE_DIR}/external/skia")
-set(SKIA_OUT_DIR "${SKIA_DIR}/out/Static")
-set(SKIA_LIB "${SKIA_OUT_DIR}/libskia.a")
+# set(SKIA_DIR "${PROJECT_SOURCE_DIR}/external/skia")
+# set(SKIA_OUT_DIR "${SKIA_DIR}/out/Static")
+# set(SKIA_LIB "${SKIA_OUT_DIR}/libskia.a")
 
-# 1. External build target (UTILITY target)
-ExternalProject_Add(
-    skia_ep
-    GIT_REPOSITORY https://skia.googlesource.com/skia.git
-    GIT_TAG chrome/m144
+# # 1. External build target (UTILITY target)
+# ExternalProject_Add(
+#     skia_ep
+#     GIT_REPOSITORY https://skia.googlesource.com/skia.git
+#     GIT_TAG chrome/m144
 
-    SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/skia
-    BUILD_IN_SOURCE 1
+#     SOURCE_DIR ${PROJECT_SOURCE_DIR}/external/skia
+#     BUILD_IN_SOURCE 1
 
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ${PROJECT_SOURCE_DIR}/scripts/build_skia.sh
-    INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${SKIA_LIB}
-)
+#     CONFIGURE_COMMAND ""
+#     BUILD_COMMAND ${PROJECT_SOURCE_DIR}/scripts/build_skia.sh
+#     INSTALL_COMMAND ""
+#     BUILD_BYPRODUCTS ${SKIA_LIB}
+# )
 
-# 2. Interface library consumers will link against
-add_library(skia INTERFACE)
+# # 2. Interface library consumers will link against
+# add_library(skia INTERFACE)
 
-# Make sure Skia is built before anything that links it
-add_dependencies(skia skia_ep)
+# # Make sure Skia is built before anything that links it
+# add_dependencies(skia skia_ep)
 
-# SYSTEM for skia warnings
-target_include_directories(skia SYSTEM INTERFACE
-    ${SKIA_DIR}/include
-    ${SKIA_DIR}/include/config
-    ${SKIA_DIR}
-)
+# # SYSTEM for skia warnings
+# target_include_directories(skia SYSTEM INTERFACE
+#     ${SKIA_DIR}/include
+#     ${SKIA_DIR}/include/config
+#     ${SKIA_DIR}
+# )
 
-target_link_libraries(skia INTERFACE
-    ${SKIA_LIB}
-    pthread
-    dl
-    m
-)
+# target_link_libraries(skia INTERFACE
+#     ${SKIA_LIB}
+#     pthread
+#     dl
+#     m
+# )
 
 # ------------------------------------------------------------------------------
 # Main executable
@@ -131,7 +131,7 @@ target_include_directories(c_surfer PRIVATE
 
 target_link_libraries(c_surfer PRIVATE
     project_warnings
-    skia
+    # skia
     SDL2::SDL2
     SDL2_ttf::SDL2_ttf
     OpenSSL::SSL
