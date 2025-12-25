@@ -1,1 +1,2 @@
 - Add `sudo apt install libssl-dev` for openssl
+- Add for fonts `sudo apt install libsdl2-ttf-dev` chapter 2
