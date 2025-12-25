@@ -9,7 +9,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-std::string HttpRequest::get(const Url &url) {
+// Berkeley sockets wrapper
+std::string HttpRequest::request(const Url &url) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     return "";

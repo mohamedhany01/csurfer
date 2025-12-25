@@ -1,5 +1,4 @@
 #include "browser/Browser.h"
-#include "request/HttpRequest.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
 #include <iostream>
@@ -10,15 +9,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  Url url(argv[1]);
-  std::cout << url.scheme() << std::endl;
-  std::cout << url.host() << std::endl;
-  std::cout << url.port() << std::endl;
-  std::cout << url.path() << std::endl;
+  const std::string user_url = argv[1];
+  Url url(user_url);
 
-  HttpRequest req;
-  std::cout << req.get(url);
-
-  Browser browser(url);
-  browser.load();
+  Browser browser;
+  browser.load(url);
 }

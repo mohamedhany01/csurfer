@@ -67,6 +67,7 @@ CPMAddPackage(
 # OpenSSL / FreeType
 find_package(OpenSSL REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(SDL2_ttf REQUIRED)
 
 # ------------------------------------------------------------------------------
 # Skia (external build)
@@ -120,6 +121,7 @@ add_executable(c_surfer
     src/browser/Browser.cpp
     src/url/Url.cpp
     src/request/HttpRequest.cpp
+    src/utils/Parser.cpp
 )
 
 # Add include directories for src/
@@ -131,9 +133,19 @@ target_link_libraries(c_surfer PRIVATE
     project_warnings
     skia
     SDL2::SDL2
+    SDL2_ttf::SDL2_ttf
     OpenSSL::SSL
     OpenSSL::Crypto
     Freetype::Freetype
+)
+
+# ------------------------------------------------------------------------------
+# Assets configuration(compile-time)
+# ------------------------------------------------------------------------------
+
+# Assuming your assets folder is at project-root/assets
+target_compile_definitions(c_surfer PRIVATE
+    ASSETS_DIR="${PROJECT_SOURCE_DIR}/assets"
 )
 
 # ------------------------------------------------------------------------------

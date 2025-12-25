@@ -6,5 +6,5 @@ class Url;
 class IRequest {
 public:
   virtual ~IRequest() = default;
-  virtual std::string get(const Url &url) = 0;
+  virtual std::string request(const Url &url) = 0;
 };

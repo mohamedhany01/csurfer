@@ -3,5 +3,5 @@
 
 class HttpRequest : public IRequest {
 public:
-  std::string get(const Url &url) override;
+  std::string request(const Url &url) override;
 };
