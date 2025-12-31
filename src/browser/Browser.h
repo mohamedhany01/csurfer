@@ -14,6 +14,12 @@ struct DisplayItem {
   const std::string glyph; // UTF-8
 };
 
+struct FontMetrics {
+  const int ascent;   // hight from baseline to top
+  const int descent;  // hight from baseline to bottom
+  const int lineSkip; // line hight
+};
+
 class Browser {
 public:
   Browser();
@@ -27,8 +33,8 @@ private:
   std::shared_ptr<IRequest> http_;
 
   // SDL2
-  int WIDTH = 800;
-  int HEIGHT = 600;
+  const int WIDTH = 800;
+  const int HEIGHT = 600;
   SDL_Window *window = nullptr;
   SDL_Renderer *renderer = nullptr;
   bool running = true;

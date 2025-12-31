@@ -2,6 +2,7 @@
 #include "request/HttpRequest.h"
 #include "utils/Parser.h"
 #include <iostream>
+#include <string>
 
 Browser::Browser() : Browser(std::make_shared<HttpRequest>()) {}
 
@@ -96,38 +97,43 @@ void Browser::handleEvents() {
 void Browser::buildDisplayList() {
   display_list.clear();
 
-  const int HSTEP = 16; // character space
-  const int VSTEP = 18; // line height
+  FontMetrics metrics{TTF_FontAscent(font), abs(TTF_FontDescent(font)),
+                      TTF_FontLineSkip(font)};
 
-  int cursor_x = HSTEP;
-  int cursor_y = VSTEP;
+  int cursor_x = 16;
+  int cursor_y = 18 + metrics.ascent;
 
-  for (size_t i = 0; i < page_text.size();) {
-    unsigned char c = page_text[i];
+  const int max_width = WIDTH - 40; // width with some padding
 
-    // is line break
-    if (c == '\n') {
-      cursor_y += VSTEP;
-      cursor_x = HSTEP;
-      i++;
+  std::vector<std::string> words = utils::splitWords(page_text);
+
+  for (const std::string &word : words) {
+
+    if (word == "\n") {
+      cursor_y += metrics.lineSkip * 1.25;
+      cursor_x = 20;
       continue;
     }
 
-    int len = utils::utf8CharLen(c);
-    std::string glyph = page_text.substr(i, len);
-
-    display_list.push_back({cursor_x, cursor_y, glyph});
-
-    // wrap text
-    const bool is_end_of_canvas = cursor_x >= (WIDTH - HSTEP);
-
-    cursor_x += HSTEP;
-    if (is_end_of_canvas) {
-      cursor_y += VSTEP;
-      cursor_x = HSTEP;
+    int w, h;
+    TTF_SizeUTF8(
+        font, word.c_str(), &w,
+        &h); // measure rendered text size (in pixels) using current font
+    // wrap line
+    if (cursor_x + w > max_width) {
+      cursor_y += metrics.lineSkip * 1.25;
+      cursor_x = 20;
     }
 
-    i += len;
+    display_list.push_back({cursor_x, cursor_y, word});
+
+    // advance cursor (add space width)
+    int space_w;
+    TTF_SizeUTF8(
+        font, " ", &space_w,
+        nullptr); // measure rendered text size (in pixels) using current font
+
+    cursor_x += w + space_w;
   }
 }
 
