@@ -118,10 +118,14 @@ find_package(SDL2_ttf REQUIRED)
 # ------------------------------------------------------------------------------
 add_executable(c_surfer
     src/main.cpp
-    src/browser/Browser.cpp
+    src/lexer/Text.cpp
+    src/lexer/Tag.cpp
+    src/layout/Layout.cpp
+    src/lexer/Lexer.cpp
     src/url/Url.cpp
     src/request/HttpRequest.cpp
     src/utils/Parser.cpp
+    src/browser/Browser.cpp
 )
 
 # Add include directories for src/
