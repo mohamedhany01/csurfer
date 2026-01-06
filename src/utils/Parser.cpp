@@ -2,22 +2,6 @@
 
 namespace utils {
 
-std::string lex(const std::string &body) {
-  std::string text_without_tags;
-  bool in_tag = false;
-
-  for (char c : body) {
-    if (c == '<')
-      in_tag = true;
-    else if (c == '>')
-      in_tag = false;
-    else if (!in_tag)
-      text_without_tags += c;
-  }
-
-  return text_without_tags;
-}
-
 int utf8CharLen(unsigned char c) {
   if ((c & 0x80) == 0x00)
     return 1;
