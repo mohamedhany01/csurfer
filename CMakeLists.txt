@@ -64,10 +64,17 @@ CPMAddPackage(
         "SDL_EXAMPLES OFF"
 )
 
+CPMAddPackage(
+    NAME SDL2_ttf
+    GITHUB_REPOSITORY libsdl-org/SDL_ttf
+    GIT_TAG release-2.22.0
+    OPTIONS
+        "SDL2TTF_SAMPLES OFF"
+)
+
 # OpenSSL / FreeType
 find_package(OpenSSL REQUIRED)
 find_package(Freetype REQUIRED)
-find_package(SDL2_ttf REQUIRED)
 
 # ------------------------------------------------------------------------------
 # Skia (external build)
