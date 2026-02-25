@@ -1,7 +1,7 @@
 #include "Browser.h"
+#include "html/HTMLParser.h"
 #include "layout/DisplayItem.h"
 #include "layout/Layout.h"
-#include "lexer/Lexer.h"
 #include "request/HttpRequest.h"
 #include <iostream>
 #include <string>
@@ -81,16 +81,21 @@ void Browser::load(const Url &url) {
   // Fetch page body via request abstraction
   std::string body = http_->request(url);
 
-  // Lexing stuff and extract tokens
-  Lexer lexer(body);
-  tokens_ = lexer.lex();
+  HTMLParser parser(body);
+  root_ = parser.parse();
+  if (!root_) {
+    std::cout << "LOG :: no root found!" << std::endl;
+    return;
+  }
+
+  HTMLParser::print_tree(*root_);
 
   // Extract font metrics
   FontMetrics metrics{TTF_FontAscent(font), abs(TTF_FontDescent(font)),
                       TTF_FontLineSkip(font)};
 
   // Extract text to build the display list with fixed coordinates (x, y)
-  Layout layout(tokens_, metrics, WIDTH - 40);
+  Layout layout(*root_, metrics, WIDTH - 40);
   display_list = layout.build();
 
   // Start SDL loop

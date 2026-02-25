@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-enum class LexemeType { Text, Tag };
+enum class LexemeType { Text, Element };
 
 class Lexeme {
 public:
@@ -13,7 +13,7 @@ public:
     return empty;
   }
 
-  virtual const std::string &tag() const {
+  virtual const std::string &element() const {
     static const std::string empty;
     return empty;
   }
