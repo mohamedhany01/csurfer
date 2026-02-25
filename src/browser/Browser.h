@@ -1,5 +1,6 @@
 #pragma once
 #include "layout/DisplayItem.h"
+#include "lexer/Element.h"
 #include "lexer/Lexeme.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
@@ -49,5 +50,5 @@ private:
   int scroll = 0;
 
   // Lexer
-  std::vector<std::unique_ptr<Lexeme>> tokens_;
+  std::unique_ptr<Element> root_;
 };

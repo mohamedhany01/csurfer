@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "layout/DisplayItem.h"
+#include "lexer/Element.h"
 #include "lexer/Lexeme.h"
 
 struct FontMetrics {
@@ -39,15 +40,14 @@ struct FontKeyHash {
 
 class Layout {
 public:
-  Layout(const std::vector<std::unique_ptr<Lexeme>> &tokens,
-         const FontMetrics &metrics, int max_width);
+  Layout(const Element &root, const FontMetrics &metrics, int max_width);
 
   // Produces the final display list ready for rendering
   std::vector<DisplayItem> build();
 
 private:
   // -------- Input --------
-  const std::vector<std::unique_ptr<Lexeme>> &tokens_;
+  const Element &root_;
   FontMetrics metrics_;
   int max_width_;
 
@@ -66,7 +66,10 @@ private:
   std::vector<DisplayItem> display_list_; // final output
 
   // -------- Layout helpers --------
-  void handleToken(const Lexeme &tok);
+  void layoutNode(const Lexeme &node);
+  void layoutElement(const Element &element);
+  void open_tag(const std::string &tag);
+  void close_tag(const std::string &tag);
   void layoutText(const std::string &text);
 
   // Add a single word to the current line
