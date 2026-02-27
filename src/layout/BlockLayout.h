@@ -1,10 +1,9 @@
 #pragma once
-#include <SDL_ttf.h>
-#include <memory>
 #include <unordered_map>
 #include <vector>
 
 #include "layout/DisplayItem.h"
+#include "layout/LayoutObject.h"
 #include "lexer/Element.h"
 #include "lexer/Lexeme.h"
 
@@ -15,9 +14,16 @@ struct FontMetrics {
 };
 
 struct LineItem {
-  int x;            // horizontal position
-  std::string text; // word text
+  int rel_x;        // relative to the block
+  std::string text; // UTF-8
   TTF_Font *font;   // font used to render this word
+};
+
+struct TextDisplayItem {
+  int x;            // page coordinate
+  int y;            // page coordinate
+  std::string text; // UTF-8
+  TTF_Font *font;   // font data
 };
 
 // Font cache
@@ -38,18 +44,28 @@ struct FontKeyHash {
   }
 };
 
-class Layout {
+// A single block in the layout tree.
+//
+// A BlockLayout either:
+//   * stacks child blocks vertically (block mode), or
+//   * lays out inline text into lines (inline mode).
+//
+// It computes its own box (x, y, width, height) and then paints text and any
+// block background (for example, a gray rectangle for <pre>).
+class BlockLayout final : public LayoutObject {
 public:
-  Layout(const Element &root, const FontMetrics &metrics, int max_width);
+  BlockLayout(const Lexeme *node, LayoutObject *parent, BlockLayout *previous,
+              const FontMetrics &metrics);
 
-  // Produces the final display list ready for rendering
-  std::vector<DisplayItem> build();
+  void layout() override;
+  void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
 
 private:
   // -------- Input --------
-  const Element &root_;
-  FontMetrics metrics_;
-  int max_width_;
+  const Lexeme *node_;
+  LayoutObject *parent_;
+  BlockLayout *previous_;
+  const FontMetrics &metrics_;
 
   // -------- Cursor state --------
   int cursor_x_;
@@ -62,12 +78,17 @@ private:
   int font_size_ = 16;
 
   // -------- Layout buffers --------
-  std::vector<LineItem> line_;            // current line buffer
-  std::vector<DisplayItem> display_list_; // final output
+  std::vector<LineItem> line_;                // current line buffer
+  std::vector<TextDisplayItem> display_list_; // inline-only output
 
   // -------- Layout helpers --------
-  void layoutNode(const Lexeme &node);
-  void layoutElement(const Element &element);
+  enum class LayoutMode { Inline, Block };
+  LayoutMode layout_mode() const;
+
+  // Build inline content display_list_ for this block.
+  void recurse(const Lexeme *node);
+  void layoutNode(const Lexeme *node);
+  void layoutElement(const Element *element);
   void open_tag(const std::string &tag);
   void close_tag(const std::string &tag);
   void layoutText(const std::string &text);

@@ -1,5 +1,6 @@
 #pragma once
 #include "layout/DisplayItem.h"
+#include "layout/DocumentLayout.h"
 #include "lexer/Element.h"
 #include "lexer/Lexeme.h"
 #include "request/IRequest.h"
@@ -16,6 +17,11 @@ public:
   explicit Browser(std::shared_ptr<IRequest> http);
   ~Browser();
 
+  // Load a URL, build the layout tree, and start the SDL render loop.
+  //
+  // Example:
+  //   Browser browser;
+  //   browser.load(Url("http://localhost:8000/index.html"));
   void load(const Url &url); // Load page and start SDL loop
 
 private:
@@ -43,10 +49,10 @@ private:
   void mainLoop();
   void handleEvents();
   void draw();
-  void drawText(const DisplayItem &item);
 
   // layout/scrolling
-  std::vector<DisplayItem> display_list;
+  std::unique_ptr<DocumentLayout> document_;
+  std::vector<std::unique_ptr<DrawCommand>> display_list;
   int scroll = 0;
 
   // Lexer
