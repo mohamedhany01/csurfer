@@ -1,8 +1,9 @@
 #include "Browser.h"
 #include "html/HTMLParser.h"
-#include "layout/DisplayItem.h"
-#include "layout/Layout.h"
+#include "layout/LayoutConstants.h"
+#include "layout/LayoutTree.h"
 #include "request/HttpRequest.h"
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -94,9 +95,13 @@ void Browser::load(const Url &url) {
   FontMetrics metrics{TTF_FontAscent(font), abs(TTF_FontDescent(font)),
                       TTF_FontLineSkip(font)};
 
-  // Extract text to build the display list with fixed coordinates (x, y)
-  Layout layout(*root_, metrics, WIDTH - 40);
-  display_list = layout.build();
+  // Build a layout tree for the parsed HTML and compute positions.
+  document_ = std::make_unique<DocumentLayout>(root_.get(), metrics, WIDTH);
+  document_->layout();
+
+  display_list.clear();
+  paint_tree(*document_, display_list);
+  scroll = 0;
 
   // Start SDL loop
   mainLoop();
@@ -124,46 +129,26 @@ void Browser::handleEvents() {
       if (e.key.keysym.sym == SDLK_UP)
         scroll -= 50;
 
-      if (scroll < 0)
-        scroll = 0;
+      int max_scroll = 0;
+      if (document_) {
+        max_scroll = std::max(document_->height + 2 * VSTEP - HEIGHT, 0);
+      }
+      scroll = std::clamp(scroll, 0, max_scroll);
     }
   }
-}
-
-void Browser::drawText(const DisplayItem &item) {
-  SDL_Color color = {0, 0, 0, 255};
-
-  SDL_Surface *surface =
-      TTF_RenderUTF8_Blended(item.font, item.text.c_str(), color);
-
-  if (!surface)
-    return;
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-
-  SDL_Rect dst{item.x, item.y, surface->w, surface->h};
-  SDL_RenderCopy(renderer, texture, nullptr, &dst);
-
-  SDL_FreeSurface(surface);
-  SDL_DestroyTexture(texture);
 }
 
 void Browser::draw() {
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
   SDL_RenderClear(renderer);
-  for (const auto &item : display_list) {
-
-    // new position on screen, item.y is always fixed only screen_y is
-    // changeable
-    int screen_y = item.y - scroll;
-
-    // don't draw overflowed text in the viewport (optimization)
-    if (screen_y < -20 || screen_y > HEIGHT + 20)
+  for (const auto &cmd : display_list) {
+    if (!cmd)
       continue;
-
-    DisplayItem new_di{item.x, screen_y, item.text, item.font};
-
-    drawText(new_di);
+    if (cmd->top > scroll + HEIGHT)
+      continue;
+    if (cmd->bottom < scroll)
+      continue;
+    cmd->execute(scroll, renderer);
   }
   SDL_RenderPresent(renderer);
 }
