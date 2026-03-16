@@ -10,6 +10,8 @@ public:
   const std::string &path() const;
   const std::string &port() const;
 
+  Url resolve(const std::string &href) const;
+
 private:
   std::string scheme_;
   std::string host_;

@@ -17,6 +17,7 @@ struct LineItem {
   int rel_x;        // relative to the block
   std::string text; // UTF-8
   TTF_Font *font;   // font used to render this word
+  SDL_Color color;  // word color
 };
 
 struct TextDisplayItem {
@@ -24,6 +25,7 @@ struct TextDisplayItem {
   int y;            // page coordinate
   std::string text; // UTF-8
   TTF_Font *font;   // font data
+  SDL_Color color;  // text color
 };
 
 // Font cache
@@ -73,9 +75,6 @@ private:
 
   // -------- Formatting state --------
   std::unordered_map<FontKey, TTF_Font *, FontKeyHash> font_cache_;
-  bool bold_ = false;
-  bool italic_ = false;
-  int font_size_ = 16;
 
   // -------- Layout buffers --------
   std::vector<LineItem> line_;                // current line buffer
@@ -89,16 +88,15 @@ private:
   void recurse(const Lexeme *node);
   void layoutNode(const Lexeme *node);
   void layoutElement(const Element *element);
-  void open_tag(const std::string &tag);
-  void close_tag(const std::string &tag);
-  void layoutText(const std::string &text);
+  void layoutText(const std::string &text, const Element *parent_element);
 
-  // Add a single word to the current line
-  void word(const std::string &word);
+  // Add a single word to the current line, styled according to the parent
+  // element
+  void word(const std::string &word, const Element *parent_element);
 
   // Flush the current line buffer into the display list
   void flush();
 
-  // Create or select a font matching current style state
-  TTF_Font *currentFont();
+  // Create or select a font matching current element's style state
+  TTF_Font *currentFont(const Element *element);
 };

@@ -1,11 +1,12 @@
 #include "layout/BlockLayout.h"
 
-#include "layout/LayoutConstants.h"
+#include "lexer/Text.h"
 #include "utils/Parser.h"
 
 #include <SDL2/SDL_ttf.h>
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <unordered_set>
 
 static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
@@ -83,9 +84,6 @@ void BlockLayout::layout() {
   } else {
     cursor_x_ = 0;
     cursor_y_ = 0;
-    bold_ = false;
-    italic_ = false;
-    font_size_ = 16;
     recurse(node_);
     flush();
   }
@@ -107,16 +105,35 @@ void BlockLayout::layout() {
 
 void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
   const auto *el = dynamic_cast<const Element *>(node_);
-  if (el && el->tag() == "pre") {
-    SDL_Color gray{200, 200, 200, 255};
-    out.push_back(
-        std::make_unique<DrawRect>(x, y, x + width, y + height, gray));
+  if (el) {
+    auto styles = el->style();
+    if (styles.find("background-color") != styles.end()) {
+      std::string bgcolor = styles.at("background-color");
+      if (bgcolor != "transparent" && !bgcolor.empty()) {
+        // Very simple color parsing for now (assuming named colors or hex)
+        // Just map some basic colors to prove it works
+        SDL_Color color{200, 200, 200, 255}; // Default Gray
+        if (bgcolor == "blue")
+          color = {0, 0, 255, 255};
+        else if (bgcolor == "red")
+          color = {255, 0, 0, 255};
+        else if (bgcolor == "green")
+          color = {0, 255, 0, 255};
+        else if (bgcolor == "yellow")
+          color = {255, 255, 0, 255};
+        else if (bgcolor == "black")
+          color = {0, 0, 0, 255};
+
+        out.push_back(
+            std::make_unique<DrawRect>(x, y, x + width, y + height, color));
+      }
+    }
   }
 
   if (layout_mode() == LayoutMode::Inline) {
     for (const auto &item : display_list_) {
-      out.push_back(
-          std::make_unique<DrawText>(item.x, item.y, item.text, item.font));
+      out.push_back(std::make_unique<DrawText>(item.x, item.y, item.text,
+                                               item.font, item.color));
     }
   }
 }
@@ -128,12 +145,23 @@ void BlockLayout::layoutNode(const Lexeme *node) {
     return;
 
   if (node->type() == LexemeType::Text) {
-    layoutText(node->text());
+    // A Text node itself doesn't have styles, its parent does.
+    const Element *parent_el = nullptr;
+    // We need to trace back from LayoutTree or find parent in DOM.
+    // Lexeme doesn't have parent() in the interface, but Element/Text do.
+    // Fortunately Text has parent(). But node is a Lexeme*.
+    if (const auto *t = dynamic_cast<const Text *>(node)) {
+      parent_el = dynamic_cast<const Element *>(t->parent());
+    }
+    layoutText(node->text(), parent_el);
     return;
   }
 
   if (node->type() == LexemeType::Element) {
     const auto *el = dynamic_cast<const Element *>(node);
+    if (el && el->tag() == "br") {
+      flush();
+    }
     layoutElement(el);
   }
 }
@@ -142,58 +170,26 @@ void BlockLayout::layoutElement(const Element *element) {
   if (!element)
     return;
 
-  const std::string &tag = element->tag();
-  open_tag(tag);
-
   for (const auto &child : element->children()) {
     layoutNode(child.get());
   }
-
-  close_tag(tag);
 }
 
-void BlockLayout::open_tag(const std::string &tag) {
-  if (tag == "b") {
-    bold_ = true;
-  } else if (tag == "i") {
-    italic_ = true;
-  } else if (tag == "small") {
-    font_size_ -= 2;
-  } else if (tag == "big") {
-    font_size_ += 4;
-  } else if (tag == "br") {
-    flush();
-  }
-}
-
-void BlockLayout::close_tag(const std::string &tag) {
-  if (tag == "b") {
-    bold_ = false;
-  } else if (tag == "i") {
-    italic_ = false;
-  } else if (tag == "small") {
-    font_size_ += 2;
-  } else if (tag == "big") {
-    font_size_ -= 4;
-  } else if (tag == "p") {
-    flush();
-    cursor_y_ += metrics_.lineSkip;
-  }
-}
-
-void BlockLayout::layoutText(const std::string &text) {
+void BlockLayout::layoutText(const std::string &text,
+                             const Element *parent_element) {
   auto words = utils::splitWords(text);
   for (const auto &w : words) {
     if (w == "\n") {
       flush();
       continue;
     }
-    word(w);
+    word(w, parent_element);
   }
 }
 
-void BlockLayout::word(const std::string &word_text) {
-  TTF_Font *font = currentFont();
+void BlockLayout::word(const std::string &word_text,
+                       const Element *parent_element) {
+  TTF_Font *font = currentFont(parent_element);
   if (!font)
     return;
 
@@ -205,7 +201,21 @@ void BlockLayout::word(const std::string &word_text) {
     flush();
   }
 
-  line_.push_back({cursor_x_, word_text, font});
+  SDL_Color current_color = {0, 0, 0, 255}; // Default black
+  if (parent_element) {
+    auto styles = parent_element->style();
+    if (styles.find("color") != styles.end()) {
+      std::string c_str = styles.at("color");
+      if (c_str == "red") current_color = {255, 0, 0, 255};
+      else if (c_str == "green") current_color = {0, 128, 0, 255}; // web green is darker, let's just use 128 or 255.
+      else if (c_str == "blue") current_color = {0, 0, 255, 255};
+      else if (c_str == "yellow") current_color = {255, 255, 0, 255};
+      else if (c_str == "white") current_color = {255, 255, 255, 255};
+      else if (c_str == "black") current_color = {0, 0, 0, 255};
+    }
+  }
+
+  line_.push_back({cursor_x_, word_text, font, current_color});
 
   int space_w = 0;
   TTF_SizeUTF8(font, " ", &space_w, nullptr);
@@ -229,7 +239,8 @@ void BlockLayout::flush() {
   for (const auto &item : line_) {
     int abs_x = x + item.rel_x;
     int abs_y = y + baseline - TTF_FontAscent(item.font);
-    display_list_.push_back({abs_x, abs_y, item.text, item.font});
+
+    display_list_.push_back({abs_x, abs_y, item.text, item.font, item.color});
   }
 
   cursor_y_ = baseline + static_cast<int>(1.25 * max_descent);
@@ -237,22 +248,47 @@ void BlockLayout::flush() {
   line_.clear();
 }
 
-TTF_Font *BlockLayout::currentFont() {
+TTF_Font *BlockLayout::currentFont(const Element *element) {
   std::string font_path =
       std::string(ASSETS_DIR) + "/fonts/NotoSansCJK-Regular.ttc";
 
-  FontKey key{font_size_, bold_, italic_};
+  int f_size = 16;
+  bool f_bold = false;
+  bool f_italic = false;
+
+  if (element) {
+    auto styles = element->style();
+    if (styles.find("font-size") != styles.end()) {
+      std::string fs = styles.at("font-size");
+      if (fs.length() > 2 && fs.substr(fs.length() - 2) == "px") {
+        try {
+          f_size = std::stoi(fs.substr(0, fs.length() - 2));
+        } catch (...) {
+        }
+      }
+    }
+    if (styles.find("font-weight") != styles.end() &&
+        styles.at("font-weight") == "bold") {
+      f_bold = true;
+    }
+    if (styles.find("font-style") != styles.end() &&
+        styles.at("font-style") == "italic") {
+      f_italic = true;
+    }
+  }
+
+  FontKey key{f_size, f_bold, f_italic};
   if (font_cache_.contains(key))
     return font_cache_[key];
 
-  TTF_Font *font = TTF_OpenFont(font_path.c_str(), font_size_);
+  TTF_Font *font = TTF_OpenFont(font_path.c_str(), f_size);
   if (!font)
     return nullptr;
 
   int style = TTF_STYLE_NORMAL;
-  if (bold_)
+  if (f_bold)
     style |= TTF_STYLE_BOLD;
-  if (italic_)
+  if (f_italic)
     style |= TTF_STYLE_ITALIC;
   TTF_SetFontStyle(font, style);
 

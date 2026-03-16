@@ -27,13 +27,15 @@ public:
 //   cmd->execute(scroll, renderer);
 class DrawText final : public DrawCommand {
 public:
-  DrawText(int x1, int y1, std::string text, TTF_Font *font);
+  DrawText(int x1, int y1, std::string text, TTF_Font *font,
+           SDL_Color color = {0, 0, 0, 255});
 
   void execute(int scroll, SDL_Renderer *renderer) const override;
 
 private:
   std::string text_;
   TTF_Font *font_ = nullptr;
+  SDL_Color color_;
 };
 
 // Draw a filled rectangle, used for things like code block backgrounds.

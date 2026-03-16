@@ -36,4 +36,10 @@ void Element::appendChild(std::unique_ptr<Lexeme> child) {
   children_.push_back(std::move(child));
 }
 
+const Element::StyleMap &Element::style() const { return style_; }
+
+void Element::addStyle(const std::string &property, const std::string &value) {
+  style_[property] = value;
+}
+
 std::string Element::get_string() const { return "<" + tag_ + ">"; }

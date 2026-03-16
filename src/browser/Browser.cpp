@@ -1,4 +1,5 @@
 #include "Browser.h"
+#include "css/StyleEngine.h"
 #include "html/HTMLParser.h"
 #include "layout/LayoutConstants.h"
 #include "layout/LayoutTree.h"
@@ -94,6 +95,11 @@ void Browser::load(const Url &url) {
   // Extract font metrics
   FontMetrics metrics{TTF_FontAscent(font), abs(TTF_FontDescent(font)),
                       TTF_FontLineSkip(font)};
+
+  // Apply all CSS: default styles, external stylesheets, inline styles.
+  // Specificity-based cascade is handled inside StyleEngine.
+  StyleEngine style_engine(http_);
+  style_engine.apply(dynamic_cast<Element *>(root_.get()), url);
 
   // Build a layout tree for the parsed HTML and compute positions.
   document_ = std::make_unique<DocumentLayout>(root_.get(), metrics, WIDTH);
