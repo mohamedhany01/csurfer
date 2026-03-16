@@ -8,6 +8,7 @@
 class Element : public Lexeme {
 public:
   using AttributeMap = std::unordered_map<std::string, std::string>;
+  using StyleMap = std::unordered_map<std::string, std::string>;
 
   explicit Element(std::string tag, AttributeMap attributes = {},
                    Element *parent = nullptr);
@@ -24,6 +25,10 @@ public:
   const std::vector<std::unique_ptr<Lexeme>> &children() const;
   void appendChild(std::unique_ptr<Lexeme> child);
 
+  // Computed styles for this element
+  const StyleMap &style() const;
+  void addStyle(const std::string &property, const std::string &value);
+
   // Short string form used when debugging the tree,
   // like "<p>" or "<a>".
   std::string get_string() const;
@@ -31,6 +36,7 @@ public:
 private:
   std::string tag_;
   AttributeMap attributes_;
+  StyleMap style_;
   std::vector<std::unique_ptr<Lexeme>> children_;
   Element *parent_;
 };

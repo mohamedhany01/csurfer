@@ -37,3 +37,23 @@ const std::string &Url::scheme() const { return scheme_; }
 const std::string &Url::host() const { return host_; }
 const std::string &Url::path() const { return path_; }
 const std::string &Url::port() const { return port_; }
+
+Url Url::resolve(const std::string &href) const {
+  if (href.find("://") != std::string::npos) {
+    return Url(href);
+  }
+
+  if (!href.empty() && href[0] == '/') {
+    return Url(scheme_ + "://" + host_ + ":" + port_ + href);
+  }
+
+  std::string base_path = path_;
+  auto last_slash = base_path.find_last_of('/');
+  if (last_slash != std::string::npos) {
+    base_path = base_path.substr(0, last_slash + 1);
+  } else {
+    base_path = "/";
+  }
+
+  return Url(scheme_ + "://" + host_ + ":" + port_ + base_path + href);
+}

@@ -1,0 +1,20 @@
+body {
+    background-color: yellow;
+}
+
+h1 {
+    color: green;
+}
+
+p {
+    font-size: 20px;
+}
+
+div p {
+    font-style: italic;
+    color: red;
+}
+
+b {
+    color: red;
+}

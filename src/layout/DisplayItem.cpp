@@ -1,7 +1,8 @@
 #include "layout/DisplayItem.h"
 
-DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font)
-    : text_(std::move(text)), font_(font) {
+DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font,
+                   SDL_Color color)
+    : text_(std::move(text)), font_(font), color_(color) {
   left = x1;
   top = y1;
   right = x1;
@@ -12,9 +13,7 @@ void DrawText::execute(int scroll, SDL_Renderer *renderer) const {
   if (!renderer || !font_)
     return;
 
-  SDL_Color color{0, 0, 0, 255};
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font_, text_.c_str(), color);
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font_, text_.c_str(), color_);
   if (!surface)
     return;
 
