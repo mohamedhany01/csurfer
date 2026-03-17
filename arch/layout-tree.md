@@ -21,6 +21,7 @@ classDiagram
     class BlockLayout {
         +layout()
         +paint()
+        -vector~const Lexeme*~ anonymous_children_
         -new_line()
         -word()
     }
@@ -44,7 +45,8 @@ classDiagram
     LayoutObject <|-- TextLayout
 
     DocumentLayout o-- BlockLayout : root_
-    BlockLayout o-- BlockLayout : block mode
-    BlockLayout o-- LineLayout : inline mode
+    BlockLayout o-- BlockLayout : block mode (children_)
+    BlockLayout o-- BlockLayout : anonymous mode (anonymous_children_)
+    BlockLayout o-- LineLayout : inline mode (children_)
     LineLayout o-- TextLayout : children
 ```
