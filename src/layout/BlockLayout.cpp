@@ -150,7 +150,7 @@ void BlockLayout::layoutNode(const Lexeme *node) {
     if (const auto *t = dynamic_cast<const Text *>(node)) {
       parent_el = dynamic_cast<const Element *>(t->parent());
     }
-    layoutText(node->text(), parent_el);
+    layoutText(node, node->text(), parent_el);
     return;
   }
 
@@ -172,15 +172,16 @@ void BlockLayout::layoutElement(const Element *element) {
   }
 }
 
-void BlockLayout::layoutText(const std::string &text,
+void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
                              const Element *parent_element) {
   auto words = utils::splitWords(text);
   for (const auto &w : words) {
     if (w == "\n") {
-      new_line();
+      // In HTML, source-code newlines should just collapse into whitespace.
+      // Since word() adds a space gap after each word automatically, we just skip it.
       continue;
     }
-    word(node_, w, parent_element);
+    word(text_node, w, parent_element);
   }
 }
 
@@ -245,6 +246,7 @@ void BlockLayout::new_line() {
   }
   
   children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
+  // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " << (int)layout_mode() << ")\n";
 }
 
 TTF_Font *BlockLayout::currentFont(const Element *element) {

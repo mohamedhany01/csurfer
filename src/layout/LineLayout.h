@@ -17,6 +17,8 @@ public:
   void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
 
 private:
+  friend class BlockLayout;
+  
   const Lexeme *node_;
   LayoutObject *parent_;
   LayoutObject *previous_;

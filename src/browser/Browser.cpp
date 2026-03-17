@@ -114,6 +114,9 @@ void Browser::load(const Url &url) {
   paint_tree(*document_, display_list);
   scroll = 0;
 
+  debug_print_layout_tree(*document_);
+  exit(0); // Exit right after printing so we don't need UI
+
   // Start SDL loop
   mainLoop();
 }
