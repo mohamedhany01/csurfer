@@ -36,7 +36,12 @@ The executable `c_surfer` will be in the `build/` directory.
 ./c_surfer http://localhost:8000
 ```
 
-The browser opens an 800x600 window, fetches the page, parses HTML, and renders text. Use arrow keys (UP/DOWN) to scroll.
+The browser opens an 800x600 window, fetches the page, parses HTML, and renders text. 
+
+**Navigation & Controls:**
+*   **UP / DOWN Arrows**: Scroll the page vertically.
+*   **Left Click**: Click on hyperlinks to navigate to new pages.
+*   **Backspace**: Go back to the previous page in your browsing history.
 
 ## Configuration
 

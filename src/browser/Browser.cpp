@@ -85,6 +85,8 @@ void Browser::load(const Url &url) {
     history_.push_back(url);
   }
 
+  std::cout << "[Browser] Navigating to: " << url.href() << std::endl;
+
   // Fetch page body via request abstraction
   std::string body = http_->request(url);
 
@@ -211,6 +213,8 @@ void Browser::go_back() {
   // Get previous
   Url previous = history_.back();
   history_.pop_back(); // load() will push it back
+
+  std::cout << "[Browser] Going back to: " << previous.href() << std::endl;
 
   load(previous);
 }
