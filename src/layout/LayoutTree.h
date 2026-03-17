@@ -19,3 +19,22 @@ paint_tree(const LayoutObject &layout_object,
     paint_tree(*child, display_list);
   }
 }
+
+// Flatten the layout tree into a list for hit-testing.
+// Example: auto all = tree_to_list(*document_);
+inline std::vector<const LayoutObject*>
+tree_to_list(const LayoutObject& root) {
+  std::vector<const LayoutObject*> list;
+  std::vector<const LayoutObject*> stack = {&root};
+  while (!stack.empty()) {
+    const LayoutObject* node = stack.back();
+    stack.pop_back();
+    list.push_back(node);
+    
+    // push children in reverse so they are popped in order
+    for (auto it = node->children_.rbegin(); it != node->children_.rend(); ++it) {
+      stack.push_back(it->get());
+    }
+  }
+  return list;
+}
