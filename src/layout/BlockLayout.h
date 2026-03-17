@@ -13,20 +13,7 @@ struct FontMetrics {
   const int lineSkip; // line hight
 };
 
-struct LineItem {
-  int rel_x;        // relative to the block
-  std::string text; // UTF-8
-  TTF_Font *font;   // font used to render this word
-  SDL_Color color;  // word color
-};
-
-struct TextDisplayItem {
-  int x;            // page coordinate
-  int y;            // page coordinate
-  std::string text; // UTF-8
-  TTF_Font *font;   // font data
-  SDL_Color color;  // text color
-};
+// Old LineItem and TextDisplayItem structs were removed here
 
 // Font cache
 struct FontKey {
@@ -71,14 +58,13 @@ private:
 
   // -------- Cursor state --------
   int cursor_x_;
-  int cursor_y_;
+  // cursor_y_ is removed
 
   // -------- Formatting state --------
   std::unordered_map<FontKey, TTF_Font *, FontKeyHash> font_cache_;
 
   // -------- Layout buffers --------
-  std::vector<LineItem> line_;                // current line buffer
-  std::vector<TextDisplayItem> display_list_; // inline-only output
+  // line_ and display_list_ are removed, LineLayout children manage this now
 
   // -------- Layout helpers --------
   enum class LayoutMode { Inline, Block };
@@ -92,10 +78,10 @@ private:
 
   // Add a single word to the current line, styled according to the parent
   // element
-  void word(const std::string &word, const Element *parent_element);
+  void word(const Lexeme *node, const std::string &word, const Element *parent_element);
 
-  // Flush the current line buffer into the display list
-  void flush();
+  // Start a new line by appending a LineLayout child
+  void new_line();
 
   // Create or select a font matching current element's style state
   TTF_Font *currentFont(const Element *element);

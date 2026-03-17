@@ -15,7 +15,7 @@ inline void
 paint_tree(const LayoutObject &layout_object,
            std::vector<std::unique_ptr<DrawCommand>> &display_list) {
   layout_object.paint(display_list);
-  for (const auto &child : layout_object.children()) {
+  for (const auto &child : layout_object.children_) {
     paint_tree(*child, display_list);
   }
 }

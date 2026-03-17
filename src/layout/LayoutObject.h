@@ -30,10 +30,5 @@ public:
   // Overridden by TextLayout to enable hit-testing.
   virtual const class Lexeme* node() const { return nullptr; }
 
-  const std::vector<std::unique_ptr<LayoutObject>> &children() const {
-    return children_;
-  }
-
-protected:
   std::vector<std::unique_ptr<LayoutObject>> children_;
 };
