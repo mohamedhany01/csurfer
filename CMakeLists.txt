@@ -131,6 +131,7 @@ add_executable(c_surfer
     src/layout/BlockLayout.cpp
     src/layout/DocumentLayout.cpp
     src/layout/DisplayItem.cpp
+    src/layout/LineLayout.cpp
     src/layout/TextLayout.cpp
     src/url/Url.cpp
     src/request/HttpRequest.cpp
