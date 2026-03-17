@@ -24,6 +24,13 @@ public:
   //   browser.load(Url("http://localhost:8000/index.html"));
   void load(const Url &url); // Load page and start SDL loop
 
+  // Navigate to the URL that contains point (x, y) in page coords.
+  // Walks layout tree, finds <a> ancestor, calls load().
+  void click(int x, int y);
+
+  // Go back in history (Backspace / Alt+Left).
+  void go_back();
+
 private:
   // Request
   std::shared_ptr<IRequest> http_;
@@ -54,6 +61,9 @@ private:
   std::unique_ptr<DocumentLayout> document_;
   std::vector<std::unique_ptr<DrawCommand>> display_list;
   int scroll = 0;
+
+  // navigation history
+  std::vector<Url> history_;
 
   // Lexer
   std::unique_ptr<Element> root_;

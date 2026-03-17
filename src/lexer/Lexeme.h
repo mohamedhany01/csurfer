@@ -17,4 +17,6 @@ public:
     static const std::string empty;
     return empty;
   }
+
+  virtual class Element *parent() const = 0;
 };

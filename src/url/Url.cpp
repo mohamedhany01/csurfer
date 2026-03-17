@@ -38,6 +38,15 @@ const std::string &Url::host() const { return host_; }
 const std::string &Url::path() const { return path_; }
 const std::string &Url::port() const { return port_; }
 
+std::string Url::href() const {
+  std::string result = scheme_ + "://" + host_;
+  if (!port_.empty() && port_ != "80" && port_ != "443") {
+    result += ":" + port_;
+  }
+  result += path_;
+  return result;
+}
+
 Url Url::resolve(const std::string &href) const {
   if (href.find("://") != std::string::npos) {
     return Url(href);
