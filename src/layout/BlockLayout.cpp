@@ -25,9 +25,29 @@ BlockLayout::BlockLayout(const Lexeme *node, LayoutObject *parent,
     : node_(node), parent_(parent), previous_(previous), metrics_(metrics),
       cursor_x_(0) {}
 
+BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
+                         LayoutObject *parent, BlockLayout *previous,
+                         const FontMetrics &metrics)
+    : node_(nullptr), parent_(parent), previous_(previous), metrics_(metrics),
+      anonymous_children_(std::move(anonymous_children)), cursor_x_(0) {}
+
+static bool is_block_node(const Lexeme *node) {
+  if (!node)
+    return false;
+  if (node->type() == LexemeType::Text)
+    return false;
+  if (const auto *el = dynamic_cast<const Element *>(node)) {
+    return BLOCK_ELEMENTS.contains(el->tag());
+  }
+  return false;
+}
+
 BlockLayout::LayoutMode BlockLayout::layout_mode() const {
-  if (!node_)
+  if (!node_) {
+    if (!anonymous_children_.empty())
+      return LayoutMode::Inline;
     return LayoutMode::Block;
+  }
 
   if (node_->type() == LexemeType::Text) {
     return LayoutMode::Inline;
@@ -74,17 +94,40 @@ void BlockLayout::layout() {
     const auto *el = dynamic_cast<const Element *>(node_);
     if (el) {
       BlockLayout *prev = nullptr;
+      std::vector<const Lexeme *> inline_run;
+
+      auto flush_inline_run = [&]() {
+        if (!inline_run.empty()) {
+          auto next = std::make_unique<BlockLayout>(inline_run, this, prev, metrics_);
+          prev = next.get();
+          children_.push_back(std::move(next));
+          inline_run.clear();
+        }
+      };
+
       for (const auto &child : el->children()) {
-        auto next =
-            std::make_unique<BlockLayout>(child.get(), this, prev, metrics_);
-        prev = next.get();
-        children_.push_back(std::move(next));
+        const Lexeme *child_node = child.get();
+        if (is_block_node(child_node)) {
+          flush_inline_run();
+          auto next = std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
+          prev = next.get();
+          children_.push_back(std::move(next));
+        } else {
+          inline_run.push_back(child_node);
+        }
       }
+      flush_inline_run();
     }
   } else {
     cursor_x_ = 0;
     new_line();
-    recurse(node_);
+    if (!anonymous_children_.empty()) {
+      for (const auto *n : anonymous_children_) {
+        recurse(n);
+      }
+    } else {
+      recurse(node_);
+    }
   }
 
   for (auto &child : children_) {

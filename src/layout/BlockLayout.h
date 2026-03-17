@@ -46,6 +46,11 @@ public:
   BlockLayout(const Lexeme *node, LayoutObject *parent, BlockLayout *previous,
               const FontMetrics &metrics);
 
+  // For anonymous block boxes that hold runs of inline elements
+  BlockLayout(std::vector<const Lexeme *> anonymous_children,
+              LayoutObject *parent, BlockLayout *previous,
+              const FontMetrics &metrics);
+
   void layout() override;
   void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
 
@@ -55,6 +60,9 @@ private:
   LayoutObject *parent_;
   BlockLayout *previous_;
   const FontMetrics &metrics_;
+
+  // Used for anonymous blocks that don't correspond to a single DOM node
+  std::vector<const Lexeme *> anonymous_children_;
 
   // -------- Cursor state --------
   int cursor_x_;
