@@ -47,7 +47,7 @@ The browser opens an 800x600 window.
     *   **x Button**: Close the specific tab.
 *   **Navigation**:
     *   **< Button**: Go back in the current tab's history.
-    *   **UP / DOWN Arrows**: Scroll the page vertically.
+    *   **UP / DOWN Arrows** or **Mouse Wheel**: Scroll the page vertically.
     *   **Left Click**: Interact with links on web pages.
 
 ## Configuration
