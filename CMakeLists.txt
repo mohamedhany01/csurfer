@@ -137,6 +137,8 @@ add_executable(c_surfer
     src/request/HttpRequest.cpp
     src/utils/Parser.cpp
     src/browser/Browser.cpp
+    src/browser/Tab.cpp
+    src/browser/CSurferUI.cpp
     src/css/CSSSelector.cpp
     src/css/CSSParser.cpp
     src/css/StyleComputation.cpp

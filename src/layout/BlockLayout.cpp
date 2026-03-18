@@ -107,6 +107,15 @@ void BlockLayout::layout() {
 
       for (const auto &child : el->children()) {
         const Lexeme *child_node = child.get();
+        if (child_node->type() == LexemeType::Element) {
+          const auto *child_el = dynamic_cast<const Element *>(child_node);
+          std::string tag = child_el->tag();
+          if (tag == "head" || tag == "script" || tag == "style" || 
+              tag == "meta" || tag == "link") {
+            continue;
+          }
+        }
+
         if (is_block_node(child_node)) {
           flush_inline_run();
           auto next = std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
