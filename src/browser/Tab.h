@@ -1,0 +1,56 @@
+#pragma once
+
+#include "layout/DisplayItem.h"
+#include "layout/DocumentLayout.h"
+#include "lexer/Element.h"
+#include "lexer/Lexeme.h"
+#include "request/IRequest.h"
+#include "url/Url.h"
+
+#include <memory>
+#include <string>
+#include <vector>
+
+/**
+ * Represents a single browser tab containing its own URL, history, 
+ * DOM tree, and layout tree.
+ * 
+ * SOLID: Single Responsibility - Handles the web page lifecycle.
+ */
+class Tab {
+public:
+  explicit Tab(std::shared_ptr<IRequest> http, int window_width, const FontMetrics& metrics);
+  ~Tab() = default;
+
+  // Lifecycle
+  void load(const Url &url);
+  
+  // Interaction
+  void click(int x, int y);
+  void scrolldown();
+  void go_back();
+
+  // Rendering
+  // Paints the tab's display list into the output renderer, offset by y_offset
+  void render(SDL_Renderer* renderer, int y_offset) const;
+
+  // Getters
+  const Url& url() const { return url_; }
+  const std::string title() const; // TODO: extract from <title> tag
+
+private:
+  std::shared_ptr<IRequest> http_;
+  int window_width_;
+  FontMetrics metrics_;
+
+  Url url_;
+  std::vector<Url> history_;
+  int scroll_ = 0;
+
+  std::unique_ptr<Element> root_;
+  std::unique_ptr<DocumentLayout> document_;
+  std::vector<std::unique_ptr<DrawCommand>> display_list_;
+
+  // Constants
+  const int SCROLL_STEP = 100;
+};

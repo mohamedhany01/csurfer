@@ -1,47 +1,48 @@
-#pragma once
-#include "layout/DisplayItem.h"
-#include "layout/DocumentLayout.h"
-#include "lexer/Element.h"
-#include "lexer/Lexeme.h"
-#include "request/IRequest.h"
-#include "url/Url.h"
-
+#include "CSurferUI.h"
+#include "Tab.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <memory>
 #include <string>
 #include <vector>
+
 class Browser {
 public:
   Browser();
   explicit Browser(std::shared_ptr<IRequest> http);
   ~Browser();
 
-  // Load a URL, build the layout tree, and start the SDL render loop.
-  //
-  // Example:
-  //   Browser browser;
-  //   browser.load(Url("http://localhost:8000/index.html"));
-  void load(const Url &url); // Load page and start SDL loop
+  // Load a URL, build the layout tree into the active tab.
+  void load(const Url &url); 
 
-  // Navigate to the URL that contains point (x, y) in page coords.
-  // Walks layout tree, finds <a> ancestor, calls load().
+  // Interaction (delegated to tab)
   void click(int x, int y);
-
-  // Go back in history (Backspace / Alt+Left).
   void go_back();
+
+  // Tab Management
+  void new_tab(const Url &url);
+  void switch_to_tab(size_t index);
+  void close_tab(size_t index);
+  Tab* active_tab() const;
+  Tab* get_tab(size_t index) const { return tabs_[index].get(); }
+  size_t tab_count() const { return tabs_.size(); }
+  size_t active_tab_index() const { return active_tab_index_; }
+
+  // Finalize UI rendering and start the SDL event/render loop.
+  void mainLoop();
+
+  TTF_Font* get_font() const { return font; }
 
 private:
   // Request
   std::shared_ptr<IRequest> http_;
 
-  // SDL2
+  // SDL2 Shell
   const int WIDTH = 800;
   const int HEIGHT = 600;
   SDL_Window *window = nullptr;
   SDL_Renderer *renderer = nullptr;
   bool running = true;
-  // TODO: maybe need to move this to layout/layout.cpp
   TTF_Font *font = nullptr;
 
   // SDL2 core
@@ -53,18 +54,13 @@ private:
   void shutdown();
 
   // SDL2 loop
-  void mainLoop();
   void handleEvents();
   void draw();
 
-  // layout/scrolling
-  std::unique_ptr<DocumentLayout> document_;
-  std::vector<std::unique_ptr<DrawCommand>> display_list;
-  int scroll = 0;
+  // The Shell UI (CSurfer UI)
+  CSurferUI ui_;
 
-  // navigation history
-  std::vector<Url> history_;
-
-  // Lexer
-  std::unique_ptr<Element> root_;
+  // Tab Collection
+  std::vector<std::unique_ptr<Tab>> tabs_;
+  size_t active_tab_index_ = 0;
 };
