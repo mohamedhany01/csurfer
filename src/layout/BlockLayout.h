@@ -13,20 +13,7 @@ struct FontMetrics {
   const int lineSkip; // line hight
 };
 
-struct LineItem {
-  int rel_x;        // relative to the block
-  std::string text; // UTF-8
-  TTF_Font *font;   // font used to render this word
-  SDL_Color color;  // word color
-};
-
-struct TextDisplayItem {
-  int x;            // page coordinate
-  int y;            // page coordinate
-  std::string text; // UTF-8
-  TTF_Font *font;   // font data
-  SDL_Color color;  // text color
-};
+// Old LineItem and TextDisplayItem structs were removed here
 
 // Font cache
 struct FontKey {
@@ -59,6 +46,11 @@ public:
   BlockLayout(const Lexeme *node, LayoutObject *parent, BlockLayout *previous,
               const FontMetrics &metrics);
 
+  // For anonymous block boxes that hold runs of inline elements
+  BlockLayout(std::vector<const Lexeme *> anonymous_children,
+              LayoutObject *parent, BlockLayout *previous,
+              const FontMetrics &metrics);
+
   void layout() override;
   void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
 
@@ -69,16 +61,18 @@ private:
   BlockLayout *previous_;
   const FontMetrics &metrics_;
 
+  // Used for anonymous blocks that don't correspond to a single DOM node
+  std::vector<const Lexeme *> anonymous_children_;
+
   // -------- Cursor state --------
   int cursor_x_;
-  int cursor_y_;
+  // cursor_y_ is removed
 
   // -------- Formatting state --------
   std::unordered_map<FontKey, TTF_Font *, FontKeyHash> font_cache_;
 
   // -------- Layout buffers --------
-  std::vector<LineItem> line_;                // current line buffer
-  std::vector<TextDisplayItem> display_list_; // inline-only output
+  // line_ and display_list_ are removed, LineLayout children manage this now
 
   // -------- Layout helpers --------
   enum class LayoutMode { Inline, Block };
@@ -88,14 +82,14 @@ private:
   void recurse(const Lexeme *node);
   void layoutNode(const Lexeme *node);
   void layoutElement(const Element *element);
-  void layoutText(const std::string &text, const Element *parent_element);
+  void layoutText(const Lexeme *text_node, const std::string &text, const Element *parent_element);
 
   // Add a single word to the current line, styled according to the parent
   // element
-  void word(const std::string &word, const Element *parent_element);
+  void word(const Lexeme *node, const std::string &word, const Element *parent_element);
 
-  // Flush the current line buffer into the display list
-  void flush();
+  // Start a new line by appending a LineLayout child
+  void new_line();
 
   // Create or select a font matching current element's style state
   TTF_Font *currentFont(const Element *element);

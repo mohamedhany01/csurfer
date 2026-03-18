@@ -4,7 +4,8 @@ A minimal web browser written in C++ using SDL2. Parse HTML, fetch pages, and re
 
 ## Overview
 
-**Get started quickly** - C Surfer demonstrates core browser concepts: HTML parsing, HTTP requests, and text rendering. Built with modern C++23 and SDL2.
+**Get started quickly** - C Surfer demonstrates core browser concepts: HTML parsing, HTTP requests, and text rendering. 
+**Now with Multi-Tab support!** Built with modern C++23 and SDL2.
 
 ## Installation
 
@@ -22,21 +23,32 @@ sudo apt install build-essential cmake libssl-dev libsdl2-ttf-dev libfreetype-de
 ```bash
 mkdir build && cd build
 cmake ..
-cmake --build .
+make -j8
 ```
 
 The executable `c_surfer` will be in the `build/` directory.
 
 ## Usage
 
-**Run with any URL** - Pass a URL as the first argument.
+**Run anytime** - Launch the browser without arguments to see the welcome page, or pass a URL.
 
 ```bash
-./c_surfer https://example.com
-./c_surfer http://localhost:8000
+./c_surfer                     # Opens about:welcome
+./c_surfer https://example.com  # Opens a specific site
 ```
 
-The browser opens an 800x600 window, fetches the page, parses HTML, and renders text. Use arrow keys (UP/DOWN) to scroll.
+The browser opens an 800x600 window.
+
+**Controls & Shortcuts:**
+*   **Address Bar**: Click to focus, then type a URL and press **Enter** to navigate.
+*   **Tab Management**:
+    *   **+ Button**: Open a new tab (`about:welcome`).
+    *   **Tab Click**: Switch between open tabs.
+    *   **x Button**: Close the specific tab.
+*   **Navigation**:
+    *   **< Button**: Go back in the current tab's history.
+    *   **UP / DOWN Arrows** or **Mouse Wheel**: Scroll the page vertically.
+    *   **Left Click**: Interact with links on web pages.
 
 ## Configuration
 

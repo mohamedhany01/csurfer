@@ -26,10 +26,9 @@ public:
   // Add this node's drawing commands to the output list.
   virtual void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const = 0;
 
-  const std::vector<std::unique_ptr<LayoutObject>> &children() const {
-    return children_;
-  }
+  // Return the DOM node this layout object was built from, or nullptr.
+  // Overridden by TextLayout to enable hit-testing.
+  virtual const class Lexeme* node() const { return nullptr; }
 
-protected:
   std::vector<std::unique_ptr<LayoutObject>> children_;
 };

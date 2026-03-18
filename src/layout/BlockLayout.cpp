@@ -3,6 +3,8 @@
 #include "lexer/Text.h"
 #include "utils/Parser.h"
 
+#include "layout/LineLayout.h"
+#include "layout/TextLayout.h"
 #include <SDL2/SDL_ttf.h>
 #include <algorithm>
 #include <cmath>
@@ -21,11 +23,31 @@ static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
 BlockLayout::BlockLayout(const Lexeme *node, LayoutObject *parent,
                          BlockLayout *previous, const FontMetrics &metrics)
     : node_(node), parent_(parent), previous_(previous), metrics_(metrics),
-      cursor_x_(0), cursor_y_(0) {}
+      cursor_x_(0) {}
+
+BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
+                         LayoutObject *parent, BlockLayout *previous,
+                         const FontMetrics &metrics)
+    : node_(nullptr), parent_(parent), previous_(previous), metrics_(metrics),
+      anonymous_children_(std::move(anonymous_children)), cursor_x_(0) {}
+
+static bool is_block_node(const Lexeme *node) {
+  if (!node)
+    return false;
+  if (node->type() == LexemeType::Text)
+    return false;
+  if (const auto *el = dynamic_cast<const Element *>(node)) {
+    return BLOCK_ELEMENTS.contains(el->tag());
+  }
+  return false;
+}
 
 BlockLayout::LayoutMode BlockLayout::layout_mode() const {
-  if (!node_)
+  if (!node_) {
+    if (!anonymous_children_.empty())
+      return LayoutMode::Inline;
     return LayoutMode::Block;
+  }
 
   if (node_->type() == LexemeType::Text) {
     return LayoutMode::Inline;
@@ -56,8 +78,6 @@ BlockLayout::LayoutMode BlockLayout::layout_mode() const {
 }
 
 void BlockLayout::layout() {
-  display_list_.clear();
-  line_.clear();
   children_.clear();
 
   x = parent_ ? parent_->x : 0;
@@ -74,18 +94,49 @@ void BlockLayout::layout() {
     const auto *el = dynamic_cast<const Element *>(node_);
     if (el) {
       BlockLayout *prev = nullptr;
+      std::vector<const Lexeme *> inline_run;
+
+      auto flush_inline_run = [&]() {
+        if (!inline_run.empty()) {
+          auto next = std::make_unique<BlockLayout>(inline_run, this, prev, metrics_);
+          prev = next.get();
+          children_.push_back(std::move(next));
+          inline_run.clear();
+        }
+      };
+
       for (const auto &child : el->children()) {
-        auto next =
-            std::make_unique<BlockLayout>(child.get(), this, prev, metrics_);
-        prev = next.get();
-        children_.push_back(std::move(next));
+        const Lexeme *child_node = child.get();
+        if (child_node->type() == LexemeType::Element) {
+          const auto *child_el = dynamic_cast<const Element *>(child_node);
+          std::string tag = child_el->tag();
+          if (tag == "head" || tag == "script" || tag == "style" || 
+              tag == "meta" || tag == "link") {
+            continue;
+          }
+        }
+
+        if (is_block_node(child_node)) {
+          flush_inline_run();
+          auto next = std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
+          prev = next.get();
+          children_.push_back(std::move(next));
+        } else {
+          inline_run.push_back(child_node);
+        }
       }
+      flush_inline_run();
     }
   } else {
     cursor_x_ = 0;
-    cursor_y_ = 0;
-    recurse(node_);
-    flush();
+    new_line();
+    if (!anonymous_children_.empty()) {
+      for (const auto *n : anonymous_children_) {
+        recurse(n);
+      }
+    } else {
+      recurse(node_);
+    }
   }
 
   for (auto &child : children_) {
@@ -99,7 +150,11 @@ void BlockLayout::layout() {
     }
     height = total;
   } else {
-    height = cursor_y_;
+    int total = 0;
+    for (const auto &child : children_) {
+      total += child->height;
+    }
+    height = total;
   }
 }
 
@@ -129,13 +184,7 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
       }
     }
   }
-
-  if (layout_mode() == LayoutMode::Inline) {
-    for (const auto &item : display_list_) {
-      out.push_back(std::make_unique<DrawText>(item.x, item.y, item.text,
-                                               item.font, item.color));
-    }
-  }
+  // In inline mode, the text is painted by TextLayout nodes doing paint_tree
 }
 
 void BlockLayout::recurse(const Lexeme *node) { layoutNode(node); }
@@ -153,14 +202,14 @@ void BlockLayout::layoutNode(const Lexeme *node) {
     if (const auto *t = dynamic_cast<const Text *>(node)) {
       parent_el = dynamic_cast<const Element *>(t->parent());
     }
-    layoutText(node->text(), parent_el);
+    layoutText(node, node->text(), parent_el);
     return;
   }
 
   if (node->type() == LexemeType::Element) {
     const auto *el = dynamic_cast<const Element *>(node);
     if (el && el->tag() == "br") {
-      flush();
+      new_line();
     }
     layoutElement(el);
   }
@@ -175,19 +224,20 @@ void BlockLayout::layoutElement(const Element *element) {
   }
 }
 
-void BlockLayout::layoutText(const std::string &text,
+void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
                              const Element *parent_element) {
   auto words = utils::splitWords(text);
   for (const auto &w : words) {
     if (w == "\n") {
-      flush();
+      // In HTML, source-code newlines should just collapse into whitespace.
+      // Since word() adds a space gap after each word automatically, we just skip it.
       continue;
     }
-    word(w, parent_element);
+    word(text_node, w, parent_element);
   }
 }
 
-void BlockLayout::word(const std::string &word_text,
+void BlockLayout::word(const Lexeme *node, const std::string &word_text,
                        const Element *parent_element) {
   TTF_Font *font = currentFont(parent_element);
   if (!font)
@@ -198,16 +248,16 @@ void BlockLayout::word(const std::string &word_text,
   TTF_SizeUTF8(font, word_text.c_str(), &w, &h);
 
   if (cursor_x_ + w > width) {
-    flush();
+    new_line();
   }
-
+  
   SDL_Color current_color = {0, 0, 0, 255}; // Default black
   if (parent_element) {
     auto styles = parent_element->style();
     if (styles.find("color") != styles.end()) {
       std::string c_str = styles.at("color");
       if (c_str == "red") current_color = {255, 0, 0, 255};
-      else if (c_str == "green") current_color = {0, 128, 0, 255}; // web green is darker, let's just use 128 or 255.
+      else if (c_str == "green") current_color = {0, 128, 0, 255};
       else if (c_str == "blue") current_color = {0, 0, 255, 255};
       else if (c_str == "yellow") current_color = {255, 255, 0, 255};
       else if (c_str == "white") current_color = {255, 255, 255, 255};
@@ -215,37 +265,40 @@ void BlockLayout::word(const std::string &word_text,
     }
   }
 
-  line_.push_back({cursor_x_, word_text, font, current_color});
-
-  int space_w = 0;
-  TTF_SizeUTF8(font, " ", &space_w, nullptr);
-  cursor_x_ += w + space_w;
+  // Add the text layout to the current line
+  if (!children_.empty()) {
+    LineLayout *current_line = dynamic_cast<LineLayout*>(children_.back().get());
+    if (current_line) {
+      auto text_layout = std::make_unique<TextLayout>(node, word_text, font, current_color);
+      // Give it its relative block position (y is set during LineLayout::layout)
+      // but relative to the block, not the line. Wait, TextLayout::layout sets own width/height.
+      // But we need to position it inline!
+      
+      // We must implement positioning inside LineLayout or TextLayout.
+      // Following Chapter 7 logic, text_layout->x gets set relative.
+      // Wait, let's just do it here for inline text flow:
+      int space_w = 0;
+      TTF_SizeUTF8(font, " ", &space_w, nullptr);
+      
+      // Let's position it horizontally here
+      text_layout->x = this->x + cursor_x_;
+      
+      // The parent of TextLayout is the LineLayout (not used, but logical)
+      current_line->children_.push_back(std::move(text_layout));
+      cursor_x_ += w + space_w;
+    }
+  }
 }
 
-void BlockLayout::flush() {
-  if (line_.empty())
-    return;
-
-  int max_ascent = 0;
-  int max_descent = 0;
-  for (const auto &item : line_) {
-    int ascent = TTF_FontAscent(item.font);
-    int descent = std::abs(TTF_FontDescent(item.font));
-    max_ascent = std::max(max_ascent, ascent);
-    max_descent = std::max(max_descent, descent);
-  }
-
-  int baseline = cursor_y_ + static_cast<int>(1.25 * max_ascent);
-  for (const auto &item : line_) {
-    int abs_x = x + item.rel_x;
-    int abs_y = y + baseline - TTF_FontAscent(item.font);
-
-    display_list_.push_back({abs_x, abs_y, item.text, item.font, item.color});
-  }
-
-  cursor_y_ = baseline + static_cast<int>(1.25 * max_descent);
+void BlockLayout::new_line() {
   cursor_x_ = 0;
-  line_.clear();
+  LayoutObject* prev_line = nullptr;
+  if (!children_.empty()) {
+    prev_line = children_.back().get();
+  }
+  
+  children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
+  // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " << (int)layout_mode() << ")\n";
 }
 
 TTF_Font *BlockLayout::currentFont(const Element *element) {

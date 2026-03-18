@@ -17,7 +17,8 @@ public:
   int right = 0;
 
   // Draw this command using the given scroll offset and SDL renderer.
-  virtual void execute(int scroll, SDL_Renderer *renderer) const = 0;
+  // y_offset is used to shift content below the CSurfer UI.
+  virtual void execute(int scroll, int y_offset, SDL_Renderer *renderer) const = 0;
 };
 
 // Draw a single piece of text at a fixed page position.
@@ -30,7 +31,7 @@ public:
   DrawText(int x1, int y1, std::string text, TTF_Font *font,
            SDL_Color color = {0, 0, 0, 255});
 
-  void execute(int scroll, SDL_Renderer *renderer) const override;
+  void execute(int scroll, int y_offset, SDL_Renderer *renderer) const override;
 
 private:
   std::string text_;
@@ -43,7 +44,7 @@ class DrawRect final : public DrawCommand {
 public:
   DrawRect(int x1, int y1, int x2, int y2, SDL_Color color);
 
-  void execute(int scroll, SDL_Renderer *renderer) const override;
+  void execute(int scroll, int y_offset, SDL_Renderer *renderer) const override;
 
 private:
   SDL_Color color_{0, 0, 0, 255};

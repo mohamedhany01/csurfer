@@ -9,7 +9,7 @@ DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font,
   bottom = y1 + (font_ ? TTF_FontLineSkip(font_) : 0);
 }
 
-void DrawText::execute(int scroll, SDL_Renderer *renderer) const {
+void DrawText::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
   if (!renderer || !font_)
     return;
 
@@ -23,7 +23,7 @@ void DrawText::execute(int scroll, SDL_Renderer *renderer) const {
     return;
   }
 
-  SDL_Rect dst{left, top - scroll, surface->w, surface->h};
+  SDL_Rect dst{left, top - scroll + y_offset, surface->w, surface->h};
   SDL_RenderCopy(renderer, texture, nullptr, &dst);
 
   SDL_DestroyTexture(texture);
@@ -38,11 +38,11 @@ DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
   bottom = y2;
 }
 
-void DrawRect::execute(int scroll, SDL_Renderer *renderer) const {
+void DrawRect::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
   if (!renderer)
     return;
 
   SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
-  SDL_Rect rect{left, top - scroll, right - left, bottom - top};
+  SDL_Rect rect{left, top - scroll + y_offset, right - left, bottom - top};
   SDL_RenderFillRect(renderer, &rect);
 }

@@ -131,10 +131,14 @@ add_executable(c_surfer
     src/layout/BlockLayout.cpp
     src/layout/DocumentLayout.cpp
     src/layout/DisplayItem.cpp
+    src/layout/LineLayout.cpp
+    src/layout/TextLayout.cpp
     src/url/Url.cpp
     src/request/HttpRequest.cpp
     src/utils/Parser.cpp
     src/browser/Browser.cpp
+    src/browser/Tab.cpp
+    src/browser/CSurferUI.cpp
     src/css/CSSSelector.cpp
     src/css/CSSParser.cpp
     src/css/StyleComputation.cpp
