@@ -96,8 +96,12 @@ void Tab::click(int x, int y) {
 
 void Tab::scrolldown() {
   if (!document_) return;
-  int max_y = std::max(0, document_->height - 600); // Hacky viewport height
+  int max_y = std::max(0, (int)document_->height - 540); 
   scroll_ = std::min(scroll_ + SCROLL_STEP, max_y);
+}
+
+void Tab::scrollup() {
+  scroll_ = std::max(0, scroll_ - SCROLL_STEP);
 }
 
 void Tab::go_back() {

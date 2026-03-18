@@ -143,7 +143,15 @@ void Browser::handleEvents() {
         ui_.keypress(e.key.keysym.sym, "");
       }
       
-      if (e.key.keysym.sym == SDLK_DOWN && active_tab()) active_tab()->scrolldown();
+      if (active_tab()) {
+        if (e.key.keysym.sym == SDLK_DOWN) active_tab()->scrolldown();
+        if (e.key.keysym.sym == SDLK_UP) active_tab()->scrollup();
+      }
+    }
+    
+    if (e.type == SDL_MOUSEWHEEL && active_tab()) {
+      if (e.wheel.y > 0) active_tab()->scrollup();
+      else if (e.wheel.y < 0) active_tab()->scrolldown();
     }
     
     if (e.type == SDL_TEXTINPUT) {

@@ -28,6 +28,7 @@ public:
   // Interaction
   void click(int x, int y);
   void scrolldown();
+  void scrollup();
   void go_back();
 
   // Rendering
