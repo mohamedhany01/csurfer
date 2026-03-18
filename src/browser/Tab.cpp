@@ -96,8 +96,10 @@ void Tab::click(int x, int y) {
 
 void Tab::scrolldown() {
   if (!document_) return;
-  int max_y = std::max(0, (int)document_->height - 540); 
-  scroll_ = std::min(scroll_ + SCROLL_STEP, max_y);
+  // Total height = content height + top padding (VSTEP) + bottom padding (VSTEP)
+  int total_height = (int)document_->height + 40; 
+  int max_scroll = std::max(0, total_height - 540); 
+  scroll_ = std::min(scroll_ + SCROLL_STEP, max_scroll);
 }
 
 void Tab::scrollup() {
