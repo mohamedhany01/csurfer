@@ -31,7 +31,7 @@ public:
 
   // Short string form used when debugging the tree,
   // like "<p>" or "<a>".
-  std::string get_string() const;
+  std::string get_string() const override;
 
 private:
   std::string tag_;

@@ -125,6 +125,7 @@ find_package(Freetype REQUIRED)
 # ------------------------------------------------------------------------------
 add_executable(c_surfer
     src/main.cpp
+    src/lexer/Lexeme.cpp
     src/lexer/Text.cpp
     src/lexer/Element.cpp
     src/html/HTMLParser.cpp
