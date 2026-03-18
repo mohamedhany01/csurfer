@@ -10,7 +10,7 @@ public:
   LexemeType type() const override;
   const std::string &text() const override;
 
-  Element *parent() const;
+  Element *parent() const override;
   void setParent(Element *parent);
 
   // Short string form used when debugging the tree,

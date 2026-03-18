@@ -19,7 +19,7 @@ public:
   const std::string &tag() const;
   const AttributeMap &attributes() const;
 
-  Element *parent() const;
+  Element *parent() const override;
   void setParent(Element *parent);
 
   const std::vector<std::unique_ptr<Lexeme>> &children() const;
