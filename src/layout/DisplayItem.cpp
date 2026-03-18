@@ -46,3 +46,25 @@ void DrawRect::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
   SDL_Rect rect{left, top - scroll + y_offset, right - left, bottom - top};
   SDL_RenderFillRect(renderer, &rect);
 }
+
+DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
+                   int thickness)
+    : color_(color), thickness_(thickness) {
+  left = x1;
+  top = y1;
+  right = x2;
+  bottom = y2;
+}
+
+void DrawLine::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
+  if (!renderer)
+    return;
+
+  SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
+  // Simple thickness implementation using multiple lines if needed (for
+  // simplicity here we just do 1 line or offset)
+  for (int i = 0; i < thickness_; ++i) {
+    SDL_RenderDrawLine(renderer, left + i, top - scroll + y_offset, right + i,
+                       bottom - scroll + y_offset);
+  }
+}

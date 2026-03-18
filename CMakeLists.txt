@@ -129,6 +129,7 @@ add_executable(c_surfer
     src/lexer/Text.cpp
     src/lexer/Element.cpp
     src/html/HTMLParser.cpp
+    src/layout/InputLayout.cpp
     src/layout/BlockLayout.cpp
     src/layout/DocumentLayout.cpp
     src/layout/DisplayItem.cpp

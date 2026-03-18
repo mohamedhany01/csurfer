@@ -50,3 +50,17 @@ public:
 private:
   SDL_Color color_{0, 0, 0, 255};
 };
+
+/**
+ * Draw a line between two points. Useful for borders and carets.
+ */
+class DrawLine final : public DrawCommand {
+public:
+  DrawLine(int x1, int y1, int x2, int y2, SDL_Color color, int thickness = 1);
+
+  void execute(int scroll, int y_offset, SDL_Renderer *renderer) const override;
+
+private:
+  SDL_Color color_;
+  int thickness_;
+};

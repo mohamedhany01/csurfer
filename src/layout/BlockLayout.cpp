@@ -3,6 +3,7 @@
 #include "lexer/Text.h"
 #include "utils/Parser.h"
 
+#include "layout/InputLayout.h"
 #include "layout/LineLayout.h"
 #include "layout/TextLayout.h"
 #include <SDL2/SDL_ttf.h>
@@ -71,7 +72,7 @@ BlockLayout::LayoutMode BlockLayout::layout_mode() const {
   if (has_block_child)
     return LayoutMode::Block;
 
-  if (!el->children().empty())
+  if (!el->children().empty() || el->tag() == "input" || el->tag() == "button")
     return LayoutMode::Inline;
 
   return LayoutMode::Block;
@@ -210,8 +211,12 @@ void BlockLayout::layoutNode(const Lexeme *node) {
 
   if (node->type() == LexemeType::Element) {
     const auto *el = dynamic_cast<const Element *>(node);
-    if (el && el->tag() == "br") {
-      new_line();
+    if (el) {
+      if (el->tag() == "br") {
+        new_line();
+      } else if (el->tag() == "input" || el->tag() == "button") {
+        input(el);
+      }
     }
     layoutElement(el);
   }
@@ -312,6 +317,48 @@ void BlockLayout::new_line() {
   children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
   // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " <<
   // (int)layout_mode() << ")\n";
+}
+
+void BlockLayout::input(const Lexeme *node) {
+  const auto *el = dynamic_cast<const Element *>(node);
+  if (!el)
+    return;
+
+  int w = 200; // Match DEFAULT_INPUT_WIDTH in InputLayout
+  if (cursor_x_ + w > width) {
+    new_line();
+  }
+
+  if (!children_.empty()) {
+    LineLayout *current_line =
+        dynamic_cast<LineLayout *>(children_.back().get());
+    if (current_line) {
+      TTF_Font *font = currentFont(el);
+
+      // Color from style
+      SDL_Color color = {0, 0, 0, 255};
+      auto styles = el->style();
+      if (styles.count("color")) {
+        if (styles.at("color") == "red")
+          color = {255, 0, 0, 255};
+        else if (styles.at("color") == "blue")
+          color = {0, 0, 255, 255};
+      }
+
+      LayoutObject *prev_obj = nullptr;
+      if (!current_line->children_.empty()) {
+        prev_obj = current_line->children_.back().get();
+      }
+
+      auto input_layout = std::make_unique<InputLayout>(node, current_line,
+                                                        prev_obj, font, color);
+      current_line->children_.push_back(std::move(input_layout));
+
+      int space_w = 0;
+      TTF_SizeUTF8(font, " ", &space_w, nullptr);
+      cursor_x_ += w + space_w;
+    }
+  }
 }
 
 TTF_Font *BlockLayout::currentFont(const Element *element) {
