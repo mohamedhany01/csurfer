@@ -11,28 +11,28 @@ class Browser; // Forward declaration
 /**
  * CSurferUI handles the browser's graphical interface (GUI).
  * It renders the address bar, back button, and tabs.
- * 
+ *
  * SOLID: Single Responsibility - Handles the browser's graphical interface.
  */
 class CSurferUI {
 public:
-  explicit CSurferUI(Browser* browser);
+  explicit CSurferUI(Browser *browser);
   ~CSurferUI() = default;
 
   // Interaction
   void click(int x, int y);
-  void keypress(SDL_Keycode key, const std::string& text);
+  void keypress(SDL_Keycode key, const std::string &text);
   void enter();
 
   // Rendering
-  void render(SDL_Renderer* renderer) const;
+  void render(SDL_Renderer *renderer) const;
 
   // Metrics
   int height() const { return BOTTOM; }
 
 private:
-  Browser* browser_;
-  
+  Browser *browser_;
+
   // UI State
   std::string address_bar_text_;
   bool address_bar_focused_ = false;

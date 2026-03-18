@@ -20,8 +20,7 @@ StyleEngine::StyleEngine(std::shared_ptr<IRequest> http)
 // anywhere (though it's usually in <head>).
 //
 // Example: finds <link rel="stylesheet" href="style.css"> → returns its href
-static std::vector<std::string>
-collectStylesheetHrefs(const Element *root) {
+static std::vector<std::string> collectStylesheetHrefs(const Element *root) {
   std::vector<std::string> hrefs;
 
   std::function<void(const Lexeme *)> walk = [&](const Lexeme *node) {
@@ -84,8 +83,8 @@ void StyleEngine::apply(Element *root, const Url &base_url) {
       auto extra = parser.parse();
       rules.insert(rules.end(), extra.begin(), extra.end());
     } catch (const std::exception &e) {
-      std::cerr << "[StyleEngine] Failed to load stylesheet: " << href
-                << " — " << e.what() << "\n";
+      std::cerr << "[StyleEngine] Failed to load stylesheet: " << href << " — "
+                << e.what() << "\n";
     }
   }
 

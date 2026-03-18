@@ -13,7 +13,7 @@ public:
   ~Browser();
 
   // Load a URL, build the layout tree into the active tab.
-  void load(const Url &url); 
+  void load(const Url &url);
 
   // Interaction (delegated to tab)
   void click(int x, int y);
@@ -23,15 +23,15 @@ public:
   void new_tab(const Url &url);
   void switch_to_tab(size_t index);
   void close_tab(size_t index);
-  Tab* active_tab() const;
-  Tab* get_tab(size_t index) const { return tabs_[index].get(); }
+  Tab *active_tab() const;
+  Tab *get_tab(size_t index) const { return tabs_[index].get(); }
   size_t tab_count() const { return tabs_.size(); }
   size_t active_tab_index() const { return active_tab_index_; }
 
   // Finalize UI rendering and start the SDL event/render loop.
   void mainLoop();
 
-  TTF_Font* get_font() const { return font; }
+  TTF_Font *get_font() const { return font; }
 
 private:
   // Request

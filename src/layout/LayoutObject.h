@@ -28,7 +28,7 @@ public:
 
   // Return the DOM node this layout object was built from, or nullptr.
   // Overridden by TextLayout to enable hit-testing.
-  virtual const class Lexeme* node() const { return nullptr; }
+  virtual const class Lexeme *node() const { return nullptr; }
 
   std::vector<std::unique_ptr<LayoutObject>> children_;
 };

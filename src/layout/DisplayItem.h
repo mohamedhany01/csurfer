@@ -18,7 +18,8 @@ public:
 
   // Draw this command using the given scroll offset and SDL renderer.
   // y_offset is used to shift content below the CSurfer UI.
-  virtual void execute(int scroll, int y_offset, SDL_Renderer *renderer) const = 0;
+  virtual void execute(int scroll, int y_offset,
+                       SDL_Renderer *renderer) const = 0;
 };
 
 // Draw a single piece of text at a fixed page position.

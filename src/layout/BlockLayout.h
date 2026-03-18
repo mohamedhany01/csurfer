@@ -82,11 +82,13 @@ private:
   void recurse(const Lexeme *node);
   void layoutNode(const Lexeme *node);
   void layoutElement(const Element *element);
-  void layoutText(const Lexeme *text_node, const std::string &text, const Element *parent_element);
+  void layoutText(const Lexeme *text_node, const std::string &text,
+                  const Element *parent_element);
 
   // Add a single word to the current line, styled according to the parent
   // element
-  void word(const Lexeme *node, const std::string &word, const Element *parent_element);
+  void word(const Lexeme *node, const std::string &word,
+            const Element *parent_element);
 
   // Start a new line by appending a LineLayout child
   void new_line();

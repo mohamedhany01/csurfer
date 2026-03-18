@@ -98,7 +98,8 @@ void BlockLayout::layout() {
 
       auto flush_inline_run = [&]() {
         if (!inline_run.empty()) {
-          auto next = std::make_unique<BlockLayout>(inline_run, this, prev, metrics_);
+          auto next =
+              std::make_unique<BlockLayout>(inline_run, this, prev, metrics_);
           prev = next.get();
           children_.push_back(std::move(next));
           inline_run.clear();
@@ -110,7 +111,7 @@ void BlockLayout::layout() {
         if (child_node->type() == LexemeType::Element) {
           const auto *child_el = dynamic_cast<const Element *>(child_node);
           std::string tag = child_el->tag();
-          if (tag == "head" || tag == "script" || tag == "style" || 
+          if (tag == "head" || tag == "script" || tag == "style" ||
               tag == "meta" || tag == "link") {
             continue;
           }
@@ -118,7 +119,8 @@ void BlockLayout::layout() {
 
         if (is_block_node(child_node)) {
           flush_inline_run();
-          auto next = std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
+          auto next =
+              std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
           prev = next.get();
           children_.push_back(std::move(next));
         } else {
@@ -230,7 +232,8 @@ void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
   for (const auto &w : words) {
     if (w == "\n") {
       // In HTML, source-code newlines should just collapse into whitespace.
-      // Since word() adds a space gap after each word automatically, we just skip it.
+      // Since word() adds a space gap after each word automatically, we just
+      // skip it.
       continue;
     }
     word(text_node, w, parent_element);
@@ -250,39 +253,48 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
   if (cursor_x_ + w > width) {
     new_line();
   }
-  
+
   SDL_Color current_color = {0, 0, 0, 255}; // Default black
   if (parent_element) {
     auto styles = parent_element->style();
     if (styles.find("color") != styles.end()) {
       std::string c_str = styles.at("color");
-      if (c_str == "red") current_color = {255, 0, 0, 255};
-      else if (c_str == "green") current_color = {0, 128, 0, 255};
-      else if (c_str == "blue") current_color = {0, 0, 255, 255};
-      else if (c_str == "yellow") current_color = {255, 255, 0, 255};
-      else if (c_str == "white") current_color = {255, 255, 255, 255};
-      else if (c_str == "black") current_color = {0, 0, 0, 255};
+      if (c_str == "red")
+        current_color = {255, 0, 0, 255};
+      else if (c_str == "green")
+        current_color = {0, 128, 0, 255};
+      else if (c_str == "blue")
+        current_color = {0, 0, 255, 255};
+      else if (c_str == "yellow")
+        current_color = {255, 255, 0, 255};
+      else if (c_str == "white")
+        current_color = {255, 255, 255, 255};
+      else if (c_str == "black")
+        current_color = {0, 0, 0, 255};
     }
   }
 
   // Add the text layout to the current line
   if (!children_.empty()) {
-    LineLayout *current_line = dynamic_cast<LineLayout*>(children_.back().get());
+    LineLayout *current_line =
+        dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      auto text_layout = std::make_unique<TextLayout>(node, word_text, font, current_color);
-      // Give it its relative block position (y is set during LineLayout::layout)
-      // but relative to the block, not the line. Wait, TextLayout::layout sets own width/height.
-      // But we need to position it inline!
-      
+      auto text_layout =
+          std::make_unique<TextLayout>(node, word_text, font, current_color);
+      // Give it its relative block position (y is set during
+      // LineLayout::layout) but relative to the block, not the line. Wait,
+      // TextLayout::layout sets own width/height. But we need to position it
+      // inline!
+
       // We must implement positioning inside LineLayout or TextLayout.
       // Following Chapter 7 logic, text_layout->x gets set relative.
       // Wait, let's just do it here for inline text flow:
       int space_w = 0;
       TTF_SizeUTF8(font, " ", &space_w, nullptr);
-      
+
       // Let's position it horizontally here
       text_layout->x = this->x + cursor_x_;
-      
+
       // The parent of TextLayout is the LineLayout (not used, but logical)
       current_line->children_.push_back(std::move(text_layout));
       cursor_x_ += w + space_w;
@@ -292,13 +304,14 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
 
 void BlockLayout::new_line() {
   cursor_x_ = 0;
-  LayoutObject* prev_line = nullptr;
+  LayoutObject *prev_line = nullptr;
   if (!children_.empty()) {
     prev_line = children_.back().get();
   }
-  
+
   children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
-  // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " << (int)layout_mode() << ")\n";
+  // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " <<
+  // (int)layout_mode() << ")\n";
 }
 
 TTF_Font *BlockLayout::currentFont(const Element *element) {

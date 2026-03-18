@@ -22,14 +22,10 @@ void TextLayout::layout() {
   height = h;
 }
 
-void TextLayout::paint(
-    std::vector<std::unique_ptr<DrawCommand>> &out) const {
+void TextLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
   if (width > 0 && height > 0 && font_) {
-    out.push_back(
-        std::make_unique<DrawText>(x, y, word_, font_, color_));
+    out.push_back(std::make_unique<DrawText>(x, y, word_, font_, color_));
   }
 }
 
-const Lexeme *TextLayout::node() const {
-  return node_;
-}
+const Lexeme *TextLayout::node() const { return node_; }

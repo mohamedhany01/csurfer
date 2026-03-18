@@ -9,7 +9,7 @@ public:
   const std::string &host() const;
   const std::string &path() const;
   const std::string &port() const;
-  
+
   std::string href() const;
 
   Url resolve(const std::string &href) const;

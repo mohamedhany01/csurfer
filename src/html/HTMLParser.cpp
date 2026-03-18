@@ -107,7 +107,8 @@ HTMLParser::get_attributes(const std::string &text) const {
   }
 
   size_t i = 0;
-  while (i < text.size() && !std::isspace(static_cast<unsigned char>(text[i]))) {
+  while (i < text.size() &&
+         !std::isspace(static_cast<unsigned char>(text[i]))) {
     i++;
   }
   std::string tag = to_lower(text.substr(0, i));
@@ -115,24 +116,29 @@ HTMLParser::get_attributes(const std::string &text) const {
   Element::AttributeMap attributes;
 
   while (i < text.size()) {
-    while (i < text.size() && std::isspace(static_cast<unsigned char>(text[i]))) {
+    while (i < text.size() &&
+           std::isspace(static_cast<unsigned char>(text[i]))) {
       i++;
     }
-    if (i >= text.size()) break;
+    if (i >= text.size())
+      break;
 
     size_t name_start = i;
-    while (i < text.size() && text[i] != '=' && !std::isspace(static_cast<unsigned char>(text[i]))) {
+    while (i < text.size() && text[i] != '=' &&
+           !std::isspace(static_cast<unsigned char>(text[i]))) {
       i++;
     }
     std::string key = to_lower(text.substr(name_start, i - name_start));
 
-    while (i < text.size() && std::isspace(static_cast<unsigned char>(text[i]))) {
+    while (i < text.size() &&
+           std::isspace(static_cast<unsigned char>(text[i]))) {
       i++;
     }
 
     if (i < text.size() && text[i] == '=') {
       i++; // skip '='
-      while (i < text.size() && std::isspace(static_cast<unsigned char>(text[i]))) {
+      while (i < text.size() &&
+             std::isspace(static_cast<unsigned char>(text[i]))) {
         i++;
       }
 
@@ -144,10 +150,12 @@ HTMLParser::get_attributes(const std::string &text) const {
           i++;
         }
         attributes[key] = text.substr(val_start, i - val_start);
-        if (i < text.size()) i++; // skip closing quote
+        if (i < text.size())
+          i++; // skip closing quote
       } else {
         size_t val_start = i;
-        while (i < text.size() && !std::isspace(static_cast<unsigned char>(text[i]))) {
+        while (i < text.size() &&
+               !std::isspace(static_cast<unsigned char>(text[i]))) {
           i++;
         }
         attributes[key] = text.substr(val_start, i - val_start);

@@ -18,7 +18,7 @@ public:
 
 private:
   friend class BlockLayout;
-  
+
   const Lexeme *node_;
   LayoutObject *parent_;
   LayoutObject *previous_;

@@ -12,19 +12,20 @@
 #include <vector>
 
 /**
- * Represents a single browser tab containing its own URL, history, 
+ * Represents a single browser tab containing its own URL, history,
  * DOM tree, and layout tree.
- * 
+ *
  * SOLID: Single Responsibility - Handles the web page lifecycle.
  */
 class Tab {
 public:
-  explicit Tab(std::shared_ptr<IRequest> http, int window_width, const FontMetrics& metrics);
+  explicit Tab(std::shared_ptr<IRequest> http, int window_width,
+               const FontMetrics &metrics);
   ~Tab() = default;
 
   // Lifecycle
   void load(const Url &url);
-  
+
   // Interaction
   void click(int x, int y);
   void scrolldown();
@@ -33,10 +34,10 @@ public:
 
   // Rendering
   // Paints the tab's display list into the output renderer, offset by y_offset
-  void render(SDL_Renderer* renderer, int y_offset) const;
+  void render(SDL_Renderer *renderer, int y_offset) const;
 
   // Getters
-  const Url& url() const { return url_; }
+  const Url &url() const { return url_; }
   const std::string title() const; // TODO: extract from <title> tag
 
 private:
