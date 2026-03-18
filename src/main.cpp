@@ -4,14 +4,10 @@
 #include <iostream>
 
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    std::cerr << "Usage: browser <url>\n";
-    return 1;
-  }
-
-  const std::string user_url = argv[1];
+  std::string user_url = (argc > 1) ? argv[1] : "about:welcome";
   Url url(user_url);
 
   Browser browser;
   browser.load(url);
+  browser.mainLoop();
 }

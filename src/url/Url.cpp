@@ -6,6 +6,14 @@ Url::Url(const std::string &raw) { parse(raw); }
 void Url::parse(const std::string &raw) {
   std::string url = raw;
 
+  if (url.find("about:") == 0) {
+    scheme_ = "about";
+    host_ = "";
+    port_ = "";
+    path_ = url.substr(6);
+    return;
+  }
+
   auto scheme_pos = url.find("://");
   assert(scheme_pos != std::string::npos);
 
@@ -39,6 +47,9 @@ const std::string &Url::path() const { return path_; }
 const std::string &Url::port() const { return port_; }
 
 std::string Url::href() const {
+  if (scheme_ == "about") {
+    return "about:" + path_;
+  }
   std::string result = scheme_ + "://" + host_;
   if (!port_.empty() && port_ != "80" && port_ != "443") {
     result += ":" + port_;
