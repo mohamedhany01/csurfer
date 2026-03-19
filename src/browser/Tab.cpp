@@ -98,7 +98,7 @@ void Tab::click(int x, int y) {
 
   if (clicked_node) {
     if (focus_) {
-      const_cast<Lexeme *>(focus_)->set_focused(false);
+      focus_->set_focused(false);
     }
     focus_ = nullptr;
 
@@ -113,6 +113,7 @@ void Tab::click(int x, int y) {
           } else if (el->tag() == "input") {
             focus_ = const_cast<Element *>(el);
             focus_->set_focused(true);
+            focus_->setAttribute("value", ""); // Clear on click (Ch8)
             // Refresh display list to show caret
             display_list_.clear();
             paint_tree(*document_, display_list_);

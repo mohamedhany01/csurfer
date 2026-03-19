@@ -31,7 +31,13 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
 
   // 1. Draw background/border of the input/button
   SDL_Color border_color = {160, 160, 160, 255}; // Light Gray
-  SDL_Color bg_color = {240, 240, 240, 255};     // Near White
+  SDL_Color bg_color = {240, 240, 240, 255};     // Default
+
+  if (el->tag() == "input") {
+    bg_color = {173, 216, 230, 255}; // Light Blue
+  } else if (el->tag() == "button") {
+    bg_color = {255, 165, 0, 255}; // Orange
+  }
 
   if (node_->is_focused()) {
     border_color = {0, 0, 255, 255}; // Blue when focused

@@ -55,7 +55,7 @@ private:
   std::unique_ptr<DocumentLayout> document_;
   std::vector<std::unique_ptr<DrawCommand>> display_list_;
 
-  Lexeme *focus_ = nullptr;
+  Element *focus_ = nullptr;
 
   // Constants
   const int SCROLL_STEP = 100;
