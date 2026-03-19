@@ -162,6 +162,7 @@ add_executable(c_surfer
     src/css/CSSParser.cpp
     src/css/StyleComputation.cpp
     src/css/StyleEngine.cpp
+    src/js/JSContext.cpp
 )
 
 # Add include directories for src/
