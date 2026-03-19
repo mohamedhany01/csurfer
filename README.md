@@ -48,7 +48,8 @@ The browser opens an 800x600 window.
 *   **Navigation**:
     *   **< Button**: Go back in the current tab's history.
     *   **UP / DOWN Arrows** or **Mouse Wheel**: Scroll the page vertically.
-    *   **Left Click**: Interact with links on web pages.
+    *   **Left Click**: Interact with links AND form elements (inputs/buttons).
+    *   **Keyboard**: Type into focused input fields; use backspace to edit.
 
 ## Configuration
 
@@ -56,20 +57,18 @@ Fonts are loaded from `assets/fonts/`. Modify `Browser.cpp` to change window siz
 
 ## Examples
 
-**Test with local files** - Use the included script to start a test server.
+**Test with local files** - Use the Express v5 test server to verify form submissions and static pages.
 
 ```bash
-# Start test server (default port 8000)
-./scripts/run_test_server.sh
-
-# Or specify a custom port
-./scripts/run_test_server.sh 8080
+# Start Express test server (default port 8000)
+# Requires Node.js and npm
+./scripts/run_server.sh
 
 # Then browse
-./c_surfer http://localhost:8000/simple.html
+./build/c_surfer http://localhost:8000/ch8-login.html
 ```
 
-See `pages/` directory for sample HTML files.
+See `pages/` directory for sample HTML files, including Chapter 8 interactive tests.
 
 ## License
 

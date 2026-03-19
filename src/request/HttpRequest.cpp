@@ -58,6 +58,7 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
                     "Host: " + url.host() + "\r\n";
 
   if (!payload.empty()) {
+    req += "Content-Type: application/x-www-form-urlencoded\r\n";
     req += "Content-Length: " + std::to_string(payload.size()) + "\r\n";
   }
 
