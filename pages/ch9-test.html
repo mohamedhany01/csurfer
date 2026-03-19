@@ -14,8 +14,8 @@
         log("Test script started!");
         
         // Find elements using tag names (since our CSS parser is basic)
-        const btn = document.querySelectorAll("button")[0];
-        const statusSpan = document.querySelectorAll("span")[0];
+        var btn = document.querySelectorAll("button")[0];
+        var statusSpan = document.querySelectorAll("span")[0];
         
         log("Button handle: " + btn.handle);
         log("Initial status text: " + statusSpan.getAttribute("id"));
