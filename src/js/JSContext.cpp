@@ -4,7 +4,9 @@
 #include "css/CSSSelector.h"
 #include "html/HTMLParser.h"
 #include "lexer/Element.h"
+#include <fstream>
 #include <iostream>
+#include <sstream>
 
 static void find_elements(Element *root, const CSSSelector &selector,
                           std::vector<Element *> &matches) {
@@ -47,8 +49,17 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
   duk_push_c_function(ctx_, native_innerHTML_set, 2 /* nargs */);
   duk_put_global_string(ctx_, "innerHTML_set");
 
-  // Temporary stub for dispatchEvent until runtime.js is implemented
-  run("init", "function dispatchEvent(type, handle) { return false; }");
+  // Load runtime.js
+  std::ifstream f("assets/runtime.js");
+  if (f.is_open()) {
+    std::stringstream ss;
+    ss << f.rdbuf();
+    run("runtime.js", ss.str());
+  } else {
+    std::cerr << "Warning: Could not load assets/runtime.js" << std::endl;
+    // Fallback stub
+    run("init", "function dispatchEvent(type, handle) { return false; }");
+  }
 }
 
 JSContext::~JSContext() {
