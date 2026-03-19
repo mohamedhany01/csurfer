@@ -152,7 +152,11 @@ void Browser::handleEvents() {
       if (e.key.keysym.sym == SDLK_RETURN) {
         ui_.enter();
       } else {
-        ui_.keypress(e.key.keysym.sym, "");
+        if (ui_.address_bar_focused()) {
+          ui_.keypress(e.key.keysym.sym, "");
+        } else if (active_tab()) {
+          active_tab()->handle_keypress(e.key.keysym.sym, "");
+        }
       }
 
       if (active_tab()) {
@@ -171,7 +175,11 @@ void Browser::handleEvents() {
     }
 
     if (e.type == SDL_TEXTINPUT) {
-      ui_.keypress(0, e.text.text);
+      if (ui_.address_bar_focused()) {
+        ui_.keypress(0, e.text.text);
+      } else if (active_tab()) {
+        active_tab()->handle_keypress(0, e.text.text);
+      }
     }
   }
 }

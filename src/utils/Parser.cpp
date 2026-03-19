@@ -70,4 +70,18 @@ std::vector<std::string> splitWords(const std::string &text) {
   return words;
 }
 
+std::string urlEncode(const std::string &s) {
+  std::string res;
+  for (unsigned char c : s) {
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+      res += c;
+    } else {
+      char buf[4];
+      snprintf(buf, sizeof(buf), "%%%02X", (unsigned int)c);
+      res += buf;
+    }
+  }
+  return res;
+}
+
 } // namespace utils

@@ -18,6 +18,7 @@ public:
 
   const std::string &tag() const;
   const AttributeMap &attributes() const;
+  void setAttribute(const std::string &name, const std::string &value);
 
   Element *parent() const override;
   void setParent(Element *parent);

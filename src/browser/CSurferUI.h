@@ -29,6 +29,7 @@ public:
 
   // Metrics
   int height() const { return BOTTOM; }
+  bool address_bar_focused() const { return address_bar_focused_; }
 
 private:
   Browser *browser_;

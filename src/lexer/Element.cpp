@@ -14,6 +14,10 @@ const std::string &Element::tag() const { return tag_; }
 
 const Element::AttributeMap &Element::attributes() const { return attributes_; }
 
+void Element::setAttribute(const std::string &name, const std::string &value) {
+  attributes_[name] = value;
+}
+
 Element *Element::parent() const { return parent_; }
 
 void Element::setParent(Element *parent) { parent_ = parent; }
