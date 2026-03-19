@@ -14,6 +14,7 @@ public:
   ~JSContext();
 
   void run(const std::string &script_name, const std::string &code);
+  bool dispatch_event(const std::string &type, Element *elt);
 
   int get_handle(Element *elt);
   Element *get_element(int handle);

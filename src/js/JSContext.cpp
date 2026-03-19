@@ -46,6 +46,9 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
   // Register 'innerHTML_set' function
   duk_push_c_function(ctx_, native_innerHTML_set, 2 /* nargs */);
   duk_put_global_string(ctx_, "innerHTML_set");
+
+  // Temporary stub for dispatchEvent until runtime.js is implemented
+  run("init", "function dispatchEvent(type, handle) { return false; }");
 }
 
 JSContext::~JSContext() {
@@ -164,6 +167,26 @@ duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
 
   self->tab_->rebuild_layout();
   return 0;
+}
+
+bool JSContext::dispatch_event(const std::string &type, Element *elt) {
+  if (!ctx_)
+    return false;
+
+  int handle = get_handle(elt);
+  std::string js =
+      "dispatchEvent('" + type + "', " + std::to_string(handle) + ")";
+
+  if (duk_peval_string(ctx_, js.c_str()) != 0) {
+    std::cerr << "Event " << type
+              << " crashed: " << duk_safe_to_string(ctx_, -1) << std::endl;
+    duk_pop(ctx_);
+    return false;
+  }
+
+  bool prevent_default = duk_get_boolean(ctx_, -1);
+  duk_pop(ctx_);
+  return prevent_default;
 }
 
 int JSContext::get_handle(Element *elt) {

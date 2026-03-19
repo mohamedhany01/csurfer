@@ -167,6 +167,9 @@ void Tab::click(int x, int y) {
       if (curr->type() == LexemeType::Element) {
         const auto *el = dynamic_cast<const Element *>(curr);
         if (el) {
+          if (js_ && js_->dispatch_event("click", const_cast<Element *>(el))) {
+            return;
+          }
           if (el->tag() == "a" && el->attributes().contains("href")) {
             load(url_.resolve(el->attributes().at("href")));
             return;
@@ -209,6 +212,10 @@ void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
   if (!el)
     return;
 
+  if (js_ && js_->dispatch_event("keydown", el)) {
+    return;
+  }
+
   auto attrs = el->attributes();
   std::string value = attrs.count("value") ? attrs.at("value") : "";
 
@@ -233,6 +240,10 @@ void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
 void Tab::submit_form(const Element *form) {
   if (!form)
     return;
+
+  if (js_ && js_->dispatch_event("submit", const_cast<Element *>(form))) {
+    return;
+  }
 
   std::string payload;
 
