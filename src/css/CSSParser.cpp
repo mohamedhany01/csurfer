@@ -118,7 +118,7 @@ std::vector<CSSRule> CSSParser::parse() {
 
       rules.push_back({sel, b});
     } catch (const std::exception &e) {
-      char why = ignore_until({'}'});
+      char why = ignore_until({'}', '{'});
       if (why == '}') {
         literal('}');
         whitespace();
@@ -128,4 +128,11 @@ std::vector<CSSRule> CSSParser::parse() {
     }
   }
   return rules;
+}
+
+std::shared_ptr<CSSSelector>
+CSSParser::parse_selector(std::string selector_text) {
+  CSSParser parser(std::move(selector_text));
+  parser.whitespace();
+  return parser.selector();
 }

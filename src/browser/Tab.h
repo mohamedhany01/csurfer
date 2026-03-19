@@ -41,6 +41,7 @@ public:
   // Getters
   const Url &url() const { return url_; }
   const std::string title() const; // TODO: extract from <title> tag
+  Element *root() const { return root_.get(); }
 
 private:
   std::shared_ptr<IRequest> http_;

@@ -12,6 +12,7 @@ public:
 
   // Parses the entire CSS string provided in the constructor.
   std::vector<CSSRule> parse();
+  static std::shared_ptr<CSSSelector> parse_selector(std::string selector_text);
 
 private:
   void whitespace();
