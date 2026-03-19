@@ -18,6 +18,7 @@ public:
 
   const std::string &tag() const;
   const AttributeMap &attributes() const;
+  void setAttribute(const std::string &name, const std::string &value);
 
   Element *parent() const override;
   void setParent(Element *parent);
@@ -31,7 +32,7 @@ public:
 
   // Short string form used when debugging the tree,
   // like "<p>" or "<a>".
-  std::string get_string() const;
+  std::string get_string() const override;
 
 private:
   std::string tag_;

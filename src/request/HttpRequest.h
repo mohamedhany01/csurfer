@@ -3,5 +3,8 @@
 
 class HttpRequest : public IRequest {
 public:
-  std::string request(const Url &url) override;
+  /**
+   * Implementation of HTTP GET/POST request.
+   */
+  std::string request(const Url &url, const std::string &payload = "") override;
 };

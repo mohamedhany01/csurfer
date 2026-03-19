@@ -24,10 +24,12 @@ public:
   ~Tab() = default;
 
   // Lifecycle
-  void load(const Url &url);
+  void load(const Url &url, const std::string &payload = "");
 
   // Interaction
   void click(int x, int y);
+  void handle_keypress(SDL_Keycode key, const std::string &text);
+  void submit_form(const Element *form);
   void scrolldown();
   void scrollup();
   void go_back();
@@ -52,6 +54,8 @@ private:
   std::unique_ptr<Element> root_;
   std::unique_ptr<DocumentLayout> document_;
   std::vector<std::unique_ptr<DrawCommand>> display_list_;
+
+  Element *focus_ = nullptr;
 
   // Constants
   const int SCROLL_STEP = 100;

@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 // Berkeley sockets wrapper
-std::string HttpRequest::request(const Url &url) {
+std::string HttpRequest::request(const Url &url, const std::string &payload) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     return "";
@@ -51,10 +51,22 @@ std::string HttpRequest::request(const Url &url) {
     }
   }
 
-  std::string req = "GET " + url.path() +
-                    " HTTP/1.0\r\n"
-                    "Host: " +
-                    url.host() + "\r\n\r\n";
+  // Choose HTTP method based on payload presence.
+  // If payload exists, use POST and include Content-Length.
+  std::string method = payload.empty() ? "GET" : "POST";
+  std::string req = method + " " + url.path() + " HTTP/1.0\r\n" +
+                    "Host: " + url.host() + "\r\n";
+
+  if (!payload.empty()) {
+    req += "Content-Type: application/x-www-form-urlencoded\r\n";
+    req += "Content-Length: " + std::to_string(payload.size()) + "\r\n";
+  }
+
+  req += "\r\n";
+
+  if (!payload.empty()) {
+    req += payload;
+  }
 
   if (ssl) {
     SSL_write(ssl, req.c_str(), req.size());

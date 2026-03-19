@@ -2,6 +2,7 @@
 #include "css/StyleEngine.h"
 #include "html/HTMLParser.h"
 #include "layout/LayoutTree.h"
+#include "utils/Parser.h"
 #include <iostream>
 
 Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
@@ -9,7 +10,8 @@ Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
     : http_(std::move(http)), window_width_(window_width), metrics_(metrics),
       url_("http://localhost/") {}
 
-void Tab::load(const Url &url) {
+void Tab::load(const Url &url, const std::string &payload) {
+  focus_ = nullptr; // Reset focus when navigating to a new page
   // Only push to history if it's not the exact same URL we're already on
   if (history_.empty() || history_.back().href() != url.href()) {
     history_.push_back(url);
@@ -29,7 +31,7 @@ void Tab::load(const Url &url) {
            "way!</i></p></div></body></html>";
   } else {
     // Fetch page body
-    body = http_->request(url_);
+    body = http_->request(url_, payload);
   }
 
   if (body.empty()) {
@@ -95,18 +97,111 @@ void Tab::click(int x, int y) {
   }
 
   if (clicked_node) {
+    if (focus_) {
+      focus_->set_focused(false);
+    }
+    focus_ = nullptr;
+
     const Lexeme *curr = clicked_node;
     while (curr) {
       if (curr->type() == LexemeType::Element) {
         const auto *el = dynamic_cast<const Element *>(curr);
-        if (el && el->tag() == "a" && el->attributes().contains("href")) {
-          load(url_.resolve(el->attributes().at("href")));
-          return;
+        if (el) {
+          if (el->tag() == "a" && el->attributes().contains("href")) {
+            load(url_.resolve(el->attributes().at("href")));
+            return;
+          } else if (el->tag() == "input") {
+            focus_ = const_cast<Element *>(el);
+            focus_->set_focused(true);
+            focus_->setAttribute("value", ""); // Clear on click (Ch8)
+            // Refresh display list to show caret
+            display_list_.clear();
+            paint_tree(*document_, display_list_);
+            return;
+          } else if (el->tag() == "button") {
+            // Find parent form
+            const Element *f_curr = el;
+            while (f_curr) {
+              if (f_curr->tag() == "form" &&
+                  f_curr->attributes().contains("action")) {
+                submit_form(f_curr);
+                return;
+              }
+              f_curr = dynamic_cast<const Element *>(f_curr->parent());
+            }
+          }
         }
       }
       curr = curr->parent();
     }
   }
+
+  // Refresh if focus changed to null
+  display_list_.clear();
+  paint_tree(*document_, display_list_);
+}
+
+void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
+  if (!focus_)
+    return;
+
+  auto *el = dynamic_cast<Element *>(focus_);
+  if (!el)
+    return;
+
+  auto attrs = el->attributes();
+  std::string value = attrs.count("value") ? attrs.at("value") : "";
+
+  if (key == SDLK_BACKSPACE) {
+    if (!value.empty()) {
+      value.pop_back();
+    }
+  } else if (!text.empty()) {
+    value += text;
+  }
+
+  el->setAttribute("value", value);
+
+  // Re-layout and re-paint to update text width/caret position
+  // In a full browser, we might only re-layout the changed element.
+  // Here we re-run layout for the whole document for simplicity.
+  document_->layout();
+  display_list_.clear();
+  paint_tree(*document_, display_list_);
+}
+
+void Tab::submit_form(const Element *form) {
+  if (!form)
+    return;
+
+  std::string payload;
+
+  // Find all <input> children that have a 'name'
+  std::vector<const Lexeme *> queue = {form};
+  while (!queue.empty()) {
+    const Lexeme *node = queue.front();
+    queue.erase(queue.begin());
+
+    if (node->type() == LexemeType::Element) {
+      const auto *el = dynamic_cast<const Element *>(node);
+      if (el->tag() == "input" && el->attributes().contains("name")) {
+        std::string name = el->attributes().at("name");
+        std::string value =
+            el->attributes().count("value") ? el->attributes().at("value") : "";
+        if (!payload.empty())
+          payload += "&";
+        payload += utils::urlEncode(name) + "=" + utils::urlEncode(value);
+      }
+      for (const auto &child : el->children()) {
+        queue.push_back(child.get());
+      }
+    }
+  }
+
+  std::string action = form->attributes().at("action");
+  std::cout << "[Tab] Submitting form to: " << action
+            << " with payload: " << payload << std::endl;
+  load(url_.resolve(action), payload);
 }
 
 void Tab::scrolldown() {

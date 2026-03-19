@@ -15,7 +15,7 @@ public:
 
   // Short string form used when debugging the tree,
   // like "'Hello world'".
-  std::string get_string() const;
+  std::string get_string() const override;
 
 private:
   std::string value_;

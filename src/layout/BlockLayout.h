@@ -93,6 +93,9 @@ private:
   // Start a new line by appending a LineLayout child
   void new_line();
 
+  // Add an interactive element (input/button) to the current line
+  void input(const Lexeme *node);
+
   // Create or select a font matching current element's style state
   TTF_Font *currentFont(const Element *element);
 };
