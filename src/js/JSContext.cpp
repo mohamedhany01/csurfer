@@ -6,6 +6,10 @@ JSContext::JSContext() {
   if (!ctx_) {
     std::cerr << "Failed to create Duktape heap" << std::endl;
   }
+
+  // Register 'log' function
+  duk_push_c_function(ctx_, native_print, 1 /* nargs */);
+  duk_put_global_string(ctx_, "log");
 }
 
 JSContext::~JSContext() {
@@ -23,4 +27,11 @@ void JSContext::run(const std::string &script_name, const std::string &code) {
               << " crashed: " << duk_safe_to_string(ctx_, -1) << std::endl;
   }
   duk_pop(ctx_);
+}
+
+duk_ret_t JSContext::native_print(duk_context *ctx) {
+  // Read the first argument as a string
+  const char *str = duk_to_string(ctx, 0);
+  std::cout << "JS log: " << str << std::endl;
+  return 0; // No return value to JS
 }
