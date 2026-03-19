@@ -37,6 +37,10 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
   // Register 'querySelectorAll' function
   duk_push_c_function(ctx_, native_querySelectorAll, 1 /* nargs */);
   duk_put_global_string(ctx_, "querySelectorAll");
+
+  // Register 'getAttribute' function
+  duk_push_c_function(ctx_, native_getAttribute, 2 /* nargs */);
+  duk_put_global_string(ctx_, "getAttribute");
 }
 
 JSContext::~JSContext() {
@@ -88,6 +92,36 @@ duk_ret_t JSContext::native_querySelectorAll(duk_context *ctx) {
   for (size_t i = 0; i < matches.size(); ++i) {
     duk_push_int(ctx, self->get_handle(matches[i]));
     duk_put_prop_index(ctx, -2, static_cast<duk_uarridx_t>(i));
+  }
+
+  return 1;
+}
+
+duk_ret_t JSContext::native_getAttribute(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self) {
+    duk_push_string(ctx, "");
+    return 1;
+  }
+
+  int handle = duk_to_int(ctx, 0);
+  const char *attr_name = duk_to_string(ctx, 1);
+
+  Element *elt = self->get_element(handle);
+  if (elt) {
+    const auto &attrs = elt->attributes();
+    auto it = attrs.find(attr_name);
+    if (it != attrs.end()) {
+      duk_push_string(ctx, it->second.c_str());
+    } else {
+      duk_push_string(ctx, "");
+    }
+  } else {
+    duk_push_string(ctx, "");
   }
 
   return 1;
