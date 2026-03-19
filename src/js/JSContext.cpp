@@ -169,8 +169,24 @@ duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
   HTMLParser parser(wrapped);
   auto new_root = parser.parse();
 
-  if (new_root && new_root->children().size() > 1) {
-    auto *body = dynamic_cast<Element *>(new_root->children()[1].get());
+  if (new_root) {
+    // Find the <body> tag in the parsed tree
+    Element *body = nullptr;
+    std::vector<Element *> queue = {new_root.get()};
+    while (!queue.empty()) {
+      Element *curr = queue.front();
+      queue.erase(queue.begin());
+      if (curr->tag() == "body") {
+        body = curr;
+        break;
+      }
+      for (auto &child : curr->children()) {
+        if (child->type() == LexemeType::Element) {
+          queue.push_back(static_cast<Element *>(child.get()));
+        }
+      }
+    }
+
     if (body) {
       elt->moveChildrenFrom(body);
     }
