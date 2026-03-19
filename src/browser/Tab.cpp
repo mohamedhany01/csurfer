@@ -67,6 +67,18 @@ void Tab::load(const Url &url, const std::string &payload) {
   scroll_ = 0;
 }
 
+void Tab::rebuild_layout() {
+  if (!root_)
+    return;
+  StyleEngine style_engine(http_);
+  style_engine.apply(dynamic_cast<Element *>(root_.get()), url_);
+  document_ =
+      std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
+  document_->layout();
+  display_list_.clear();
+  paint_tree(*document_, display_list_);
+}
+
 // Revised draw signature to take renderer directly
 void Tab::render(SDL_Renderer *renderer, int y_offset) const {
   if (!document_)

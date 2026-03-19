@@ -25,6 +25,8 @@ public:
 
   const std::vector<std::unique_ptr<Lexeme>> &children() const;
   void appendChild(std::unique_ptr<Lexeme> child);
+  void clearChildren();
+  void moveChildrenFrom(Element *other);
 
   // Computed styles for this element
   const StyleMap &style() const;

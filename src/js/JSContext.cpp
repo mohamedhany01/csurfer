@@ -2,6 +2,7 @@
 #include "browser/Tab.h"
 #include "css/CSSParser.h"
 #include "css/CSSSelector.h"
+#include "html/HTMLParser.h"
 #include "lexer/Element.h"
 #include <iostream>
 
@@ -41,6 +42,10 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
   // Register 'getAttribute' function
   duk_push_c_function(ctx_, native_getAttribute, 2 /* nargs */);
   duk_put_global_string(ctx_, "getAttribute");
+
+  // Register 'innerHTML_set' function
+  duk_push_c_function(ctx_, native_innerHTML_set, 2 /* nargs */);
+  duk_put_global_string(ctx_, "innerHTML_set");
 }
 
 JSContext::~JSContext() {
@@ -125,6 +130,40 @@ duk_ret_t JSContext::native_getAttribute(duk_context *ctx) {
   }
 
   return 1;
+}
+
+duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self)
+    return 0;
+
+  int handle = duk_to_int(ctx, 0);
+  const char *html_text = duk_to_string(ctx, 1);
+
+  Element *elt = self->get_element(handle);
+  if (!elt)
+    return 0;
+
+  elt->clearChildren();
+
+  std::string wrapped =
+      "<html><body>" + std::string(html_text) + "</body></html>";
+  HTMLParser parser(wrapped);
+  auto new_root = parser.parse();
+
+  if (new_root && new_root->children().size() > 1) {
+    auto *body = dynamic_cast<Element *>(new_root->children()[1].get());
+    if (body) {
+      elt->moveChildrenFrom(body);
+    }
+  }
+
+  self->tab_->rebuild_layout();
+  return 0;
 }
 
 int JSContext::get_handle(Element *elt) {

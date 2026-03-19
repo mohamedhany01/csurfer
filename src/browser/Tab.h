@@ -33,6 +33,7 @@ public:
   void scrolldown();
   void scrollup();
   void go_back();
+  void rebuild_layout();
 
   // Rendering
   // Paints the tab's display list into the output renderer, offset by y_offset
