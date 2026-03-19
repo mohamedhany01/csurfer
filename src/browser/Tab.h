@@ -1,5 +1,6 @@
 #pragma once
 
+#include "js/JSContext.h"
 #include "layout/DisplayItem.h"
 #include "layout/DocumentLayout.h"
 #include "lexer/Element.h"
@@ -55,6 +56,7 @@ private:
 
   std::unique_ptr<Element> root_;
   std::unique_ptr<DocumentLayout> document_;
+  std::unique_ptr<JSContext> js_;
   std::vector<std::unique_ptr<DrawCommand>> display_list_;
 
   Element *focus_ = nullptr;
