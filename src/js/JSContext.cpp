@@ -1,4 +1,5 @@
 #include "JSContext.h"
+#include "lexer/Element.h"
 #include <iostream>
 
 JSContext::JSContext() {
@@ -34,4 +35,21 @@ duk_ret_t JSContext::native_print(duk_context *ctx) {
   const char *str = duk_to_string(ctx, 0);
   std::cout << "JS log: " << str << std::endl;
   return 0; // No return value to JS
+}
+
+int JSContext::get_handle(Element *elt) {
+  if (element_to_handle_.find(elt) != element_to_handle_.end()) {
+    return element_to_handle_[elt];
+  }
+  int handle = static_cast<int>(handle_to_element_.size());
+  element_to_handle_[elt] = handle;
+  handle_to_element_.push_back(elt);
+  return handle;
+}
+
+Element *JSContext::get_element(int handle) {
+  if (handle >= 0 && handle < static_cast<int>(handle_to_element_.size())) {
+    return handle_to_element_[handle];
+  }
+  return nullptr;
 }
