@@ -16,14 +16,17 @@ The `JSContext` class is the main interface for the browser to interact with the
 
 ### 2. Runtime Script (JS side)
 A built-in script (`assets/runtime.js`) is executed upon context initialization to provide a standard-ish DOM environment.
-- **Polyfills**: Defines `Node`, `Event`, and `document` prototypes.
-- **Encapsulation**: Wraps the raw `call_python` (or equivalent native calls) into clean JS methods like `element.innerHTML`.
+- **Polyfills**: Provides ES5-compatible `Node`, `Element`, and `HTMLDocument` prototypes (Duktape 2.x compatibility).
+- **Encapsulation**: Wraps raw native calls like `innerHTML_set` into standard JS properties.
 
 ### 3. DOM Interaction Flow
 1. **Query**: JS calls `document.querySelectorAll`.
 2. **Native Call**: The bridge executes the browser's `CSSParser` and `tree_to_list` in C++.
 3. **Identification**: C++ returns a list of handles (integers).
-4. **Proxy**: JS wraps these handles in `Node` objects for the scripter.
+4. **Proxy**: JS wraps these handles in `Element` objects for the scripter.
+
+### 4. HTML Parsing for Scripts
+The `HTMLParser` treats content inside `<script>` and `<style>` tags as raw text until the closing tag, preventing syntax errors caused by HTML-like strings within JavaScript.
 
 ## Security & Isolation
 - JS code never receives raw pointers to C++ memory.
