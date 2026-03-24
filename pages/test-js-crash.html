@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>JS Robustness Test</h1>
+    <p>This page tests if the browser survives various JS errors.</p>
+
+    <script>
+        log("Script 1: This script is healthy.");
+    </script>
+
+    <script>
+        log("Script 2: Intentionally causing a ReferenceError...");
+        nonExistentFunction();
+    </script>
+
+    <script>
+        log("Script 3: Intentionally causing a SyntaxError next (in a separate tag)...");
+    </script>
+
+    <script>
+        // Syntax Error: missing closing parenthesis
+        log("Script 4: Syntax error follows:
+    </script>
+
+    <script>
+        log("Script 5: I should still run even if Script 2 and 4 crashed!");
+    </script>
+</body>
+</html>
