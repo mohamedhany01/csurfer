@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <div id="content">Original Text</div>
+    <button>Change Content</button>
+    <script>
+        var btn = document.querySelectorAll("button")[0];
+        var div = document.querySelectorAll("div")[0];
+
+        btn.addEventListener("click", function() {
+            log("Click caught! Updating innerHTML...");
+            div.innerHTML = "<h2>Success!</h2><p>New content injected via <b>JS</b>.</p>";
+            log("Content updated.");
+        });
+    </script>
+</body>
+</html>

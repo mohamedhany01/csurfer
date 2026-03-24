@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>Scope Test</h1>
+    <script>
+        log("Script A: Defining sharedVar...");
+        var sharedVar = "Hello from Script A!";
+        function sharedFunc() {
+            return "Function result from Script A";
+        }
+    </script>
+    <script>
+        log("Script B: Accessing sharedVar...");
+        log(" - Value: " + sharedVar);
+        log(" - Function call: " + sharedFunc());
+    </script>
+</body>
+</html>

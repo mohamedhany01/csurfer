@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <p>Item 1</p>
+    <p>Item 2</p>
+    <div>Not a P</div>
+    <script>
+        var items = document.querySelectorAll("p");
+        log("Found " + items.length + " <p> tags:");
+        for (var i = 0; i < items.length; i++) {
+            log(" - Handle: " + items[i].handle);
+        }
+    </script>
+</body>
+</html>
