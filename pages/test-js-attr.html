@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <div id="main-container" class="test-class" title="Hover Me">
+        Attribute Test
+    </div>
+    <script>
+        var div = document.querySelectorAll("div")[0];
+        log("Testing attributes for <div>:");
+        log(" - id: " + div.getAttribute("id"));
+        log(" - class: " + div.getAttribute("class"));
+        log(" - title: " + div.getAttribute("title"));
+        log(" - non-existent: '" + div.getAttribute("style") + "'");
+    </script>
+</body>
+</html>

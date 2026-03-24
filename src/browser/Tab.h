@@ -1,5 +1,6 @@
 #pragma once
 
+#include "js/JSContext.h"
 #include "layout/DisplayItem.h"
 #include "layout/DocumentLayout.h"
 #include "lexer/Element.h"
@@ -33,6 +34,7 @@ public:
   void scrolldown();
   void scrollup();
   void go_back();
+  void rebuild_layout();
 
   // Rendering
   // Paints the tab's display list into the output renderer, offset by y_offset
@@ -41,6 +43,7 @@ public:
   // Getters
   const Url &url() const { return url_; }
   const std::string title() const; // TODO: extract from <title> tag
+  Element *root() const { return root_.get(); }
 
 private:
   std::shared_ptr<IRequest> http_;
@@ -53,6 +56,7 @@ private:
 
   std::unique_ptr<Element> root_;
   std::unique_ptr<DocumentLayout> document_;
+  std::unique_ptr<JSContext> js_;
   std::vector<std::unique_ptr<DrawCommand>> display_list_;
 
   Element *focus_ = nullptr;

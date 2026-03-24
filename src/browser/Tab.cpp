@@ -1,7 +1,11 @@
 #include "Tab.h"
+#include "css/CSSParser.h"
+#include "css/CSSSelector.h"
 #include "css/StyleEngine.h"
 #include "html/HTMLParser.h"
+#include "js/JSContext.h"
 #include "layout/LayoutTree.h"
+#include "lexer/Text.h"
 #include "utils/Parser.h"
 #include <iostream>
 
@@ -65,6 +69,62 @@ void Tab::load(const Url &url, const std::string &payload) {
   display_list_.clear();
   paint_tree(*document_, display_list_);
   scroll_ = 0;
+
+  // Initialize JavaScript Context
+  js_ = std::make_unique<JSContext>(this);
+
+  // Find and run all <script> tags
+  auto selector = CSSParser::parse_selector("script");
+  if (selector && root_) {
+    std::vector<Element *> scripts;
+    // Simple recursive finder
+    auto find_scripts = [&](auto self, Element *node) -> void {
+      if (selector->matches(node)) {
+        scripts.push_back(node);
+      }
+      for (auto &child_lex : node->children()) {
+        if (child_lex->type() == LexemeType::Element) {
+          self(self, static_cast<Element *>(child_lex.get()));
+        }
+      }
+    };
+    find_scripts(find_scripts, dynamic_cast<Element *>(root_.get()));
+
+    for (auto *script : scripts) {
+      auto attrs = script->attributes();
+      if (attrs.count("src")) {
+        std::string script_url = attrs.at("src");
+        std::cout << "[Tab] Loading external script: " << script_url
+                  << std::endl;
+        std::string content = http_->request(url_.resolve(script_url));
+        if (!content.empty()) {
+          js_->run(script_url, content);
+        }
+      } else {
+        std::string content;
+        for (auto &child_lex : script->children()) {
+          if (child_lex->type() == LexemeType::Text) {
+            content += child_lex->text();
+          }
+        }
+        if (!content.empty()) {
+          js_->run("inline", content);
+        }
+      }
+    }
+  }
+}
+
+void Tab::rebuild_layout() {
+  if (!root_)
+    return;
+  StyleEngine style_engine(http_);
+  style_engine.apply(dynamic_cast<Element *>(root_.get()), url_);
+  document_ =
+      std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
+  document_->layout();
+  display_list_.clear();
+  paint_tree(*document_, display_list_);
 }
 
 // Revised draw signature to take renderer directly
@@ -107,6 +167,9 @@ void Tab::click(int x, int y) {
       if (curr->type() == LexemeType::Element) {
         const auto *el = dynamic_cast<const Element *>(curr);
         if (el) {
+          if (js_ && js_->dispatch_event("click", const_cast<Element *>(el))) {
+            return;
+          }
           if (el->tag() == "a" && el->attributes().contains("href")) {
             load(url_.resolve(el->attributes().at("href")));
             return;
@@ -149,6 +212,10 @@ void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
   if (!el)
     return;
 
+  if (js_ && js_->dispatch_event("keydown", el)) {
+    return;
+  }
+
   auto attrs = el->attributes();
   std::string value = attrs.count("value") ? attrs.at("value") : "";
 
@@ -173,6 +240,10 @@ void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
 void Tab::submit_form(const Element *form) {
   if (!form)
     return;
+
+  if (js_ && js_->dispatch_event("submit", const_cast<Element *>(form))) {
+    return;
+  }
 
   std::string payload;
 

@@ -40,6 +40,20 @@ void Element::appendChild(std::unique_ptr<Lexeme> child) {
   children_.push_back(std::move(child));
 }
 
+void Element::clearChildren() { children_.clear(); }
+
+void Element::moveChildrenFrom(Element *other) {
+  for (auto &child : other->children_) {
+    if (auto *t = dynamic_cast<Text *>(child.get())) {
+      t->setParent(this);
+    } else if (auto *e = dynamic_cast<Element *>(child.get())) {
+      e->setParent(this);
+    }
+    children_.push_back(std::move(child));
+  }
+  other->children_.clear();
+}
+
 const Element::StyleMap &Element::style() const { return style_; }
 
 void Element::addStyle(const std::string &property, const std::string &value) {

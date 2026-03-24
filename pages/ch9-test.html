@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chapter 9: JS Test</title>
+</head>
+<body>
+    <h1 style="text-align:center;">CSurfer Chapter 9 Test</h1>
+    <div style="padding:20px; border:1px solid #ccc; margin:10px;">
+        <p>Status: <span id="status">Waiting...</span></p>
+    </div>
+    <button style="display:block; margin:20px auto; padding:10px 20px;">Click to Update</button>
+
+    <script>
+        log("Test script started!");
+        
+        // Find elements using tag names (since our CSS parser is basic)
+        var btn = document.querySelectorAll("button")[0];
+        var statusSpan = document.querySelectorAll("span")[0];
+        
+        log("Button handle: " + btn.handle);
+        log("Initial status text: " + statusSpan.getAttribute("id"));
+
+        btn.addEventListener("click", function() {
+            log("Received CLICK event in JS!");
+            statusSpan.innerHTML = "<b>JS EXECUTED!</b> Document updated successfully.";
+            log("innerHTML update triggered.");
+        });
+    </script>
+</body>
+</html>

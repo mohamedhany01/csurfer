@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project(
     c_surfer
     VERSION 0.1.0
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 # ------------------------------------------------------------------------------
@@ -76,6 +76,23 @@ CPMAddPackage(
 find_package(OpenSSL REQUIRED)
 find_package(Freetype REQUIRED)
 
+# Duktape
+CPMAddPackage(
+    NAME duktape
+    URL "https://github.com/svaarala/duktape/releases/download/v2.7.0/duktape-2.7.0.tar.xz"
+    DOWNLOAD_ONLY YES
+)
+
+if (duktape_ADDED)
+    add_library(duktape STATIC
+        ${duktape_SOURCE_DIR}/src/duktape.c
+    )
+    target_include_directories(duktape SYSTEM PUBLIC
+        ${duktape_SOURCE_DIR}/src
+    )
+    # Duktape needs certain flags on some systems, but default should work for now.
+endif()
+
 # ------------------------------------------------------------------------------
 # Skia (external build)
 # ------------------------------------------------------------------------------
@@ -145,6 +162,7 @@ add_executable(c_surfer
     src/css/CSSParser.cpp
     src/css/StyleComputation.cpp
     src/css/StyleEngine.cpp
+    src/js/JSContext.cpp
 )
 
 # Add include directories for src/
@@ -160,6 +178,7 @@ target_link_libraries(c_surfer PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
     Freetype::Freetype
+    duktape
 )
 
 # ------------------------------------------------------------------------------

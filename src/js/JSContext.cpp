@@ -1,0 +1,234 @@
+#include "JSContext.h"
+#include "browser/Tab.h"
+#include "css/CSSParser.h"
+#include "css/CSSSelector.h"
+#include "html/HTMLParser.h"
+#include "lexer/Element.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
+static void find_elements(Element *root, const CSSSelector &selector,
+                          std::vector<Element *> &matches) {
+  if (selector.matches(root)) {
+    matches.push_back(root);
+  }
+  for (auto &child_lexeme : root->children()) {
+    if (child_lexeme->type() == LexemeType::Element) {
+      find_elements(static_cast<Element *>(child_lexeme.get()), selector,
+                    matches);
+    }
+  }
+}
+
+JSContext::JSContext(Tab *tab) : tab_(tab) {
+  ctx_ = duk_create_heap_default();
+  if (!ctx_) {
+    std::cerr << "Failed to create Duktape heap" << std::endl;
+  }
+
+  // Store 'this' in global stash for static callbacks
+  duk_push_global_stash(ctx_);
+  duk_push_pointer(ctx_, this);
+  duk_put_prop_string(ctx_, -2, "js_context");
+  duk_pop(ctx_);
+
+  // Register 'log' function
+  duk_push_c_function(ctx_, native_print, 1 /* nargs */);
+  duk_put_global_string(ctx_, "log");
+
+  // Register 'querySelectorAll' function
+  duk_push_c_function(ctx_, native_querySelectorAll, 1 /* nargs */);
+  duk_put_global_string(ctx_, "querySelectorAll");
+
+  // Register 'getAttribute' function
+  duk_push_c_function(ctx_, native_getAttribute, 2 /* nargs */);
+  duk_put_global_string(ctx_, "getAttribute");
+
+  // Register 'innerHTML_set' function
+  duk_push_c_function(ctx_, native_innerHTML_set, 2 /* nargs */);
+  duk_put_global_string(ctx_, "innerHTML_set");
+
+  // Load runtime.js
+  std::ifstream f("assets/runtime.js");
+  if (f.is_open()) {
+    std::stringstream ss;
+    ss << f.rdbuf();
+    run("runtime.js", ss.str());
+  } else {
+    std::cerr << "Warning: Could not load assets/runtime.js" << std::endl;
+    // Fallback stub
+    run("init", "function dispatchEvent(type, handle) { return false; }");
+  }
+}
+
+JSContext::~JSContext() {
+  if (ctx_) {
+    duk_destroy_heap(ctx_);
+  }
+}
+
+void JSContext::run(const std::string &script_name, const std::string &code) {
+  if (!ctx_)
+    return;
+
+  if (duk_peval_string(ctx_, code.c_str()) != 0) {
+    std::cerr << "Script " << script_name
+              << " crashed: " << duk_safe_to_string(ctx_, -1) << std::endl;
+  }
+  duk_pop(ctx_);
+}
+
+duk_ret_t JSContext::native_print(duk_context *ctx) {
+  // Read the first argument as a string
+  const char *str = duk_to_string(ctx, 0);
+  std::cout << "JS log: " << str << std::endl;
+  return 0; // No return value to JS
+}
+
+duk_ret_t JSContext::native_querySelectorAll(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self || !self->tab_ || !self->tab_->root()) {
+    duk_push_array(ctx);
+    return 1;
+  }
+
+  const char *selector_text = duk_to_string(ctx, 0);
+  auto selector = CSSParser::parse_selector(selector_text);
+  if (!selector) {
+    duk_push_array(ctx);
+    return 1;
+  }
+
+  std::vector<Element *> matches;
+  find_elements(self->tab_->root(), *selector, matches);
+
+  duk_push_array(ctx);
+  for (size_t i = 0; i < matches.size(); ++i) {
+    duk_push_int(ctx, self->get_handle(matches[i]));
+    duk_put_prop_index(ctx, -2, static_cast<duk_uarridx_t>(i));
+  }
+
+  return 1;
+}
+
+duk_ret_t JSContext::native_getAttribute(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self) {
+    duk_push_string(ctx, "");
+    return 1;
+  }
+
+  int handle = duk_to_int(ctx, 0);
+  const char *attr_name = duk_to_string(ctx, 1);
+
+  Element *elt = self->get_element(handle);
+  if (elt) {
+    const auto &attrs = elt->attributes();
+    auto it = attrs.find(attr_name);
+    if (it != attrs.end()) {
+      duk_push_string(ctx, it->second.c_str());
+    } else {
+      duk_push_string(ctx, "");
+    }
+  } else {
+    duk_push_string(ctx, "");
+  }
+
+  return 1;
+}
+
+duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self)
+    return 0;
+
+  int handle = duk_to_int(ctx, 0);
+  const char *html_text = duk_to_string(ctx, 1);
+
+  Element *elt = self->get_element(handle);
+  if (!elt)
+    return 0;
+
+  elt->clearChildren();
+
+  std::string wrapped =
+      "<html><body>" + std::string(html_text) + "</body></html>";
+  HTMLParser parser(wrapped);
+  auto new_root = parser.parse();
+
+  if (new_root) {
+    // Find the <body> tag in the parsed tree
+    Element *body = nullptr;
+    std::vector<Element *> queue = {new_root.get()};
+    while (!queue.empty()) {
+      Element *curr = queue.front();
+      queue.erase(queue.begin());
+      if (curr->tag() == "body") {
+        body = curr;
+        break;
+      }
+      for (auto &child : curr->children()) {
+        if (child->type() == LexemeType::Element) {
+          queue.push_back(static_cast<Element *>(child.get()));
+        }
+      }
+    }
+
+    if (body) {
+      elt->moveChildrenFrom(body);
+    }
+  }
+
+  self->tab_->rebuild_layout();
+  return 0;
+}
+
+bool JSContext::dispatch_event(const std::string &type, Element *elt) {
+  if (!ctx_)
+    return false;
+
+  int handle = get_handle(elt);
+  std::string js =
+      "dispatchEvent('" + type + "', " + std::to_string(handle) + ")";
+
+  if (duk_peval_string(ctx_, js.c_str()) != 0) {
+    std::cerr << "Event " << type
+              << " crashed: " << duk_safe_to_string(ctx_, -1) << std::endl;
+    duk_pop(ctx_);
+    return false;
+  }
+
+  bool prevent_default = duk_get_boolean(ctx_, -1);
+  duk_pop(ctx_);
+  return prevent_default;
+}
+
+int JSContext::get_handle(Element *elt) {
+  if (element_to_handle_.find(elt) != element_to_handle_.end()) {
+    return element_to_handle_[elt];
+  }
+  int handle = static_cast<int>(handle_to_element_.size());
+  element_to_handle_[elt] = handle;
+  handle_to_element_.push_back(elt);
+  return handle;
+}
+
+Element *JSContext::get_element(int handle) {
+  if (handle >= 0 && handle < static_cast<int>(handle_to_element_.size())) {
+    return handle_to_element_[handle];
+  }
+  return nullptr;
+}
