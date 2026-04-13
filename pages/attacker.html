@@ -1,0 +1,30 @@
+<html>
+<head>
+    <title>Insecure Data Theft Demo</title>
+</head>
+<body>
+    <h1>Free Games!</h1>
+    <p>Loading your free game...</p>
+    <script>
+        log("[Malicious Script] Starting data theft...");
+        var xhr = new XMLHttpRequest();
+        // Trying to steal data from a DIFFERENT ORIGIN (localhost:8000)
+        // while this script is running on localhost:8001
+        xhr.open("GET", "http://localhost:8000/bank_secret.html");
+        xhr.send();
+        
+        var data = xhr.responseText;
+        log("[Malicious Script] Received data from bank:");
+        // Only log a snippet to keep console clean
+        log(data.substring(0, 100) + "...");
+        
+        if (data.indexOf("$1,234,567.89") !== -1) {
+            log("--- [VULNERABILITY DETECTED] ---");
+            log("[Malicious Script] SUCCESS: Captured bank balance from localhost:8000!");
+            log("--- [VULNERABILITY DETECTED] ---");
+        } else {
+            log("[Malicious Script] FAILED: Could not read balance.");
+        }
+    </script>
+</body>
+</html>

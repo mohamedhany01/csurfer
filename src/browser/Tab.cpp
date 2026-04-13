@@ -7,12 +7,67 @@
 #include "layout/LayoutTree.h"
 #include "lexer/Text.h"
 #include "utils/Parser.h"
+#include <algorithm>
 #include <iostream>
+#include <sstream>
 
 Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
          const FontMetrics &metrics)
     : http_(std::move(http)), window_width_(window_width), metrics_(metrics),
       url_("http://localhost/") {}
+
+Tab::~Tab() = default;
+
+void Tab::parse_csp(const std::string &header_value) {
+  csp_directives_.clear();
+  std::stringstream ss(header_value);
+  std::string directive;
+  while (std::getline(ss, directive, ';')) {
+    // Trim whitespace
+    directive.erase(0, directive.find_first_not_of(" "));
+    directive.erase(directive.find_last_not_of(" ") + 1);
+    if (directive.empty())
+      continue;
+
+    std::stringstream dss(directive);
+    std::string name;
+    dss >> name; // First word is directive name (e.g. script-src)
+
+    std::vector<std::string> origins;
+    std::string origin;
+    while (dss >> origin) {
+      if (origin == "'self'") {
+        origins.push_back(url_.origin());
+      } else {
+        origins.push_back(origin);
+      }
+    }
+    csp_directives_[name] = origins;
+  }
+}
+
+bool Tab::is_allowed(const Url &url, const std::string &directive) const {
+  if (csp_directives_.empty())
+    return true; // No policy = allow all
+
+  std::vector<std::string> allowed;
+  if (csp_directives_.count(directive)) {
+    allowed = csp_directives_.at(directive);
+  } else if (csp_directives_.count("default-src")) {
+    allowed = csp_directives_.at("default-src");
+  } else {
+    return true; // Directive not specified and no default-src
+  }
+
+  std::string target_origin = url.origin();
+
+  for (const auto &origin : allowed) {
+    if (origin == target_origin)
+      return true;
+  }
+
+  return false;
+}
 
 void Tab::load(const Url &url, const std::string &payload) {
   focus_ = nullptr; // Reset focus when navigating to a new page
@@ -21,8 +76,10 @@ void Tab::load(const Url &url, const std::string &payload) {
     history_.push_back(url);
   }
 
+  Url referrer = url_;
   url_ = url;
-  std::cout << "[Tab] Navigating to: " << url_.href() << std::endl;
+  std::cout << "[Tab] Navigating to: " << url_.href()
+            << " (Referrer: " << referrer.href() << ")" << std::endl;
 
   std::string body;
   if (url_.href() == "about:welcome") {
@@ -35,7 +92,15 @@ void Tab::load(const Url &url, const std::string &payload) {
            "way!</i></p></div></body></html>";
   } else {
     // Fetch page body
-    body = http_->request(url_, payload);
+    auto response = http_->request(url_, payload, referrer);
+    body = response.body;
+
+    // Phase 4: Handle CSP
+    if (response.headers.count("content-security-policy")) {
+      parse_csp(response.headers.at("content-security-policy"));
+    } else {
+      csp_directives_.clear();
+    }
   }
 
   if (body.empty()) {
@@ -58,7 +123,10 @@ void Tab::load(const Url &url, const std::string &payload) {
 
   // Apply Styles
   StyleEngine style_engine(http_);
-  style_engine.apply(dynamic_cast<Element *>(root_.get()), url_);
+  style_engine.apply(
+      dynamic_cast<Element *>(root_.get()), url_,
+      [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
+      url_);
 
   // Layout
   document_ =
@@ -94,9 +162,17 @@ void Tab::load(const Url &url, const std::string &payload) {
       auto attrs = script->attributes();
       if (attrs.count("src")) {
         std::string script_url = attrs.at("src");
+        Url resolved_url = url_.resolve(script_url);
+
+        if (!is_allowed(resolved_url, "script-src")) {
+          std::cout << "[SOP/CSP] Blocked script loading from: " << script_url
+                    << " (CSP Violation)" << std::endl;
+          continue;
+        }
+
         std::cout << "[Tab] Loading external script: " << script_url
                   << std::endl;
-        std::string content = http_->request(url_.resolve(script_url));
+        std::string content = http_->request(resolved_url, "", url_).body;
         if (!content.empty()) {
           js_->run(script_url, content);
         }
@@ -119,7 +195,10 @@ void Tab::rebuild_layout() {
   if (!root_)
     return;
   StyleEngine style_engine(http_);
-  style_engine.apply(dynamic_cast<Element *>(root_.get()), url_);
+  style_engine.apply(
+      dynamic_cast<Element *>(root_.get()), url_,
+      [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
+      url_);
   document_ =
       std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
   document_->layout();

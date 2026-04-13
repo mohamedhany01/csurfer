@@ -70,6 +70,20 @@ Fonts are loaded from `assets/fonts/`. Modify `Browser.cpp` to change window siz
 
 See `pages/` directory for sample HTML files, including Chapter 8 interactive tests.
 
+## Development
+
+### Formatting
+CSurfer uses `clang-format` to maintain a consistent coding style.
+```bash
+./scripts/format.sh
+```
+
+### Linting
+To check for logical errors, performance issues, and code quality, run the linter script (requires `clang-tidy` and `build/compile_commands.json`).
+```bash
+./scripts/lint.sh
+```
+
 ## License
 
 **GPL v3** - See [LICENSE](LICENSE) for details. Free software under the GNU General Public License version 3.

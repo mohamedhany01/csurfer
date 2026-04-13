@@ -4,10 +4,10 @@
 #include "layout/DisplayItem.h"
 #include "layout/DocumentLayout.h"
 #include "lexer/Element.h"
-#include "lexer/Lexeme.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,7 +22,7 @@ class Tab {
 public:
   explicit Tab(std::shared_ptr<IRequest> http, int window_width,
                const FontMetrics &metrics);
-  ~Tab() = default;
+  ~Tab();
 
   // Lifecycle
   void load(const Url &url, const std::string &payload = "");
@@ -36,6 +36,10 @@ public:
   void go_back();
   void rebuild_layout();
 
+  // CSP
+  void parse_csp(const std::string &header_value);
+  bool is_allowed(const Url &url, const std::string &directive) const;
+
   // Rendering
   // Paints the tab's display list into the output renderer, offset by y_offset
   void render(SDL_Renderer *renderer, int y_offset) const;
@@ -44,6 +48,7 @@ public:
   const Url &url() const { return url_; }
   const std::string title() const; // TODO: extract from <title> tag
   Element *root() const { return root_.get(); }
+  std::shared_ptr<IRequest> http() const { return http_; }
 
 private:
   std::shared_ptr<IRequest> http_;
@@ -60,6 +65,8 @@ private:
   std::vector<std::unique_ptr<DrawCommand>> display_list_;
 
   Element *focus_ = nullptr;
+
+  std::map<std::string, std::vector<std::string>> csp_directives_;
 
   // Constants
   const int SCROLL_STEP = 100;

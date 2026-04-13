@@ -6,6 +6,7 @@ Browser::Browser() : Browser(std::make_shared<HttpRequest>()) {}
 
 Browser::Browser(std::shared_ptr<IRequest> http)
     : http_(std::move(http)), ui_(this) {
+  http_->set_cookie_jar(&cookie_jar_);
   initSDL();
   initTTF();
   loadFont();

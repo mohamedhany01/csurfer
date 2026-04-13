@@ -76,23 +76,25 @@ std::unique_ptr<Element> HTMLParser::parse() {
   for (size_t i = 0; i < body_.size(); ++i) {
     char c = body_[i];
 
-    // If we are currently inside a <script> or <style> tag,
-    // we should only look for the closing tag and treat everything
-    // else as raw text.
-    if (!in_tag && !unfinished_.empty() &&
-        (unfinished_.back()->tag() == "script" ||
-         unfinished_.back()->tag() == "style")) {
+    // Special handling for script/style tags: consume everything until the
+    // closing tag.
+    if (!unfinished_.empty() && (unfinished_.back()->tag() == "script" ||
+                                 unfinished_.back()->tag() == "style")) {
       std::string close_tag = "</" + unfinished_.back()->tag() + ">";
       if (i + close_tag.size() <= body_.size()) {
         std::string sub = to_lower(body_.substr(i, close_tag.size()));
         if (sub == close_tag) {
-          // Found the closing tag!
           if (!text.empty()) {
             add_text(text);
             text.clear();
           }
-          in_tag = true;
-          // We'll skip the '<' and start parsing the tag content
+
+          // Manually close the tag since we are skipping the normal add_tag
+          // flow
+          std::string raw_closing_tag = "/" + unfinished_.back()->tag();
+          add_tag(raw_closing_tag);
+
+          i += close_tag.size() - 1; // Skip the entire </script> or </style>
           continue;
         }
       }

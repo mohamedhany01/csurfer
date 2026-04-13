@@ -3,6 +3,7 @@
 
 class Url {
 public:
+  Url() = default;
   explicit Url(const std::string &raw);
 
   const std::string &scheme() const;
@@ -11,6 +12,7 @@ public:
   const std::string &port() const;
 
   std::string href() const;
+  std::string origin() const;
 
   Url resolve(const std::string &href) const;
 

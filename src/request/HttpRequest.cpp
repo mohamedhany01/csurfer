@@ -1,24 +1,29 @@
 #include "HttpRequest.h"
+#include "CookieJar.h"
 #include "url/Url.h"
 
+#include <algorithm>
 #include <arpa/inet.h>
+#include <cctype>
 #include <cstring>
 #include <netdb.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
 
 // Berkeley sockets wrapper
-std::string HttpRequest::request(const Url &url, const std::string &payload) {
+HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
+                                  const Url &referrer) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
-    return "";
+    return {};
 
   hostent *server = gethostbyname(url.host().c_str());
   if (!server) {
     close(sock);
-    return "";
+    return {};
   }
 
   sockaddr_in addr{};
@@ -28,7 +33,7 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
 
   if (connect(sock, (sockaddr *)&addr, sizeof(addr)) < 0) {
     close(sock);
-    return "";
+    return {};
   }
 
   SSL_CTX *ctx = nullptr;
@@ -47,7 +52,7 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
       SSL_free(ssl);
       SSL_CTX_free(ctx);
       close(sock);
-      return "";
+      return {};
     }
   }
 
@@ -56,6 +61,17 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
   std::string method = payload.empty() ? "GET" : "POST";
   std::string req = method + " " + url.path() + " HTTP/1.0\r\n" +
                     "Host: " + url.host() + "\r\n";
+
+  if (cookie_jar_) {
+    std::string cookies = cookie_jar_->get_cookies(url, referrer, method);
+    if (!cookies.empty()) {
+      req += "Cookie: " + cookies + "\r\n";
+    }
+  }
+
+  if (!referrer.host().empty()) {
+    req += "Referer: " + referrer.origin() + "\r\n";
+  }
 
   if (!payload.empty()) {
     req += "Content-Type: application/x-www-form-urlencoded\r\n";
@@ -93,6 +109,63 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
 
   close(sock);
 
+  HttpResponse res;
   auto pos = response.find("\r\n\r\n");
-  return (pos != std::string::npos) ? response.substr(pos + 4) : response;
+  if (pos == std::string::npos) {
+    res.body = response;
+    return res;
+  }
+
+  std::string header_part = response.substr(0, pos);
+  res.body = response.substr(pos + 4);
+
+  std::istringstream stream(header_part);
+  std::string line;
+  if (std::getline(stream, line)) {
+    // Skip status line (e.g., HTTP/1.0 200 OK)
+  }
+
+  while (std::getline(stream, line) && line != "\r") {
+    auto colon = line.find(':');
+    if (colon != std::string::npos) {
+      std::string key = line.substr(0, colon);
+      std::string value = line.substr(colon + 1);
+
+      // Trim whitespace and carriage return
+      auto trim = [](std::string &s) {
+        s.erase(0, s.find_first_not_of(" \t"));
+        auto end = s.find_last_not_of(" \r\t");
+        if (end != std::string::npos)
+          s.erase(end + 1);
+        else
+          s.clear();
+      };
+
+      trim(key);
+      trim(value);
+
+      // Normalize key to lowercase
+      std::transform(key.begin(), key.end(), key.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      res.headers[key] = value;
+    }
+  }
+
+  if (cookie_jar_ && res.headers.count("set-cookie")) {
+    cookie_jar_->store_cookie(url, res.headers.at("set-cookie"));
+  }
+
+  return res;
+}
+
+std::string HttpRequest::get_cookies(const Url &url) {
+  if (!cookie_jar_)
+    return "";
+  return cookie_jar_->get_cookies(url, url, "GET");
+}
+
+void HttpRequest::set_cookie(const Url &url, const std::string &value) {
+  if (cookie_jar_) {
+    cookie_jar_->store_cookie(url, value);
+  }
 }

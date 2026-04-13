@@ -26,6 +26,13 @@ Object.defineProperty(Element.prototype, 'innerHTML', {
   }
 });
 
+Object.defineProperty(Element.prototype, 'style', {
+  get: function() {
+    if (!this._style) this._style = {};
+    return this._style;
+  }
+});
+
 function HTMLDocument() {}
 
 HTMLDocument.prototype.querySelectorAll = function(s) {
@@ -33,11 +40,26 @@ HTMLDocument.prototype.querySelectorAll = function(s) {
   return handles.map(function(h) { return new Element(h); });
 };
 
+HTMLDocument.prototype.getElementById = function(id) {
+  var results = this.querySelectorAll("#" + id);
+  if (results.length > 0) return results[0];
+  return null;
+};
+
 HTMLDocument.prototype.addEventListener = function(type, listener) {
   if (!LISTENERS['document']) LISTENERS['document'] = {};
   if (!LISTENERS['document'][type]) LISTENERS['document'][type] = [];
   LISTENERS['document'][type].push(listener);
 };
+
+Object.defineProperty(HTMLDocument.prototype, 'cookie', {
+  get: function() {
+    return native_cookie_get();
+  },
+  set: function(val) {
+    native_cookie_set(val.toString());
+  }
+});
 
 var document = new HTMLDocument();
 
@@ -65,3 +87,18 @@ function dispatchEvent(type, handle) {
 
   return preventDefault;
 }
+
+function XMLHttpRequest() {
+  this.method = null;
+  this.url = null;
+  this.responseText = "";
+}
+
+XMLHttpRequest.prototype.open = function(method, url) {
+  this.method = method;
+  this.url = url;
+};
+
+XMLHttpRequest.prototype.send = function(body) {
+  this.responseText = XMLHttpRequest_send(this.method, this.url, body || "");
+};
