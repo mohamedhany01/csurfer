@@ -6,5 +6,6 @@ public:
   /**
    * Implementation of HTTP GET/POST request.
    */
-  std::string request(const Url &url, const std::string &payload = "") override;
+  HttpResponse request(const Url &url,
+                       const std::string &payload = "") override;
 };

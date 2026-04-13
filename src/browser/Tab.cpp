@@ -35,7 +35,7 @@ void Tab::load(const Url &url, const std::string &payload) {
            "way!</i></p></div></body></html>";
   } else {
     // Fetch page body
-    body = http_->request(url_, payload);
+    body = http_->request(url_, payload).body;
   }
 
   if (body.empty()) {
@@ -96,7 +96,7 @@ void Tab::load(const Url &url, const std::string &payload) {
         std::string script_url = attrs.at("src");
         std::cout << "[Tab] Loading external script: " << script_url
                   << std::endl;
-        std::string content = http_->request(url_.resolve(script_url));
+        std::string content = http_->request(url_.resolve(script_url)).body;
         if (!content.empty()) {
           js_->run(script_url, content);
         }

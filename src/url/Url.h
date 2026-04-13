@@ -11,6 +11,7 @@ public:
   const std::string &port() const;
 
   std::string href() const;
+  std::string origin() const;
 
   Url resolve(const std::string &href) const;
 

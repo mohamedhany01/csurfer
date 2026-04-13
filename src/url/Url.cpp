@@ -58,6 +58,10 @@ std::string Url::href() const {
   return result;
 }
 
+std::string Url::origin() const {
+  return scheme_ + "://" + host_ + ":" + port_;
+}
+
 Url Url::resolve(const std::string &href) const {
   if (href.find("://") != std::string::npos) {
     return Url(href);

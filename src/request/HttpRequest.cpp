@@ -1,24 +1,27 @@
 #include "HttpRequest.h"
 #include "url/Url.h"
 
+#include <algorithm>
 #include <arpa/inet.h>
+#include <cctype>
 #include <cstring>
 #include <netdb.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
 
 // Berkeley sockets wrapper
-std::string HttpRequest::request(const Url &url, const std::string &payload) {
+HttpResponse HttpRequest::request(const Url &url, const std::string &payload) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
-    return "";
+    return {};
 
   hostent *server = gethostbyname(url.host().c_str());
   if (!server) {
     close(sock);
-    return "";
+    return {};
   }
 
   sockaddr_in addr{};
@@ -28,7 +31,7 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
 
   if (connect(sock, (sockaddr *)&addr, sizeof(addr)) < 0) {
     close(sock);
-    return "";
+    return {};
   }
 
   SSL_CTX *ctx = nullptr;
@@ -47,7 +50,7 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
       SSL_free(ssl);
       SSL_CTX_free(ctx);
       close(sock);
-      return "";
+      return {};
     }
   }
 
@@ -93,6 +96,47 @@ std::string HttpRequest::request(const Url &url, const std::string &payload) {
 
   close(sock);
 
+  HttpResponse res;
   auto pos = response.find("\r\n\r\n");
-  return (pos != std::string::npos) ? response.substr(pos + 4) : response;
+  if (pos == std::string::npos) {
+    res.body = response;
+    return res;
+  }
+
+  std::string header_part = response.substr(0, pos);
+  res.body = response.substr(pos + 4);
+
+  std::istringstream stream(header_part);
+  std::string line;
+  if (std::getline(stream, line)) {
+    // Skip status line (e.g., HTTP/1.0 200 OK)
+  }
+
+  while (std::getline(stream, line) && line != "\r") {
+    auto colon = line.find(':');
+    if (colon != std::string::npos) {
+      std::string key = line.substr(0, colon);
+      std::string value = line.substr(colon + 1);
+
+      // Trim whitespace and carriage return
+      auto trim = [](std::string &s) {
+        s.erase(0, s.find_first_not_of(" \t"));
+        auto end = s.find_last_not_of(" \r\t");
+        if (end != std::string::npos)
+          s.erase(end + 1);
+        else
+          s.clear();
+      };
+
+      trim(key);
+      trim(value);
+
+      // Normalize key to lowercase
+      std::transform(key.begin(), key.end(), key.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      res.headers[key] = value;
+    }
+  }
+
+  return res;
 }

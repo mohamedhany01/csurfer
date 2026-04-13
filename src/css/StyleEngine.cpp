@@ -78,7 +78,7 @@ void StyleEngine::apply(Element *root, const Url &base_url) {
   for (const auto &href : hrefs) {
     try {
       Url style_url = base_url.resolve(href);
-      std::string css_text = http_->request(style_url);
+      std::string css_text = http_->request(style_url).body;
       CSSParser parser(css_text);
       auto extra = parser.parse();
       rules.insert(rules.end(), extra.begin(), extra.end());
