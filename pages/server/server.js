@@ -7,6 +7,12 @@ const port = 8000;
 app.use(express.urlencoded({ extended: true }));
 
 
+// CSP Protected Bank Page
+app.get('/bank_protected.html', (req, res) => {
+    res.set('Content-Security-Policy', "default-src 'self'");
+    res.sendFile(path.join(__dirname, '../bank_protected.html'));
+});
+
 // Static files from parent directory (pages/)
 app.use(express.static(path.join(__dirname, '..')));
 

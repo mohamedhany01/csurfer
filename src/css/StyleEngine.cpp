@@ -65,7 +65,9 @@ static void sortBySpecificity(std::vector<CSSRule> &rules) {
                    });
 }
 
-void StyleEngine::apply(Element *root, const Url &base_url) {
+void StyleEngine::apply(
+    Element *root, const Url &base_url,
+    std::function<bool(const Url &, const std::string &)> csp_check) {
   if (!root)
     return;
 
@@ -78,6 +80,14 @@ void StyleEngine::apply(Element *root, const Url &base_url) {
   for (const auto &href : hrefs) {
     try {
       Url style_url = base_url.resolve(href);
+
+      // Phase 4: CSP Enforcement
+      if (csp_check && !csp_check(style_url, "style-src")) {
+        std::cout << "[SOP/CSP] Blocked stylesheet from " << style_url.href()
+                  << " (CSP Violation)" << std::endl;
+        continue;
+      }
+
       std::string css_text = http_->request(style_url).body;
       CSSParser parser(css_text);
       auto extra = parser.parse();

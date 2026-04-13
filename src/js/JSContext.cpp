@@ -99,10 +99,41 @@ duk_ret_t JSContext::native_querySelectorAll(duk_context *ctx) {
   JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
   duk_pop_2(ctx);
 
-  const char *selector = duk_to_string(ctx, 0);
+  const char *selector_str = duk_to_string(ctx, 0);
+  std::string selector(selector_str);
   std::vector<Element *> results;
-  // TODO: results = self->tab_->root()->querySelectorAll(selector);
-  // (Simplified for now or use actual implementation)
+
+  std::vector<Element *> queue;
+  if (self->tab_ && self->tab_->root()) {
+    queue.push_back(dynamic_cast<Element *>(self->tab_->root()));
+  }
+
+  while (!queue.empty()) {
+    Element *el = queue.back();
+    queue.pop_back();
+    if (!el)
+      continue;
+
+    bool match = false;
+    if (selector.starts_with("#")) {
+      auto it = el->attributes().find("id");
+      if (it != el->attributes().end() && it->second == selector.substr(1)) {
+        match = true;
+      }
+    } else if (el->tag() == selector) {
+      match = true;
+    }
+
+    if (match) {
+      results.push_back(el);
+    }
+
+    for (auto &child : el->children()) {
+      if (child->type() == LexemeType::Element) {
+        queue.push_back(static_cast<Element *>(child.get()));
+      }
+    }
+  }
 
   duk_push_array(ctx);
   for (size_t i = 0; i < results.size(); ++i) {

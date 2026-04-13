@@ -1,0 +1,23 @@
+<html>
+
+<head>
+    <title>Bank Site - CSP Protected</title>
+</head>
+
+<body>
+    <h1>Welcome to Your Secure Bank</h1>
+    <div id="balance" value="$1,234,567.89">Balance: $1,234,567.89</div>
+
+    <p>Notice: We recently enabled 3rd-party analytics. But this time we added a CSP!</p>
+
+    <!-- This script is on PORT 8001. CSP should block it! -->
+    <script src="http://localhost:8001/evil_script.js"></script>
+
+    <!-- This script is on PORT 8000. CSP should allow it! -->
+    <script src="http://localhost:8000/good_script.js"></script>
+
+
+    <p>Actual Page Content continues here...</p>
+</body>
+
+</html>
