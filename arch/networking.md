@@ -1,24 +1,50 @@
 # Networking & Request Architecture
 
-CSurfer uses a decoupled request system to handle various protocols and schemes.
+CSurfer uses a decoupled request system to handle various protocols and architectural layers (like security and persistence).
 
 ## Interface: IRequest
-The `IRequest` interface defines how the browser interacts with the network. As of Chapter 8, it supports sending data via payloads.
+The `IRequest` interface is the contract for all network-bound operations. Since Chapter 10, it has been expanded to support stateful sessions and security context.
 
 ```cpp
-virtual std::string request(const Url& url, const std::string& payload = "") = 0;
+class IRequest {
+public:
+  virtual HttpResponse request(const Url &url, const std::string &payload = "",
+                               const Url &referrer = {}) = 0;
+  virtual void set_cookie_jar(CookieJar *jar) = 0;
+  virtual std::string get_cookies(const Url &url) = 0;
+  virtual void set_cookie(const Url &url, const std::string &value) = 0;
+};
 ```
 
 ## HttpRequest Implementation
-The `HttpRequest` class implements the HTTP/HTTPS protocol using Berkeley Sockets and OpenSSL.
+The `HttpRequest` class implements the HTTP/1.0 protocol using Berkeley Sockets (and optionally OpenSSL for HTTPS).
 
-### GET vs POST Logic
-- If the `payload` is empty, it defaults to a `GET` request.
-- If a `payload` is provided, it switches to `POST`, includes a `Content-Length` header, and appends the payload after the headers.
+### 1. Request Context (Referrer)
+Every request now carries a `referrer` URL. This is used for two purposes:
+- **Referer Header**: Automatically identifying the source of the request to the server.
+- **SameSite Policy**: Providing origin context to the `CookieJar` to determine if cookies should be withheld (CSRF protection).
 
-### Request Flow
-1. **Socket Setup**: Creates a TCP socket.
-2. **TLS Handshake**: If the scheme is `https`, performs an SSL handshake.
-3. **HTTP Construction**: Builds the request string with appropriate headers.
-4. **Transmission**: Sends the request over the socket/SSL.
-5. **Collection**: Reads the response body after skipping the HTTP headers.
+### 2. Cookie Interaction
+Before sending the request, `HttpRequest` consults the `CookieJar` for any cookies matching the destination host and the security context of the referrer.
+
+### 3. Response Processing
+When an HTTP response is received, the headers are parsed. If a `Set-Cookie` header is found, `HttpRequest` passes it to the `CookieJar` for storage and disk-based persistence.
+
+## Request Execution Flow (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant Tab
+    participant HttpRequest
+    participant CookieJar
+    participant Server
+
+    Tab->>HttpRequest: request(target_url, payload, referrer)
+    HttpRequest->>CookieJar: get_cookies(target_url, referrer, method)
+    CookieJar-->>HttpRequest: cookie_string
+    HttpRequest->>Server: HTTP Request (headers + cookies)
+    Server-->>HttpRequest: HTTP Response (headers + body)
+    HttpRequest->>CookieJar: store_cookie(target_url, set_cookie_header)
+    CookieJar->>CookieJar: save_to_disk()
+    HttpRequest-->>Tab: HttpResponse
+```
