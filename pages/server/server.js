@@ -32,5 +32,13 @@ app.post('/echo_post', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`[Server] Express v5 test server listening at http://localhost:${port}`);
+    console.log(`[Server] Bank server listening at http://localhost:${port}`);
+});
+
+// Second server instance for Cross-Origin testing (Attacker Site)
+const attackerPort = 8001;
+const attackerApp = express();
+attackerApp.use(express.static(path.join(__dirname, '..')));
+attackerApp.listen(attackerPort, () => {
+    console.log(`[Server] Attacker server listening at http://localhost:${attackerPort}`);
 });

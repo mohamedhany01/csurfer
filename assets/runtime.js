@@ -65,3 +65,18 @@ function dispatchEvent(type, handle) {
 
   return preventDefault;
 }
+
+function XMLHttpRequest() {
+  this.method = null;
+  this.url = null;
+  this.responseText = "";
+}
+
+XMLHttpRequest.prototype.open = function(method, url) {
+  this.method = method;
+  this.url = url;
+};
+
+XMLHttpRequest.prototype.send = function(body) {
+  this.responseText = XMLHttpRequest_send(this.method, this.url, body || "");
+};

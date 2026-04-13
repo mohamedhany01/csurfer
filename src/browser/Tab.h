@@ -4,7 +4,6 @@
 #include "layout/DisplayItem.h"
 #include "layout/DocumentLayout.h"
 #include "lexer/Element.h"
-#include "lexer/Lexeme.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
 
@@ -22,7 +21,7 @@ class Tab {
 public:
   explicit Tab(std::shared_ptr<IRequest> http, int window_width,
                const FontMetrics &metrics);
-  ~Tab() = default;
+  ~Tab();
 
   // Lifecycle
   void load(const Url &url, const std::string &payload = "");
@@ -44,6 +43,7 @@ public:
   const Url &url() const { return url_; }
   const std::string title() const; // TODO: extract from <title> tag
   Element *root() const { return root_.get(); }
+  std::shared_ptr<IRequest> http() const { return http_; }
 
 private:
   std::shared_ptr<IRequest> http_;

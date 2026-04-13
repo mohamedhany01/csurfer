@@ -14,6 +14,8 @@ Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
     : http_(std::move(http)), window_width_(window_width), metrics_(metrics),
       url_("http://localhost/") {}
 
+Tab::~Tab() = default;
+
 void Tab::load(const Url &url, const std::string &payload) {
   focus_ = nullptr; // Reset focus when navigating to a new page
   // Only push to history if it's not the exact same URL we're already on
