@@ -161,8 +161,17 @@ duk_ret_t JSContext::native_XMLHttpRequest_send(duk_context *ctx) {
   const char *body = duk_to_string(ctx, 2);
 
   Url target_url = self->tab_->url().resolve(url_str);
+  std::string page_origin = self->tab_->url().origin();
+  std::string target_origin = target_url.origin();
 
-  // Phase 2: NO SECURITY CHECKS (Vulnerability demonstration)
+  // Phase 3: Same-Origin Policy (SOP) check
+  if (page_origin != target_origin) {
+    std::cout << "[SOP] Blocked cross-origin request from " << page_origin
+              << " to " << target_origin << std::endl;
+    duk_push_string(ctx, "");
+    return 1;
+  }
+
   std::cout << "[JS XHR] Sending " << method << " request to "
             << target_url.href() << std::endl;
   auto response = self->tab_->http()->request(target_url, body);

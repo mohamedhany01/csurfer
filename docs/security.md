@@ -1,18 +1,19 @@
 # Security Architecture
 
-## Current Status (Chapter 10 - Phase 2)
+## Current Status (Chapter 10 - Phase 3)
 
-**Security Model**: Insecure (Vulnerable to Cross-Origin Data Theft)
+**Security Model**: Partially Secured (Same-Origin Policy implemented)
 
 ### Implemented Features
-- **XMLHttpRequest API**: Exposes the ability for JavaScript to make network requests using `native_XMLHttpRequest_send`.
-- **URL Origins**: `Url::origin()` correctly identifies the scheme, host, and port.
+- **XMLHttpRequest API**: Supports network requests for JavaScript.
+- **URL Origins**: Correctly identifies origin components for security checks.
+- **Same-Origin Policy (SOP)**: Enforced for `XMLHttpRequest`. Requests to origins differing in scheme, host, or port are blocked.
 
 ### Known Vulnerabilities
-- **Lack of Same-Origin Policy (SOP)**: The `XMLHttpRequest` implementation currently does not verify if the destination origin matches the page origin.
-- **Exposure**: Scripts from any origin can read data from any other reachable origin via XHR.
+- **Resource Loading**: SOP is not yet applied to `<script>` and `<link>` tags (Planned for Phase 4: CSP).
+- **Csrf**: Cookie management is not yet implemented (Planned for Phase 5).
 
-### Mitigations (Planned)
-- **Phase 3**: Implement Same-Origin Policy (SOP) checks in `JSContext::native_XMLHttpRequest_send`.
+### Mitigations (Implemented)
+- **Phase 3**: SOP check in `JSContext::native_XMLHttpRequest_send` successfully blocks data theft between origins.
 - **Phase 4**: Implement Content Security Policy (CSP) to restrict allowed origins for external resources.
 - **Phase 5**: Implement `SameSite=Lax` cookie policy.
