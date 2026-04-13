@@ -1,0 +1,17 @@
+<html>
+<head>
+    <title>Bank Site - XSS Vulnerability</title>
+</head>
+<body>
+    <h1>Welcome to Your Secure Bank</h1>
+    <div id="balance">Balance: $1,234,567.89</div>
+    
+    <p>Notice: We recently enabled 3rd-party analytics. It is totally safe!</p>
+    
+    <!-- This is the vulnerability: loading a script from a DIFFERENT origin (8001) -->
+    <!-- SOP (Phase 3) won't block this! -->
+    <script src="http://localhost:8001/evil_script.js"></script>
+    
+    <p>Actual Page Content continues here...</p>
+</body>
+</html>
