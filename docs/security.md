@@ -1,8 +1,8 @@
 # Security Architecture
 
-## Current Status (Chapter 10 - Phase 4)
+## Current Status (Chapter 10 - FINISHED)
 
-**Security Model**: Partially Secured (SOP + Content Security Policy)
+**Security Model**: Secured (SOP + CSP + CookieJar/SameSite)
 
 ### Implemented Features
 - **XMLHttpRequest API**: Supports network requests for JavaScript.
@@ -13,11 +13,15 @@
     - Enforces `script-src` and `style-src` directives (with `default-src` fallback).
     - Blocks external resources (scripts/styles) before loading if they are not in the "Guest List".
     - Supports the `'self'` keyword for current origin matching.
+- **Cookie Management (CookieJar)**:
+    - Persistent session storage across requests and tabs.
+    - **SameSite=Lax enforcement**: Protects against CSRF by withholding cookies on cross-origin POST requests.
+    - **JS Cookie API**: Support for `document.cookie` (getter/setter).
 
 ### Known Vulnerabilities
-- **CSRF**: Cookie management is not yet implemented (Planned for Phase 5: CookieJar).
+- None relative to the Chapter 10 roadmap.
 
 ### Mitigations (Implemented)
 - **Phase 3**: SOP check in `JSContext::native_XMLHttpRequest_send`.
-- **Phase 4**: CSP enforcement in `Tab::load` and `StyleEngine::apply` to block malicious 3rd-party scripts.
-- **Phase 5**: Implement `SameSite=Lax` cookie policy.
+- **Phase 4**: CSP enforcement in `Tab::load` and `StyleEngine::apply`.
+- **Phase 5**: `SameSite=Lax` logic in `CookieJar::get_cookies` to block CSRF.

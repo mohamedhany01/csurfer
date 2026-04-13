@@ -25,6 +25,8 @@ private:
   static duk_ret_t native_getAttribute(duk_context *ctx);
   static duk_ret_t native_innerHTML_set(duk_context *ctx);
   static duk_ret_t native_XMLHttpRequest_send(duk_context *ctx);
+  static duk_ret_t native_cookie_get(duk_context *ctx);
+  static duk_ret_t native_cookie_set(duk_context *ctx);
 
   Tab *tab_;
   duk_context *ctx_;

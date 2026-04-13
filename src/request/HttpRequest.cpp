@@ -1,4 +1,5 @@
 #include "HttpRequest.h"
+#include "CookieJar.h"
 #include "url/Url.h"
 
 #include <algorithm>
@@ -13,7 +14,8 @@
 #include <unistd.h>
 
 // Berkeley sockets wrapper
-HttpResponse HttpRequest::request(const Url &url, const std::string &payload) {
+HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
+                                  const Url &referrer) {
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     return {};
@@ -59,6 +61,17 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload) {
   std::string method = payload.empty() ? "GET" : "POST";
   std::string req = method + " " + url.path() + " HTTP/1.0\r\n" +
                     "Host: " + url.host() + "\r\n";
+
+  if (cookie_jar_) {
+    std::string cookies = cookie_jar_->get_cookies(url, referrer, method);
+    if (!cookies.empty()) {
+      req += "Cookie: " + cookies + "\r\n";
+    }
+  }
+
+  if (!referrer.host().empty()) {
+    req += "Referer: " + referrer.origin() + "\r\n";
+  }
 
   if (!payload.empty()) {
     req += "Content-Type: application/x-www-form-urlencoded\r\n";
@@ -138,5 +151,21 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload) {
     }
   }
 
+  if (cookie_jar_ && res.headers.count("set-cookie")) {
+    cookie_jar_->store_cookie(url, res.headers.at("set-cookie"));
+  }
+
   return res;
+}
+
+std::string HttpRequest::get_cookies(const Url &url) {
+  if (!cookie_jar_)
+    return "";
+  return cookie_jar_->get_cookies(url, url, "GET");
+}
+
+void HttpRequest::set_cookie(const Url &url, const std::string &value) {
+  if (cookie_jar_) {
+    cookie_jar_->store_cookie(url, value);
+  }
 }

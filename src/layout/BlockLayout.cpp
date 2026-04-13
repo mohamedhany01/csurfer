@@ -216,6 +216,7 @@ void BlockLayout::layoutNode(const Lexeme *node) {
         new_line();
       } else if (el->tag() == "input" || el->tag() == "button") {
         input(el);
+        return; // Atomic widget handling
       }
     }
     layoutElement(el);

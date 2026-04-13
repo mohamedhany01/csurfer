@@ -31,9 +31,10 @@ public:
   // `base_url` is used to resolve relative <link href="..."> paths.
   // `csp_check` is an optional callback to verify if a stylesheet URL is
   // allowed.
-  void apply(Element *root, const Url &base_url,
-             std::function<bool(const Url &, const std::string &)> csp_check =
-                 nullptr);
+  void apply(
+      Element *root, const Url &base_url,
+      std::function<bool(const Url &, const std::string &)> csp_check = nullptr,
+      const Url &referrer = {});
 
 private:
   std::shared_ptr<IRequest> http_;

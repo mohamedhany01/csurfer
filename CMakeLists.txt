@@ -154,6 +154,7 @@ add_executable(c_surfer
     src/layout/TextLayout.cpp
     src/url/Url.cpp
     src/request/HttpRequest.cpp
+    src/request/CookieJar.cpp
     src/utils/Parser.cpp
     src/browser/Browser.cpp
     src/browser/Tab.cpp

@@ -13,6 +13,34 @@ app.get('/bank_protected.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../bank_protected.html'));
 });
 
+// Login Page - Sets a session cookie
+app.get('/login', (req, res) => {
+    // We set SameSite=Lax to protect against CSRF
+    res.set('Set-Cookie', 'session=secure_user_123; SameSite=Lax; Path=/');
+    res.send('<html><body><h1>Login Successful!</h1><p>Session cookie set. <a href="/bank_session.html">Go to your account</a></p></body></html>');
+});
+
+// Transfer Money - Protected by Session Cookie
+app.post('/transfer', (req, res) => {
+    const cookies = req.headers['cookie'] || '';
+    const referer = req.headers['referer'] || 'Direct';
+
+    console.log(`[Bank Server] Transfer request from Referer: ${referer}`);
+    console.log(`[Bank Server] Cookies received: ${cookies}`);
+
+    let responseHtml = '<html><body>';
+    if (cookies.includes('session=secure_user_123')) {
+        responseHtml += `<h1 style="color:green">Transfer SUCCESSFUL</h1>`;
+        responseHtml += `<p>Transferred $${req.body.amount} to ${req.body.to}.</p>`;
+    } else {
+        responseHtml += `<h1 style="color:red">Transfer DENIED</h1>`;
+        responseHtml += `<p>Error: No valid session cookie found. CSRF attack blocked or not logged in!</p>`;
+        responseHtml += `<p>Headers received: ${JSON.stringify(req.headers)}</p>`;
+    }
+    responseHtml += '<p><a href="/bank_session.html">Back to Bank</a></p></body></html>';
+    res.send(responseHtml);
+});
+
 // Static files from parent directory (pages/)
 app.use(express.static(path.join(__dirname, '..')));
 

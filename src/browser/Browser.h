@@ -1,9 +1,9 @@
 #include "CSurferUI.h"
 #include "Tab.h"
+#include "request/CookieJar.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <memory>
-#include <string>
 #include <vector>
 
 class Browser {
@@ -63,4 +63,7 @@ private:
   // Tab Collection
   std::vector<std::unique_ptr<Tab>> tabs_;
   size_t active_tab_index_ = 0;
+
+  // Persistent State
+  CookieJar cookie_jar_;
 };

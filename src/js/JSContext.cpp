@@ -34,6 +34,12 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
   duk_push_c_function(ctx_, native_XMLHttpRequest_send, 3 /* nargs */);
   duk_put_global_string(ctx_, "XMLHttpRequest_send");
 
+  // Register cookie functions
+  duk_push_c_function(ctx_, native_cookie_get, 0);
+  duk_put_global_string(ctx_, "native_cookie_get");
+  duk_push_c_function(ctx_, native_cookie_set, 1);
+  duk_put_global_string(ctx_, "native_cookie_set");
+
   // Load runtime.js
   std::ifstream f("assets/runtime.js");
   if (f.is_open()) {
@@ -169,6 +175,8 @@ duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
 
   int handle = duk_to_int(ctx, 0);
   const char *html = duk_to_string(ctx, 1);
+  (void)handle;
+  (void)html;
 
   Element *el = self->get_element(handle);
   if (el) {
@@ -209,4 +217,32 @@ duk_ret_t JSContext::native_XMLHttpRequest_send(duk_context *ctx) {
 
   duk_push_string(ctx, response.body.c_str());
   return 1;
+}
+
+duk_ret_t JSContext::native_cookie_get(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self || !self->tab_)
+    return 0;
+
+  std::string cookies = self->tab_->http()->get_cookies(self->tab_->url());
+  duk_push_string(ctx, cookies.c_str());
+  return 1;
+}
+
+duk_ret_t JSContext::native_cookie_set(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+
+  if (!self || !self->tab_)
+    return 0;
+
+  const char *value = duk_to_string(ctx, 0);
+  self->tab_->http()->set_cookie(self->tab_->url(), value);
+  return 0;
 }

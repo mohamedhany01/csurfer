@@ -76,8 +76,10 @@ void Tab::load(const Url &url, const std::string &payload) {
     history_.push_back(url);
   }
 
+  Url referrer = url_;
   url_ = url;
-  std::cout << "[Tab] Navigating to: " << url_.href() << std::endl;
+  std::cout << "[Tab] Navigating to: " << url_.href()
+            << " (Referrer: " << referrer.href() << ")" << std::endl;
 
   std::string body;
   if (url_.href() == "about:welcome") {
@@ -90,7 +92,7 @@ void Tab::load(const Url &url, const std::string &payload) {
            "way!</i></p></div></body></html>";
   } else {
     // Fetch page body
-    auto response = http_->request(url_, payload);
+    auto response = http_->request(url_, payload, referrer);
     body = response.body;
 
     // Phase 4: Handle CSP
@@ -123,7 +125,8 @@ void Tab::load(const Url &url, const std::string &payload) {
   StyleEngine style_engine(http_);
   style_engine.apply(
       dynamic_cast<Element *>(root_.get()), url_,
-      [this](const Url &u, const std::string &d) { return is_allowed(u, d); });
+      [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
+      url_);
 
   // Layout
   document_ =
@@ -169,7 +172,7 @@ void Tab::load(const Url &url, const std::string &payload) {
 
         std::cout << "[Tab] Loading external script: " << script_url
                   << std::endl;
-        std::string content = http_->request(resolved_url).body;
+        std::string content = http_->request(resolved_url, "", url_).body;
         if (!content.empty()) {
           js_->run(script_url, content);
         }
@@ -194,7 +197,8 @@ void Tab::rebuild_layout() {
   StyleEngine style_engine(http_);
   style_engine.apply(
       dynamic_cast<Element *>(root_.get()), url_,
-      [this](const Url &u, const std::string &d) { return is_allowed(u, d); });
+      [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
+      url_);
   document_ =
       std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
   document_->layout();

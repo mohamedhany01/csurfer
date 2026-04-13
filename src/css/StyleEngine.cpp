@@ -67,7 +67,8 @@ static void sortBySpecificity(std::vector<CSSRule> &rules) {
 
 void StyleEngine::apply(
     Element *root, const Url &base_url,
-    std::function<bool(const Url &, const std::string &)> csp_check) {
+    std::function<bool(const Url &, const std::string &)> csp_check,
+    const Url &referrer) {
   if (!root)
     return;
 
@@ -88,7 +89,7 @@ void StyleEngine::apply(
         continue;
       }
 
-      std::string css_text = http_->request(style_url).body;
+      std::string css_text = http_->request(style_url, "", referrer).body;
       CSSParser parser(css_text);
       auto extra = parser.parse();
       rules.insert(rules.end(), extra.begin(), extra.end());

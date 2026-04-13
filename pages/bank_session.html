@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Bank - My Account</title>
+</head>
+<body>
+    <h1>Welcome to Your Secure Bank Account</h1>
+    <div id="status">Checking session...</div>
+    <div id="balance_div" style="display:none;">
+        <h2>Your Balance: <span id="balance">$1,234,567.89</span></h2>
+        <p>Transfer Money:</p>
+        <form action="/transfer" method="POST">
+            To: <input type="text" name="to" value="Attacker Account">
+            Amount: <input type="text" name="amount" value="500">
+            <button type="submit">Transfer Now</button>
+        </form>
+    </div>
+
+    <script>
+        // Check for session cookie
+        if (document.cookie.includes("session=")) {
+            document.getElementById("status").innerHTML = "Status: Logged In (Session: Active)";
+            document.getElementById("balance_div").style.display = "block";
+        } else {
+            document.getElementById("status").innerHTML = "Status: Not Logged In. <a href='/login'>Click here to login</a>";
+        }
+    </script>
+</body>
+</html>

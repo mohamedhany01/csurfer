@@ -3,6 +3,7 @@
 
 class Url {
 public:
+  Url() = default;
   explicit Url(const std::string &raw);
 
   const std::string &scheme() const;
