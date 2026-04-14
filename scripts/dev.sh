@@ -10,5 +10,5 @@ cd "$SCRIPT_DIR/.."
 # Run the rebuild script
 ./scripts/rebuild.sh
 
-echo "Launching c_surfer..."
-./build/c_surfer "$@"
+echo "Launching csurfer..."
+./build/csurfer "$@"
