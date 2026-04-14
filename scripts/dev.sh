@@ -10,5 +10,12 @@ cd "$SCRIPT_DIR/.."
 # Run the rebuild script
 ./scripts/rebuild.sh
 
+# Detect build directory
+if [ -f /.dockerenv ]; then
+    BUILD_DIR="build-docker"
+else
+    BUILD_DIR="build"
+fi
+
 echo "Launching csurfer..."
-./build/csurfer "$@"
+"./$BUILD_DIR/csurfer" "$@"

@@ -1,4 +1,6 @@
 build
+build-docker
+build-release
 .vscode
 external
 .cache

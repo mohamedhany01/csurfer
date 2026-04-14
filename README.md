@@ -11,12 +11,27 @@ A minimal web browser written in C++ using SDL2. Parse HTML, fetch pages, and re
 
 **Build from source** - Currently tested on **GNU/Linux** only. Requires CMake 3.28+ and standard development libraries.
 
-### Dependencies
+### Quick Start (Linux)
+
+Get your environment ready with one command. Supports **Debian/Ubuntu** and **Fedora**:
 
 ```bash
-# Debian/Mint/Ubuntu
-sudo apt install build-essential cmake libssl-dev libsdl2-ttf-dev libfreetype-dev
+./scripts/setup.sh
 ```
+
+### Docker (Hermetic Build)
+
+If you prefer a completely isolated environment, you can build and run CSurfer using Docker. This handles all dependencies and GUI passthrough for you:
+
+```bash
+./scripts/docker-run.sh
+```
+
+### Manual Installation
+If your distro is not supported by the script, you will need:
+*   **Compiler**: Clang++ (Standard C++23 support)
+*   **Build Tools**: CMake 3.28+, Ninja
+*   **Libraries**: OpenSSL, SDL2, SDL2_ttf, FreeType
 
 ### Build
 
@@ -78,10 +93,33 @@ See `pages/` directory for sample HTML files, including Chapter 8 interactive te
 ## Development
 
 ### Development Scripts
-*   **`./scripts/rebuild.sh`**: Performs an incremental build, preserves the CMake cache, and symlinks `compile_commands.json` to the root for LSP support.
-*   **`./scripts/dev.sh`**: Builds the project and immediately launches the browser.
-*   **`./scripts/format.sh`**: Runs `clang-format` on all source files.
-*   **`./scripts/lint.sh`**: Runs `clang-tidy` (requires `compile_commands.json`).
+*   **Root Scripts**:
+    *   **`./scripts/setup.sh`**: Installs dependencies on your **HOST machine** (Linux Mint, Ubuntu, Fedora).
+    *   **`./scripts/rebuild.sh`**:     Incremental build with automatic LSP support.
+    *   **`./scripts/dev.sh`**:         Builds and launches the project on the host machine.
+    *   **`./scripts/release.sh`**:     Tags the current commit and triggers a GitHub Release.
+*   **Docker Tools** (`./scripts/docker/`):
+    *   **`./setup.sh`**: Installs dependencies inside the **isolated Docker container**.
+    *   **`./run.sh`**: Hermetic build and run with GUI passthrough.
+    *   **`./clean.sh`**: Removes container, images, and cached volumes.
+*   **Quality Tools** (`./scripts/quality/`):
+    *   **`./format.sh`**: Runs `clang-format` on all source files.
+    *   **`./lint.sh`**: Runs `clang-tidy` (requires `compile_commands.json`).
+    *   **`./fix.sh`**: Automatically applies safe lint fixes.
+*   **Test Tools** (`./scripts/test/`):
+    *   **`./unit.sh`**: Runs all unit tests.
+    *   **`./scripts/test/server.sh`**: Starts the Express test server.
+
+### Releases
+
+This project uses GitHub Actions to automate binary releases. To create a new release:
+
+1.  **Run the release script**:
+    ```bash
+    ./scripts/release.sh
+    ```
+2.  **Enter the version**: When prompted, enter a version tag starting with `v` (e.g., `v1.0.0`).
+3.  **Check GitHub**: A new release will be created automatically with the optimized `csurfer` binary attached.
 
 ### LSP / IDE Support
 The root `compile_commands.json` is automatically managed by the build scripts. If you use `clangd` or VS Code, it should work out of the box.
