@@ -95,8 +95,9 @@ See `pages/` directory for sample HTML files, including Chapter 8 interactive te
 ### Development Scripts
 *   **Root Scripts**:
     *   **`./scripts/setup.sh`**: Installs dependencies on your **HOST machine** (Linux Mint, Ubuntu, Fedora).
-    *   **`./scripts/rebuild.sh`**: Incremental build with automatic LSP support.
-    *   **`./scripts/dev.sh`**: Builds and launches the project on the host machine.
+    *   **`./scripts/rebuild.sh`**:     Incremental build with automatic LSP support.
+    *   **`./scripts/dev.sh`**:         Builds and launches the project on the host machine.
+    *   **`./scripts/release.sh`**:     Tags the current commit and triggers a GitHub Release.
 *   **Docker Tools** (`./scripts/docker/`):
     *   **`./setup.sh`**: Installs dependencies inside the **isolated Docker container**.
     *   **`./run.sh`**: Hermetic build and run with GUI passthrough.
@@ -107,7 +108,18 @@ See `pages/` directory for sample HTML files, including Chapter 8 interactive te
     *   **`./fix.sh`**: Automatically applies safe lint fixes.
 *   **Test Tools** (`./scripts/test/`):
     *   **`./unit.sh`**: Runs all unit tests.
-    *   **`./server.sh`**: Starts the Express test server.
+    *   **`./scripts/test/server.sh`**: Starts the Express test server.
+
+### Releases
+
+This project uses GitHub Actions to automate binary releases. To create a new release:
+
+1.  **Run the release script**:
+    ```bash
+    ./scripts/release.sh
+    ```
+2.  **Enter the version**: When prompted, enter a version tag starting with `v` (e.g., `v1.0.0`).
+3.  **Check GitHub**: A new release will be created automatically with the optimized `csurfer` binary attached.
 
 ### LSP / IDE Support
 The root `compile_commands.json` is automatically managed by the build scripts. If you use `clangd` or VS Code, it should work out of the box.
