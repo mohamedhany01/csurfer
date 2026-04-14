@@ -6,3 +6,4 @@ external
 notes/
 learn/
 .csurfer_cookies
+compile_commands.json
