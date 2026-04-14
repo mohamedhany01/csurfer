@@ -14,12 +14,18 @@ else
 fi
 
 echo "[Info] Detected: $DISTRO"
-echo "[Caution] This script will modify your physical HOST machine."
-echo "If you want isolation, use Docker instead: ./scripts/docker/run.sh"
-read -p "Do you want to proceed with Host Installation? (y/N) " confirm
-if [[ $confirm != [yY] && $confirm != [yY][eE][sS] ]]; then
-    echo "[Abort] No changes made to your host system."
-    exit 0
+
+# Skip confirmation if running in CI
+if [ "$CI" = "true" ]; then
+    echo "[Info] CI detected, skipping confirmation."
+else
+    echo "[Caution] This script will modify your physical HOST machine."
+    echo "If you want isolation, use Docker instead: ./scripts/docker/run.sh"
+    read -p "Do you want to proceed with Host Installation? (y/N) " confirm
+    if [[ $confirm != [yY] && $confirm != [yY][eE][sS] ]]; then
+        echo "[Abort] No changes made to your host system."
+        exit 0
+    fi
 fi
 
 # Detect OS
