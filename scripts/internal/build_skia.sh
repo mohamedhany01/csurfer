@@ -2,30 +2,32 @@
 set -e
 
 # Define directories
-SKIA_DIR="$(cd "$(dirname "$0")/../../external/skia" && pwd)"
+EXTERNAL_DIR="$(cd "$(dirname "$0")/../../" && pwd)/external"
+mkdir -p "$EXTERNAL_DIR"
+SKIA_DIR="$EXTERNAL_DIR/skia"
 OUT_DIR="$SKIA_DIR/out/Static"
 
 echo "[INFO] Skia source directory: $SKIA_DIR"
 echo "[INFO] Skia output directory: $OUT_DIR"
 
-# # Clone Skia if the directory does not exist
-# echo "[INFO] Checking if Skia is already cloned..."
-# if [ ! -d "$SKIA_DIR/.git" ]; then
-#     echo "[INFO] Skia not found. Cloning repository..."
-#     git clone https://skia.googlesource.com/skia.git "$SKIA_DIR"
-# else
-#     echo "[INFO] Skia already cloned."
-# fi
+# Clone Skia if the directory does not exist
+echo "[INFO] Checking if Skia is already cloned..."
+if [ ! -d "$SKIA_DIR/.git" ]; then
+    echo "[INFO] Skia not found. Cloning repository..."
+    git clone https://skia.googlesource.com/skia.git "$SKIA_DIR"
+else
+    echo "[INFO] Skia already cloned."
+fi
 
 # Change to Skia directory
 echo "[INFO] Changing directory to Skia source: $SKIA_DIR"
 cd "$SKIA_DIR"
 
-# # Update Skia repository
-# echo "[INFO] Fetching latest changes from Skia repository..."
-# git fetch
-# git checkout "chrome/m144"
-# echo "[INFO] Checked out branch chrome/m144"
+# Update Skia repository
+echo "[INFO] Fetching latest changes from Skia repository..."
+git fetch
+git checkout "chrome/m144"
+echo "[INFO] Checked out branch chrome/m144"
 
 # Sync dependencies
 echo "[INFO] Syncing Skia dependencies..."
