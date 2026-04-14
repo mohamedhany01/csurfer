@@ -2,7 +2,7 @@
 set -e
 
 # Define directories
-SKIA_DIR="$(cd "$(dirname "$0")/../external/skia" && pwd)"
+SKIA_DIR="$(cd "$(dirname "$0")/../../external/skia" && pwd)"
 OUT_DIR="$SKIA_DIR/out/Static"
 
 echo "[INFO] Skia source directory: $SKIA_DIR"

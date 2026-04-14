@@ -1,0 +1,27 @@
+name: C++ CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        ./scripts/setup.sh
+
+    - name: Build
+      run: |
+        ./scripts/rebuild.sh
+
+    - name: Test
+      run: |
+        # If you have unit tests, add them here
+        # ./build/unit_tests

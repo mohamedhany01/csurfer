@@ -1,5 +1,6 @@
-#!/bin/bash
-# Script to run all unit tests for CSurfer
+# Get the script directory and move to project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/../.."
 
 echo "[Tests] Compiling and running unit tests..."
 
