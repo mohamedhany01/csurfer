@@ -139,13 +139,23 @@ void Browser::handleEvents() {
     if (e.type == SDL_QUIT)
       running = false;
 
-    if (e.type == SDL_MOUSEBUTTONDOWN) {
-      if (e.button.button == SDL_BUTTON_LEFT) {
-        if (e.button.y < ui_.height()) {
-          ui_.click(e.button.x, e.button.y);
-        } else if (active_tab()) {
-          active_tab()->click(e.button.x, e.button.y - ui_.height());
-        }
+    if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+      if (e.button.y < ui_.height()) {
+        ui_.click(e.button.x, e.button.y);
+      } else if (active_tab()) {
+        active_tab()->handle_mousedown(e.button.x, e.button.y - ui_.height());
+      }
+    }
+
+    if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+      if (active_tab()) {
+        active_tab()->handle_mouseup(e.button.x, e.button.y - ui_.height());
+      }
+    }
+
+    if (e.type == SDL_MOUSEMOTION) {
+      if (active_tab()) {
+        active_tab()->handle_mousemove(e.button.x, e.button.y - ui_.height());
       }
     }
 

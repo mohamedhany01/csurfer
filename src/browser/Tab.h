@@ -29,6 +29,9 @@ public:
 
   // Interaction
   void click(int x, int y);
+  void handle_mousedown(int x, int y);
+  void handle_mousemove(int x, int y);
+  void handle_mouseup(int x, int y);
   void handle_keypress(SDL_Keycode key, const std::string &text);
   void submit_form(const Element *form);
   void scrolldown();
@@ -58,6 +61,7 @@ private:
   Url url_;
   std::vector<Url> history_;
   int scroll_ = 0;
+  bool is_dragging_scrollbar_ = false;
 
   std::unique_ptr<Element> root_;
   std::unique_ptr<DocumentLayout> document_;
@@ -67,6 +71,8 @@ private:
   Element *focus_ = nullptr;
 
   std::map<std::string, std::vector<std::string>> csp_directives_;
+
+  void render_scrollbar(SDL_Renderer *renderer, int y_offset) const;
 
   // Constants
   const int SCROLL_STEP = 100;
