@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(
-    c_surfer
+    csurfer
     VERSION 0.1.0
     LANGUAGES C CXX
 )
@@ -140,7 +140,7 @@ endif()
 # ------------------------------------------------------------------------------
 # Main executable
 # ------------------------------------------------------------------------------
-add_executable(c_surfer
+add_executable(csurfer
     src/main.cpp
     src/lexer/Lexeme.cpp
     src/lexer/Text.cpp
@@ -167,11 +167,11 @@ add_executable(c_surfer
 )
 
 # Add include directories for src/
-target_include_directories(c_surfer PRIVATE
+target_include_directories(csurfer PRIVATE
     ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(c_surfer PRIVATE
+target_link_libraries(csurfer PRIVATE
     project_warnings
     # skia
     SDL2::SDL2
@@ -187,7 +187,7 @@ target_link_libraries(c_surfer PRIVATE
 # ------------------------------------------------------------------------------
 
 # Assuming your assets folder is at project-root/assets
-target_compile_definitions(c_surfer PRIVATE
+target_compile_definitions(csurfer PRIVATE
     ASSETS_DIR="${PROJECT_SOURCE_DIR}/assets"
 )
 
@@ -195,12 +195,12 @@ target_compile_definitions(c_surfer PRIVATE
 # Logging configuration (compile-time)
 # ------------------------------------------------------------------------------
 if (ENABLE_LOGGING)
-    target_compile_definitions(c_surfer PRIVATE
+    target_compile_definitions(csurfer PRIVATE
         ENABLE_LOGGING=1
         LOG_LEVEL_${LOG_LEVEL}=1
     )
     message(STATUS "Logging enabled (level: ${LOG_LEVEL})")
 else()
-    target_compile_definitions(c_surfer PRIVATE ENABLE_LOGGING=0)
+    target_compile_definitions(csurfer PRIVATE ENABLE_LOGGING=0)
     message(STATUS "Logging disabled")
 endif()

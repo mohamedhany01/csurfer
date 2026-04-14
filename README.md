@@ -31,15 +31,15 @@ cmake --preset default
 cmake --build --preset default
 ```
 
-The executable `c_surfer` will be located in the `build/` directory.
+The executable `csurfer` will be located in the `build/` directory.
 
 ## Usage
 
 **Run anytime** - Launch the browser without arguments to see the welcome page, or pass a URL.
 
 ```bash
-./c_surfer                     # Opens about:welcome
-./c_surfer https://example.com  # Opens a specific site
+./csurfer                     # Opens about:welcome
+./csurfer https://example.com  # Opens a specific site
 ```
 
 The browser opens an 800x600 window.
@@ -70,7 +70,7 @@ Fonts are loaded from `assets/fonts/`. Modify `Browser.cpp` to change window siz
 ./scripts/run_server.sh
 
 # Then browse
-./build/c_surfer http://localhost:8000/ch8-login.html
+./build/csurfer http://localhost:8000/ch8-login.html
 ```
 
 See `pages/` directory for sample HTML files, including Chapter 8 interactive tests.

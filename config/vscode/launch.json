@@ -2,11 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug c_surfer (GDB)",
+            "name": "Debug csurfer (GDB)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/c_surfer",
-            "args": ["http://127.0.0.1:8000/styled.html"],
+            "program": "${workspaceFolder}/build/csurfer",
+            "args": [
+                "http://127.0.0.1:8000/styled.html"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -28,11 +30,13 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "Debug c_surfer (LLDB)",
+            "name": "Debug csurfer (LLDB)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/c_surfer",
-            "args": ["http://127.0.0.1:8000/styled.html"],
+            "program": "${workspaceFolder}/build/csurfer",
+            "args": [
+                "http://127.0.0.1:8000/styled.html"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -55,4 +59,3 @@
         }
     ]
 }
-

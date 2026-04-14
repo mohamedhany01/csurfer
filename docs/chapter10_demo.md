@@ -14,7 +14,7 @@ This document provides instructions for verifying the security features implemen
 ### Execution
 Run the following command:
 ```bash
-./build/c_surfer http://localhost:8000/bank_protected.html
+./build/csurfer http://localhost:8000/bank_protected.html
 ```
 
 ### Expected Result
@@ -32,21 +32,21 @@ Run the following command:
 ### Step 1: Login (Legitimate Session)
 Run the following command to log in and set a `SameSite=Lax` cookie:
 ```bash
-./build/c_surfer http://localhost:8000/login
+./build/csurfer http://localhost:8000/login
 ```
 *Result: Status should say "Login Successful".*
 
 ### Step 2: Verify Session Persistence
 Access your account page to confirm the cookie is being sent on same-origin requests:
 ```bash
-./build/c_surfer http://localhost:8000/bank_session.html
+./build/csurfer http://localhost:8000/bank_session.html
 ```
 *Result: Status should say "Status: Logged In (Session: Active)".*
 
 ### Step 3: Trigger the Attack (Cross-Origin POST)
 Simulate visiting a malicious site that tries to transfer money from your bank:
 ```bash
-./build/c_surfer http://localhost:8001/csrf_attacker.html
+./build/csurfer http://localhost:8001/csrf_attacker.html
 ```
 Click the **"CLAIM PRIZE NOW!"** button.
 
