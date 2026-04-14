@@ -20,13 +20,18 @@ sudo apt install build-essential cmake libssl-dev libsdl2-ttf-dev libfreetype-de
 
 ### Build
 
+**Recommended method (using scripts):**
 ```bash
-mkdir build && cd build
-cmake ..
-make -j8
+./scripts/rebuild.sh   # Configures and builds using Clang++ & Ninja
 ```
 
-The executable `c_surfer` will be in the `build/` directory.
+**Manual method (using Presets):**
+```bash
+cmake --preset default
+cmake --build --preset default
+```
+
+The executable `c_surfer` will be located in the `build/` directory.
 
 ## Usage
 
@@ -72,17 +77,14 @@ See `pages/` directory for sample HTML files, including Chapter 8 interactive te
 
 ## Development
 
-### Formatting
-CSurfer uses `clang-format` to maintain a consistent coding style.
-```bash
-./scripts/format.sh
-```
+### Development Scripts
+*   **`./scripts/rebuild.sh`**: Performs an incremental build, preserves the CMake cache, and symlinks `compile_commands.json` to the root for LSP support.
+*   **`./scripts/dev.sh`**: Builds the project and immediately launches the browser.
+*   **`./scripts/format.sh`**: Runs `clang-format` on all source files.
+*   **`./scripts/lint.sh`**: Runs `clang-tidy` (requires `compile_commands.json`).
 
-### Linting
-To check for logical errors, performance issues, and code quality, run the linter script (requires `clang-tidy` and `build/compile_commands.json`).
-```bash
-./scripts/lint.sh
-```
+### LSP / IDE Support
+The root `compile_commands.json` is automatically managed by the build scripts. If you use `clangd` or VS Code, it should work out of the box.
 
 ## License
 
