@@ -38,6 +38,13 @@ void DrawRect::execute(int scroll, int y_offset,
                 color_);
 }
 
+void DrawRoundedRect::execute(int scroll, int y_offset,
+                              gfx::GraphicsContext &ctx) const {
+  ctx.draw_rounded_rect(
+      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      radius_, color_);
+}
+
 DrawLine::DrawLine(int x1, int y1, int x2, int y2, gfx::Color color,
                    int thickness)
     : color_(color), thickness_(thickness) {

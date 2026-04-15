@@ -1,5 +1,6 @@
 #pragma once
 #include "gfx/Color.h"
+#include "layout/Rect.h"
 #include <string>
 
 namespace gfx {
@@ -65,6 +66,19 @@ private:
 /**
  * Draw a line between two points. Useful for borders and carets.
  */
+class DrawRoundedRect final : public DrawCommand {
+public:
+  DrawRoundedRect(const Rect &rect, float radius, const gfx::Color &color)
+      : rect_(rect), radius_(radius), color_(color) {}
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
+
+private:
+  Rect rect_;
+  float radius_;
+  gfx::Color color_;
+};
+
 class DrawLine final : public DrawCommand {
 public:
   DrawLine(int x1, int y1, int x2, int y2, gfx::Color color, int thickness = 1);

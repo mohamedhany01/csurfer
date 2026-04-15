@@ -164,12 +164,34 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
   const auto *el = dynamic_cast<const Element *>(node_);
   if (el) {
     auto styles = el->style();
+
+    // Support for Rounded Corners (Chapter 11, Section 4)
+    float radius = 0.0f;
+    if (styles.find("border-radius") != styles.end()) {
+      std::string rad_str = styles.at("border-radius");
+      // Basic px-stripping (e.g. "10px" -> "10")
+      if (rad_str.find("px") != std::string::npos) {
+        rad_str = rad_str.substr(0, rad_str.find("px"));
+      }
+      try {
+        radius = std::stof(rad_str);
+      } catch (...) {
+        radius = 0.0f; // Parsing error fallback
+      }
+    }
+
     if (styles.find("background-color") != styles.end()) {
       std::string bgcolor = styles.at("background-color");
       if (bgcolor != "transparent" && !bgcolor.empty()) {
         gfx::Color color = gfx::Color::FromName(bgcolor.c_str());
-        out.push_back(
-            std::make_unique<DrawRect>(x, y, x + width, y + height, color));
+
+        if (radius > 0.0f) {
+          out.push_back(std::make_unique<DrawRoundedRect>(
+              Rect{x, y, (int)width, (int)height}, radius, color));
+        } else {
+          out.push_back(
+              std::make_unique<DrawRect>(x, y, x + width, y + height, color));
+        }
       }
     }
   }
