@@ -5,9 +5,15 @@
 #include <core/SkFont.h>
 #include <core/SkPaint.h>
 #include <core/SkSurface.h>
+#include <memory>
 
 namespace gfx {
 
+/**
+ * Stage 2.1.4: Refactored to use SkSurface for better pixel buffering and
+ * rendering correctness. This is the implementation of Section One of Chapter
+ * 11.
+ */
 class SkiaContext final : public GraphicsContext {
 public:
   SkiaContext(int width, int height);
@@ -34,8 +40,8 @@ private:
   int width_;
   int height_;
 
-  SkBitmap bitmap_;
-  std::unique_ptr<SkCanvas> canvas_;
+  sk_sp<SkSurface> surface_;
+  SkCanvas *canvas_ = nullptr;
 
   // Cached SkPaint to avoid re-allocation
   SkPaint paint_;

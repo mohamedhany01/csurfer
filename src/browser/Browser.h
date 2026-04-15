@@ -6,6 +6,10 @@
 #include <memory>
 #include <vector>
 
+namespace gfx {
+class SkiaContext;
+}
+
 class Browser {
 public:
   Browser();
@@ -63,6 +67,10 @@ private:
   // Tab Collection
   std::vector<std::unique_ptr<Tab>> tabs_;
   size_t active_tab_index_ = 0;
+
+  // Graphics context for rendering page content using Skia
+  std::unique_ptr<gfx::SkiaContext> skia_ctx_;
+  SDL_Texture *skia_texture_ = nullptr;
 
   // Persistent State
   CookieJar cookie_jar_;

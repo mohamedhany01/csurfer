@@ -1,5 +1,6 @@
 #include "Browser.h"
 #include "gfx/SDLGraphicsContext.h"
+#include "gfx/SkiaContext.h"
 #include "request/HttpRequest.h"
 #include <iostream>
 
@@ -13,6 +14,7 @@ Browser::Browser(std::shared_ptr<IRequest> http)
   loadFont();
   createWindow();
   createRenderer();
+  skia_ctx_ = std::make_unique<gfx::SkiaContext>(WIDTH, HEIGHT);
 }
 
 Browser::Browser::~Browser() { shutdown(); }
@@ -61,6 +63,8 @@ void Browser::createRenderer() {
 
 void Browser::shutdown() {
   SDL_StopTextInput();
+  if (skia_texture_)
+    SDL_DestroyTexture(skia_texture_);
   if (renderer)
     SDL_DestroyRenderer(renderer);
   if (window)
@@ -209,11 +213,33 @@ void Browser::go_back() {
 }
 
 void Browser::draw() {
-  gfx::SDLGraphicsContext ctx(renderer);
-  ctx.clear(gfx::Color::White());
+  // Clear the screen to a light gray for UI area contrast
+  SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
+  SDL_RenderClear(renderer);
 
-  if (active_tab()) {
-    active_tab()->render(ctx, ui_.height());
+  if (active_tab() && skia_ctx_) {
+    // 1. Clear the Skia surface to white
+    skia_ctx_->clear(gfx::Color::White());
+
+    // 2. Render the current tab's content into the Skia surface
+    active_tab()->render(*skia_ctx_, ui_.height());
+
+    // 3. Prepare SDL Texture for blitting (Create if first time)
+    if (!skia_texture_) {
+      skia_texture_ =
+          SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                            SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
+    }
+
+    // 4. Copy raw pixels from Skia surface to SDL Texture
+    void *pixels = skia_ctx_->get_pixels();
+    int pitch = skia_ctx_->row_bytes();
+    if (pixels) {
+      SDL_UpdateTexture(skia_texture_, nullptr, pixels, pitch);
+    }
+
+    // 5. Present the Skia texture
+    SDL_RenderCopy(renderer, skia_texture_, nullptr, nullptr);
   }
 
   ui_.render(renderer);
