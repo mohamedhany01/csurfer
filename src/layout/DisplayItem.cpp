@@ -1,4 +1,5 @@
 #include "layout/DisplayItem.h"
+#include "gfx/GraphicsContext.h"
 
 DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font,
                    SDL_Color color)
@@ -9,25 +10,15 @@ DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font,
   bottom = y1 + (font_ ? TTF_FontLineSkip(font_) : 0);
 }
 
-void DrawText::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
-  if (!renderer || !font_)
-    return;
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font_, text_.c_str(), color_);
-  if (!surface)
-    return;
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  SDL_Rect dst{left, top - scroll + y_offset, surface->w, surface->h};
-  SDL_RenderCopy(renderer, texture, nullptr, &dst);
-
-  SDL_DestroyTexture(texture);
-  SDL_FreeSurface(surface);
+/**
+ * Stage 1.1: DrawText now uses the GraphicsContext abstraction.
+ * It passes the raw font handle for backward compatibility with SDL.
+ */
+void DrawText::execute(int scroll, int y_offset,
+                       gfx::GraphicsContext &ctx) const {
+  ctx.draw_text(left, top - scroll + y_offset, text_,
+                gfx::Color::FromRGBA(color_.r, color_.g, color_.b, color_.a),
+                font_);
 }
 
 DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
@@ -38,13 +29,13 @@ DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
   bottom = y2;
 }
 
-void DrawRect::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
-  if (!renderer)
-    return;
-
-  SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
-  SDL_Rect rect{left, top - scroll + y_offset, right - left, bottom - top};
-  SDL_RenderFillRect(renderer, &rect);
+/**
+ * Stage 1.1: DrawRect now uses ctx.draw_rect.
+ */
+void DrawRect::execute(int scroll, int y_offset,
+                       gfx::GraphicsContext &ctx) const {
+  ctx.draw_rect({left, top - scroll + y_offset, right - left, bottom - top},
+                gfx::Color::FromRGBA(color_.r, color_.g, color_.b, color_.a));
 }
 
 DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
@@ -56,15 +47,12 @@ DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
   bottom = y2;
 }
 
-void DrawLine::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
-  if (!renderer)
-    return;
-
-  SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
-  // Simple thickness implementation using multiple lines if needed (for
-  // simplicity here we just do 1 line or offset)
-  for (int i = 0; i < thickness_; ++i) {
-    SDL_RenderDrawLine(renderer, left + i, top - scroll + y_offset, right + i,
-                       bottom - scroll + y_offset);
-  }
+/**
+ * Stage 1.1: DrawLine now uses ctx.draw_line.
+ */
+void DrawLine::execute(int scroll, int y_offset,
+                       gfx::GraphicsContext &ctx) const {
+  ctx.draw_line(
+      left, top - scroll + y_offset, right, bottom - scroll + y_offset,
+      gfx::Color::FromRGBA(color_.r, color_.g, color_.b, color_.a), thickness_);
 }

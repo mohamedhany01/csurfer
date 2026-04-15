@@ -31,7 +31,7 @@ void SkiaContext::draw_line(int x1, int y1, int x2, int y2, const Color &color,
 }
 
 void SkiaContext::draw_text(int x, int y, const std::string &text,
-                            const Color &color) {
+                            const Color &color, void *font_handle) {
   paint_.setColor(ToSkColor(color));
   paint_.setStyle(SkPaint::kFill_Style);
 

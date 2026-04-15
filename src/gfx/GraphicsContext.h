@@ -24,7 +24,7 @@ public:
 
   // Text Rendering (Using a simplified font abstraction)
   virtual void draw_text(int x, int y, const std::string &text,
-                         const Color &color) = 0;
+                         const Color &color, void *font_handle = nullptr) = 0;
 
   // Rounded Rectangles
   virtual void draw_rounded_rect(const Rect &rect, float radius,

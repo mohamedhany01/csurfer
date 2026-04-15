@@ -17,8 +17,8 @@ public:
   void draw_rect(const Rect &rect, const Color &color) override;
   void draw_line(int x1, int y1, int x2, int y2, const Color &color,
                  int thickness = 1) override;
-  void draw_text(int x, int y, const std::string &text,
-                 const Color &color) override;
+  void draw_text(int x, int y, const std::string &text, const Color &color,
+                 void *font_handle = nullptr) override;
   void draw_rounded_rect(const Rect &rect, float radius,
                          const Color &color) override;
   void save_layer(float opacity) override;

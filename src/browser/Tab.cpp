@@ -2,6 +2,7 @@
 #include "css/CSSParser.h"
 #include "css/CSSSelector.h"
 #include "css/StyleEngine.h"
+#include "gfx/GraphicsContext.h"
 #include "html/HTMLParser.h"
 #include "js/JSContext.h"
 #include "layout/LayoutTree.h"
@@ -206,17 +207,17 @@ void Tab::rebuild_layout() {
   paint_tree(*document_, display_list_);
 }
 
-// Revised draw signature to take renderer directly
-void Tab::render(SDL_Renderer *renderer, int y_offset) const {
+// Revised draw signature to take GraphicsContext
+void Tab::render(gfx::GraphicsContext &ctx, int y_offset) const {
   if (!document_)
     return;
   for (const auto &cmd : display_list_) {
-    cmd->execute(scroll_, y_offset, renderer);
+    cmd->execute(scroll_, y_offset, ctx);
   }
-  render_scrollbar(renderer, y_offset);
+  render_scrollbar(ctx, y_offset);
 }
 
-void Tab::render_scrollbar(SDL_Renderer *renderer, int y_offset) const {
+void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
   if (!document_)
     return;
 
@@ -231,9 +232,8 @@ void Tab::render_scrollbar(SDL_Renderer *renderer, int y_offset) const {
   int bar_x = window_width_ - bar_width;
 
   // Track (Background)
-  SDL_Rect track_rect = {bar_x, y_offset, bar_width, viewport_height};
-  SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
-  SDL_RenderFillRect(renderer, &track_rect);
+  ctx.draw_rect({bar_x, y_offset, bar_width, viewport_height},
+                gfx::Color::FromRGB(240, 240, 240));
 
   // Thumb (Draggable part)
   double thumb_ratio = (double)viewport_height / doc_height;
@@ -245,9 +245,8 @@ void Tab::render_scrollbar(SDL_Renderer *renderer, int y_offset) const {
   int thumb_y =
       y_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
 
-  SDL_Rect thumb_rect = {bar_x + 2, thumb_y, bar_width - 4, thumb_height};
-  SDL_SetRenderDrawColor(renderer, 160, 160, 160, 255);
-  SDL_RenderFillRect(renderer, &thumb_rect);
+  ctx.draw_rect({bar_x + 2, thumb_y, bar_width - 4, thumb_height},
+                gfx::Color::FromRGB(160, 160, 160));
 }
 
 void Tab::handle_mousedown(int x, int y) {

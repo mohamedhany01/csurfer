@@ -1,4 +1,5 @@
 #include "Browser.h"
+#include "gfx/SDLGraphicsContext.h"
 #include "request/HttpRequest.h"
 #include <iostream>
 
@@ -208,11 +209,11 @@ void Browser::go_back() {
 }
 
 void Browser::draw() {
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-  SDL_RenderClear(renderer);
+  gfx::SDLGraphicsContext ctx(renderer);
+  ctx.clear(gfx::Color::White());
 
   if (active_tab()) {
-    active_tab()->render(renderer, ui_.height());
+    active_tab()->render(ctx, ui_.height());
   }
 
   ui_.render(renderer);

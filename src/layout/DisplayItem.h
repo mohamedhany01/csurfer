@@ -3,10 +3,14 @@
 #include <SDL2/SDL_ttf.h>
 #include <string>
 
+namespace gfx {
+class GraphicsContext;
+}
+
 // A single drawing command in the final display list.
 //
 // Coordinates are in page space (not yet scrolled). The execute method takes
-// the current scroll offset and an SDL renderer to actually draw.
+// the current scroll offset and a GraphicsContext to actually draw.
 class DrawCommand {
 public:
   virtual ~DrawCommand() = default;
@@ -16,10 +20,10 @@ public:
   int bottom = 0;
   int right = 0;
 
-  // Draw this command using the given scroll offset and SDL renderer.
+  // Draw this command using the given scroll offset and graphics context.
   // y_offset is used to shift content below the CSurfer UI.
   virtual void execute(int scroll, int y_offset,
-                       SDL_Renderer *renderer) const = 0;
+                       gfx::GraphicsContext &ctx) const = 0;
 };
 
 // Draw a single piece of text at a fixed page position.
@@ -32,7 +36,8 @@ public:
   DrawText(int x1, int y1, std::string text, TTF_Font *font,
            SDL_Color color = {0, 0, 0, 255});
 
-  void execute(int scroll, int y_offset, SDL_Renderer *renderer) const override;
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
 
 private:
   std::string text_;
@@ -45,7 +50,8 @@ class DrawRect final : public DrawCommand {
 public:
   DrawRect(int x1, int y1, int x2, int y2, SDL_Color color);
 
-  void execute(int scroll, int y_offset, SDL_Renderer *renderer) const override;
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
 
 private:
   SDL_Color color_{0, 0, 0, 255};
@@ -58,7 +64,8 @@ class DrawLine final : public DrawCommand {
 public:
   DrawLine(int x1, int y1, int x2, int y2, SDL_Color color, int thickness = 1);
 
-  void execute(int scroll, int y_offset, SDL_Renderer *renderer) const override;
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
 
 private:
   SDL_Color color_;

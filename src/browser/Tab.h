@@ -45,7 +45,7 @@ public:
 
   // Rendering
   // Paints the tab's display list into the output renderer, offset by y_offset
-  void render(SDL_Renderer *renderer, int y_offset) const;
+  void render(gfx::GraphicsContext &ctx, int y_offset) const;
 
   // Getters
   const Url &url() const { return url_; }
@@ -72,7 +72,7 @@ private:
 
   std::map<std::string, std::vector<std::string>> csp_directives_;
 
-  void render_scrollbar(SDL_Renderer *renderer, int y_offset) const;
+  void render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const;
 
   // Constants
   const int SCROLL_STEP = 100;
