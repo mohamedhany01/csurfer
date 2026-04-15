@@ -17,6 +17,13 @@ jobs:
       env:
         CI: true
       run: ./scripts/setup.sh
+    - name: Cache Skia
+      id: cache-skia
+      uses: actions/cache@v4
+      with:
+        path: external/skia
+        key: ${{ runner.os }}-skia-build-v1
+    
     - name: Build
       run: ./scripts/rebuild.sh
 
@@ -32,10 +39,21 @@ jobs:
         env:
           CI: true
         run: ./scripts/setup.sh
+      - name: Cache Skia
+        id: cache-skia
+        uses: actions/cache@v4
+        with:
+          path: external/skia
+          key: ${{ runner.os }}-skia-build-v1
+
       - name: Build Release
         run: |
+          if [ ! -f "external/skia/out/Static/libskia.a" ]; then
+              echo "[Info] Skia library not found. Building..."
+              ./scripts/internal/build_skia.sh
+          fi
           cmake --preset release
-          cmake --build --preset release
+          cmake --build --preset release -v
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
