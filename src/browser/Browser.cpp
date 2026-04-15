@@ -32,8 +32,7 @@ void Browser::initTTF() {
 }
 
 void Browser::loadFont() {
-  std::string font_path =
-      std::string(ASSETS_DIR) + "/fonts/NotoSansCJK-Regular.ttc";
+  std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
   font = TTF_OpenFont(font_path.c_str(), 16);
   if (!font) {
     std::cerr << "Font error: " << TTF_GetError() << std::endl;
