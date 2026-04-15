@@ -1,16 +1,17 @@
 #pragma once
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include "gfx/Color.h"
 #include <string>
 
 namespace gfx {
 class GraphicsContext;
 }
 
-// A single drawing command in the final display list.
-//
-// Coordinates are in page space (not yet scrolled). The execute method takes
-// the current scroll offset and a GraphicsContext to actually draw.
+/**
+ * A single drawing command in the final display list.
+ *
+ * Coordinates are in page space (not yet scrolled). The execute method takes
+ * the current scroll offset and a GraphicsContext to actually draw.
+ */
 class DrawCommand {
 public:
   virtual ~DrawCommand() = default;
@@ -20,41 +21,45 @@ public:
   int bottom = 0;
   int right = 0;
 
-  // Draw this command using the given scroll offset and graphics context.
-  // y_offset is used to shift content below the CSurfer UI.
+  /**
+   * Draw this command using the given scroll offset and graphics context.
+   * y_offset is used to shift content below the CSurfer UI.
+   */
   virtual void execute(int scroll, int y_offset,
                        gfx::GraphicsContext &ctx) const = 0;
 };
 
-// Draw a single piece of text at a fixed page position.
-//
-// Example:
-//   auto cmd = std::make_unique<DrawText>(x, y, "Hello", font);
-//   cmd->execute(scroll, renderer);
+/**
+ * Draw a single piece of text at a fixed page position.
+ *
+ * Stage 1.2: Removed SDL-specific TTF_Font and SDL_Color.
+ */
 class DrawText final : public DrawCommand {
 public:
-  DrawText(int x1, int y1, std::string text, TTF_Font *font,
-           SDL_Color color = {0, 0, 0, 255});
+  DrawText(int x1, int y1, std::string text, void *font_handle,
+           gfx::Color color = gfx::Color::Black());
 
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
   std::string text_;
-  TTF_Font *font_ = nullptr;
-  SDL_Color color_;
+  void *font_handle_ = nullptr;
+  gfx::Color color_;
 };
 
-// Draw a filled rectangle, used for things like code block backgrounds.
+/**
+ * Draw a filled rectangle, used for things like code block backgrounds.
+ */
 class DrawRect final : public DrawCommand {
 public:
-  DrawRect(int x1, int y1, int x2, int y2, SDL_Color color);
+  DrawRect(int x1, int y1, int x2, int y2, gfx::Color color);
 
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
-  SDL_Color color_{0, 0, 0, 255};
+  gfx::Color color_ = gfx::Color::Black();
 };
 
 /**
@@ -62,12 +67,12 @@ private:
  */
 class DrawLine final : public DrawCommand {
 public:
-  DrawLine(int x1, int y1, int x2, int y2, SDL_Color color, int thickness = 1);
+  DrawLine(int x1, int y1, int x2, int y2, gfx::Color color, int thickness = 1);
 
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
-  SDL_Color color_;
+  gfx::Color color_;
   int thickness_;
 };

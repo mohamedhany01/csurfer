@@ -1,11 +1,10 @@
 #include "layout/BlockLayout.h"
 
-#include "lexer/Text.h"
-#include "utils/Parser.h"
-
 #include "layout/InputLayout.h"
 #include "layout/LineLayout.h"
 #include "layout/TextLayout.h"
+#include "lexer/Text.h"
+#include "utils/Parser.h"
 #include <SDL2/SDL_ttf.h>
 #include <algorithm>
 #include <cmath>
@@ -168,26 +167,12 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
     if (styles.find("background-color") != styles.end()) {
       std::string bgcolor = styles.at("background-color");
       if (bgcolor != "transparent" && !bgcolor.empty()) {
-        // Very simple color parsing for now (assuming named colors or hex)
-        // Just map some basic colors to prove it works
-        SDL_Color color{200, 200, 200, 255}; // Default Gray
-        if (bgcolor == "blue")
-          color = {0, 0, 255, 255};
-        else if (bgcolor == "red")
-          color = {255, 0, 0, 255};
-        else if (bgcolor == "green")
-          color = {0, 255, 0, 255};
-        else if (bgcolor == "yellow")
-          color = {255, 255, 0, 255};
-        else if (bgcolor == "black")
-          color = {0, 0, 0, 255};
-
+        gfx::Color color = gfx::Color::FromName(bgcolor.c_str());
         out.push_back(
             std::make_unique<DrawRect>(x, y, x + width, y + height, color));
       }
     }
   }
-  // In inline mode, the text is painted by TextLayout nodes doing paint_tree
 }
 
 void BlockLayout::recurse(const Lexeme *node) { layoutNode(node); }
@@ -197,11 +182,7 @@ void BlockLayout::layoutNode(const Lexeme *node) {
     return;
 
   if (node->type() == LexemeType::Text) {
-    // A Text node itself doesn't have styles, its parent does.
     const Element *parent_el = nullptr;
-    // We need to trace back from LayoutTree or find parent in DOM.
-    // Lexeme doesn't have parent() in the interface, but Element/Text do.
-    // Fortunately Text has parent(). But node is a Lexeme*.
     if (const auto *t = dynamic_cast<const Text *>(node)) {
       parent_el = dynamic_cast<const Element *>(t->parent());
     }
@@ -216,7 +197,7 @@ void BlockLayout::layoutNode(const Lexeme *node) {
         new_line();
       } else if (el->tag() == "input" || el->tag() == "button") {
         input(el);
-        return; // Atomic widget handling
+        return;
       }
     }
     layoutElement(el);
@@ -237,9 +218,6 @@ void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
   auto words = utils::splitWords(text);
   for (const auto &w : words) {
     if (w == "\n") {
-      // In HTML, source-code newlines should just collapse into whitespace.
-      // Since word() adds a space gap after each word automatically, we just
-      // skip it.
       continue;
     }
     word(text_node, w, parent_element);
@@ -248,10 +226,11 @@ void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
 
 void BlockLayout::word(const Lexeme *node, const std::string &word_text,
                        const Element *parent_element) {
-  TTF_Font *font = currentFont(parent_element);
-  if (!font)
+  void *font_handle = currentFont(parent_element);
+  if (!font_handle)
     return;
 
+  TTF_Font *font = static_cast<TTF_Font *>(font_handle);
   int w = 0;
   int h = 0;
   TTF_SizeUTF8(font, word_text.c_str(), &w, &h);
@@ -260,23 +239,11 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
     new_line();
   }
 
-  SDL_Color current_color = {0, 0, 0, 255}; // Default black
+  gfx::Color current_color = gfx::Color::Black();
   if (parent_element) {
     auto styles = parent_element->style();
     if (styles.find("color") != styles.end()) {
-      std::string c_str = styles.at("color");
-      if (c_str == "red")
-        current_color = {255, 0, 0, 255};
-      else if (c_str == "green")
-        current_color = {0, 128, 0, 255};
-      else if (c_str == "blue")
-        current_color = {0, 0, 255, 255};
-      else if (c_str == "yellow")
-        current_color = {255, 255, 0, 255};
-      else if (c_str == "white")
-        current_color = {255, 255, 255, 255};
-      else if (c_str == "black")
-        current_color = {0, 0, 0, 255};
+      current_color = gfx::Color::FromName(styles.at("color").c_str());
     }
   }
 
@@ -285,23 +252,12 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      auto text_layout =
-          std::make_unique<TextLayout>(node, word_text, font, current_color);
-      // Give it its relative block position (y is set during
-      // LineLayout::layout) but relative to the block, not the line. Wait,
-      // TextLayout::layout sets own width/height. But we need to position it
-      // inline!
-
-      // We must implement positioning inside LineLayout or TextLayout.
-      // Following Chapter 7 logic, text_layout->x gets set relative.
-      // Wait, let's just do it here for inline text flow:
+      auto text_layout = std::make_unique<TextLayout>(
+          node, word_text, font_handle, current_color);
       int space_w = 0;
       TTF_SizeUTF8(font, " ", &space_w, nullptr);
 
-      // Let's position it horizontally here
       text_layout->x = this->x + cursor_x_;
-
-      // The parent of TextLayout is the LineLayout (not used, but logical)
       current_line->children_.push_back(std::move(text_layout));
       cursor_x_ += w + space_w;
     }
@@ -316,8 +272,6 @@ void BlockLayout::new_line() {
   }
 
   children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
-  // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " <<
-  // (int)layout_mode() << ")\n";
 }
 
 void BlockLayout::input(const Lexeme *node) {
@@ -334,16 +288,12 @@ void BlockLayout::input(const Lexeme *node) {
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      TTF_Font *font = currentFont(el);
+      void *font_handle = currentFont(el);
 
-      // Color from style
-      SDL_Color color = {0, 0, 0, 255};
+      gfx::Color color = gfx::Color::Black();
       auto styles = el->style();
       if (styles.count("color")) {
-        if (styles.at("color") == "red")
-          color = {255, 0, 0, 255};
-        else if (styles.at("color") == "blue")
-          color = {0, 0, 255, 255};
+        color = gfx::Color::FromName(styles.at("color").c_str());
       }
 
       LayoutObject *prev_obj = nullptr;
@@ -351,20 +301,22 @@ void BlockLayout::input(const Lexeme *node) {
         prev_obj = current_line->children_.back().get();
       }
 
-      auto input_layout = std::make_unique<InputLayout>(node, current_line,
-                                                        prev_obj, font, color);
+      auto input_layout = std::make_unique<InputLayout>(
+          node, current_line, prev_obj, font_handle, color);
       current_line->children_.push_back(std::move(input_layout));
 
       int space_w = 0;
-      TTF_SizeUTF8(font, " ", &space_w, nullptr);
+      if (font_handle) {
+        TTF_SizeUTF8(static_cast<TTF_Font *>(font_handle), " ", &space_w,
+                     nullptr);
+      }
       cursor_x_ += w + space_w;
     }
   }
 }
 
-TTF_Font *BlockLayout::currentFont(const Element *element) {
-  std::string font_path =
-      std::string(ASSETS_DIR) + "/fonts/NotoSansCJK-Regular.ttc";
+void *BlockLayout::currentFont(const Element *element) {
+  std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
 
   int f_size = 16;
   bool f_bold = false;

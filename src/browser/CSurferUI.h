@@ -3,6 +3,7 @@
 #include "layout/DisplayItem.h"
 #include "layout/Rect.h"
 #include "url/Url.h"
+#include <SDL2/SDL.h>
 #include <string>
 #include <vector>
 

@@ -1,30 +1,35 @@
 #include "layout/TextLayout.h"
+#include <SDL2/SDL_ttf.h>
 
-TextLayout::TextLayout(const Lexeme *node, std::string word, TTF_Font *font,
-                       SDL_Color color)
-    : node_(node), word_(std::move(word)), font_(font), color_(color) {}
+TextLayout::TextLayout(const Lexeme *node, std::string word, void *font_handle,
+                       gfx::Color color)
+    : node_(node), word_(std::move(word)), font_handle_(font_handle),
+      color_(color) {}
 
+/**
+ * Stage 1.2: layout() still uses SDL_ttf for measurement.
+ * Decoupling measurement will follow in a later stage.
+ */
 void TextLayout::layout() {
-  if (!font_ || word_.empty()) {
+  if (!font_handle_ || word_.empty()) {
     width = 0;
     height = 0;
     return;
   }
 
-  // Measure the width and height of this specific word based on its font.
-  // Note: We do NOT set x and y here! The parent LineLayout is responsible
-  // for positioning us along the line and aligning our baseline.
+  TTF_Font *font = static_cast<TTF_Font *>(font_handle_);
   int w = 0;
   int h = 0;
-  TTF_SizeUTF8(font_, word_.c_str(), &w, &h);
+  TTF_SizeUTF8(font, word_.c_str(), &w, &h);
 
   width = w;
   height = h;
 }
 
 void TextLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
-  if (width > 0 && height > 0 && font_) {
-    out.push_back(std::make_unique<DrawText>(x, y, word_, font_, color_));
+  if (width > 0 && height > 0 && font_handle_) {
+    out.push_back(
+        std::make_unique<DrawText>(x, y, word_, font_handle_, color_));
   }
 }
 

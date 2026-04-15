@@ -1,27 +1,27 @@
 #include "layout/DisplayItem.h"
 #include "gfx/GraphicsContext.h"
 
-DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font,
-                   SDL_Color color)
-    : text_(std::move(text)), font_(font), color_(color) {
+DrawText::DrawText(int x1, int y1, std::string text, void *font_handle,
+                   gfx::Color color)
+    : text_(std::move(text)), font_handle_(font_handle), color_(color) {
   left = x1;
   top = y1;
   right = x1;
-  bottom = y1 + (font_ ? TTF_FontLineSkip(font_) : 0);
+  // Note: bottom is usually calculated from font metrics, but for now we
+  // initialize it to top. The actual bounding box is updated during layout.
+  bottom = y1;
 }
 
 /**
- * Stage 1.1: DrawText now uses the GraphicsContext abstraction.
- * It passes the raw font handle for backward compatibility with SDL.
+ * Stage 1.2: DrawText now uses the generic GraphicsContext.
+ * It passes the opaque font handle.
  */
 void DrawText::execute(int scroll, int y_offset,
                        gfx::GraphicsContext &ctx) const {
-  ctx.draw_text(left, top - scroll + y_offset, text_,
-                gfx::Color::FromRGBA(color_.r, color_.g, color_.b, color_.a),
-                font_);
+  ctx.draw_text(left, top - scroll + y_offset, text_, color_, font_handle_);
 }
 
-DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
+DrawRect::DrawRect(int x1, int y1, int x2, int y2, gfx::Color color)
     : color_(color) {
   left = x1;
   top = y1;
@@ -30,15 +30,15 @@ DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
 }
 
 /**
- * Stage 1.1: DrawRect now uses ctx.draw_rect.
+ * Stage 1.2: DrawRect now uses ctx.draw_rect with gfx::Color.
  */
 void DrawRect::execute(int scroll, int y_offset,
                        gfx::GraphicsContext &ctx) const {
   ctx.draw_rect({left, top - scroll + y_offset, right - left, bottom - top},
-                gfx::Color::FromRGBA(color_.r, color_.g, color_.b, color_.a));
+                color_);
 }
 
-DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
+DrawLine::DrawLine(int x1, int y1, int x2, int y2, gfx::Color color,
                    int thickness)
     : color_(color), thickness_(thickness) {
   left = x1;
@@ -48,11 +48,10 @@ DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
 }
 
 /**
- * Stage 1.1: DrawLine now uses ctx.draw_line.
+ * Stage 1.2: DrawLine now uses ctx.draw_line with gfx::Color.
  */
 void DrawLine::execute(int scroll, int y_offset,
                        gfx::GraphicsContext &ctx) const {
-  ctx.draw_line(
-      left, top - scroll + y_offset, right, bottom - scroll + y_offset,
-      gfx::Color::FromRGBA(color_.r, color_.g, color_.b, color_.a), thickness_);
+  ctx.draw_line(left, top - scroll + y_offset, right,
+                bottom - scroll + y_offset, color_, thickness_);
 }

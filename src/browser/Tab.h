@@ -6,6 +6,7 @@
 #include "lexer/Element.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
+#include <SDL2/SDL.h>
 
 #include <map>
 #include <memory>
