@@ -5,6 +5,7 @@
 #include <core/SkFont.h>
 #include <core/SkPaint.h>
 #include <core/SkSurface.h>
+#include <core/SkTypeface.h>
 #include <memory>
 
 namespace gfx {
@@ -42,6 +43,7 @@ private:
 
   sk_sp<SkSurface> surface_;
   SkCanvas *canvas_ = nullptr;
+  sk_sp<SkTypeface> typeface_;
 
   // Cached SkPaint to avoid re-allocation
   SkPaint paint_;

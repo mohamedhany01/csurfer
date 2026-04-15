@@ -1,7 +1,9 @@
 #include "SkiaContext.h"
 #include <core/SkColor.h>
+#include <core/SkFontMgr.h>
 #include <core/SkPath.h>
 #include <core/SkRRect.h>
+#include <ports/SkFontMgr_directory.h>
 
 namespace gfx {
 
@@ -16,6 +18,22 @@ SkiaContext::SkiaContext(int width, int height)
     canvas_ = surface_->getCanvas();
     canvas_->drawColor(SK_ColorWHITE);
   }
+
+  // Stage 2.2.1: Load explicit font to fix "invisible" text
+  // We use a custom directory FontMgr to keep it simple and hermetic
+  std::string fonts_dir = std::string(ASSETS_DIR) + "/fonts";
+  sk_sp<SkFontMgr> font_mgr = SkFontMgr_New_Custom_Directory(fonts_dir.c_str());
+
+  if (font_mgr) {
+    std::string font_path = fonts_dir + "/Ubuntu-Regular.ttf";
+    typeface_ = font_mgr->makeFromFile(font_path.c_str());
+  }
+
+  if (!typeface_) {
+    typeface_ = SkTypeface::MakeEmpty(); // Last resort
+  }
+
+  paint_.setAntiAlias(true);
 }
 
 void SkiaContext::draw_rect(const Rect &rect, const Color &color) {
@@ -39,13 +57,13 @@ void SkiaContext::draw_line(int x1, int y1, int x2, int y2, const Color &color,
 
 void SkiaContext::draw_text(int x, int y, const std::string &text,
                             const Color &color, void *font_handle) {
-  if (!canvas_)
+  if (!canvas_ || !typeface_)
     return;
   paint_.setColor(ToSkColor(color));
   paint_.setStyle(SkPaint::kFill_Style);
 
-  // For now, using a default system font of size 16
-  SkFont font(nullptr, 16);
+  // Use the loaded typeface (Stage 2.2.2)
+  SkFont font(typeface_, 16);
   canvas_->drawString(text.c_str(), x, y, font, paint_);
 }
 
