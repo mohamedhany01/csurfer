@@ -1,5 +1,6 @@
 #include "SkiaContext.h"
 #include <core/SkColor.h>
+#include <core/SkFontMetrics.h>
 #include <core/SkFontMgr.h>
 #include <core/SkPath.h>
 #include <core/SkRRect.h>
@@ -64,7 +65,15 @@ void SkiaContext::draw_text(int x, int y, const std::string &text,
 
   // Use the loaded typeface (Stage 2.2.2)
   SkFont font(typeface_, 16);
-  canvas_->drawString(text.c_str(), x, y, font, paint_);
+
+  // Stage 2.2.3: Baseline Correction
+  // Skia's y is the baseline. Our layout y is the top.
+  // Shifting downward by the font's ascent correctly aligns the two.
+  SkFontMetrics metrics;
+  font.getMetrics(&metrics);
+  float y_baseline = y + std::abs(metrics.fAscent);
+
+  canvas_->drawString(text.c_str(), x, y_baseline, font, paint_);
 }
 
 void SkiaContext::draw_rounded_rect(const Rect &rect, float radius,
