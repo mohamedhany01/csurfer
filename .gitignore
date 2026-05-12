@@ -4,7 +4,6 @@ build-release
 .vscode
 external
 .cache
-.agents
 notes/
 learn/
 .csurfer_cookies
