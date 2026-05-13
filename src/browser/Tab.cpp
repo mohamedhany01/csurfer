@@ -89,7 +89,9 @@ void Tab::load(const Url &url, const std::string &payload) {
            "CSurfer</h1><p>Your lightweight, SOLID-powered "
            "browser.</p><hr><p>Visit the project on GitHub:</p><a "
            "href=\"https://github.com/mohamedhany01/csurfer\">mohamedhany01/"
-           "csurfer</a><br><br><p><i>Enjoy surfing the solid "
+           "csurfer</a><br><br><p>Local Test Pages:</p><a "
+           "href=\"http://localhost:8000/\">http://localhost:8000/</a>"
+           "<br><br><p><i>Enjoy surfing the solid "
            "way!</i></p></div></body></html>";
   } else {
     // Fetch page body
