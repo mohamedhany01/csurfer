@@ -41,4 +41,5 @@ sequenceDiagram
         note over T: if anchor found
         T->>T: load(resolved_url)
     end
+end
 ```

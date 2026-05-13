@@ -1,11 +1,11 @@
 # C Surfer
 
-A minimal web browser written in C++ using SDL2. Parse HTML, fetch pages, and render text in a simple window.
+A minimal web browser written in C++ using SDL2 and Skia. Parse HTML, fetch pages, and render complex graphics in a simple window.
 
 ## Overview
 
-**Get started quickly** - C Surfer demonstrates core browser concepts: HTML parsing, HTTP requests, and text rendering. 
-**Now with Multi-Tab support!** Built with modern C++23 and SDL2.
+**Get started quickly** - C Surfer demonstrates core browser concepts: HTML parsing, HTTP requests, and high-performance Skia-based rendering. 
+**Now with Multi-Tab support and Visual Effects!** Built with modern C++23, SDL2, and Skia.
 
 ## Installation
 
@@ -24,14 +24,14 @@ Get your environment ready with one command. Supports **Debian/Ubuntu** and **Fe
 If you prefer a completely isolated environment, you can build and run CSurfer using Docker. This handles all dependencies and GUI passthrough for you:
 
 ```bash
-./scripts/docker-run.sh
+./scripts/docker/run.sh
 ```
 
 ### Manual Installation
 If your distro is not supported by the script, you will need:
 *   **Compiler**: Clang++ (Standard C++23 support)
 *   **Build Tools**: CMake 3.28+, Ninja
-*   **Libraries**: OpenSSL, SDL2, SDL2_ttf, FreeType
+*   **Libraries**: OpenSSL, SDL2, Skia (externally managed/built), FreeType
 
 ### Build
 
@@ -53,8 +53,8 @@ The executable `csurfer` will be located in the `build/` directory.
 **Run anytime** - Launch the browser without arguments to see the welcome page, or pass a URL.
 
 ```bash
-./csurfer                     # Opens about:welcome
-./csurfer https://example.com  # Opens a specific site
+./build/csurfer                     # Opens about:welcome
+./build/csurfer https://example.com  # Opens a specific site
 ```
 
 The browser opens an 800x600 window.
@@ -73,7 +73,7 @@ The browser opens an 800x600 window.
 
 ## Configuration
 
-Fonts are loaded from `assets/fonts/`. Modify `Browser.cpp` to change window size or font path.
+Fonts are loaded from `assets/fonts/`. Modify `src/gfx/SkiaFont.cpp` to adjust font management or `Browser.cpp` to change window size.
 
 ## Examples
 
@@ -82,13 +82,13 @@ Fonts are loaded from `assets/fonts/`. Modify `Browser.cpp` to change window siz
 ```bash
 # Start Express test server (default port 8000)
 # Requires Node.js and npm
-./scripts/run_server.sh
+./scripts/test/server.sh
 
 # Then browse
 ./build/csurfer http://localhost:8000/ch8-login.html
 ```
 
-See `pages/` directory for sample HTML files, including Chapter 8 interactive tests.
+See `pages/` directory for sample HTML files, including interactive tests.
 
 ## Development
 
