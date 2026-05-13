@@ -1,7 +1,9 @@
 #pragma once
 #include "Color.h"
+#include "Font.h"
 #include "layout/Rect.h"
 #include <string>
+#include <memory>
 
 namespace gfx {
 
@@ -24,7 +26,7 @@ public:
 
   // Text Rendering (Using a simplified font abstraction)
   virtual void draw_text(int x, int y, const std::string &text,
-                         const Color &color, void *font_handle = nullptr) = 0;
+                         const Color &color, std::shared_ptr<Font> font = nullptr) = 0;
 
   // Rounded Rectangles
   virtual void draw_rounded_rect(const Rect &rect, float radius,
