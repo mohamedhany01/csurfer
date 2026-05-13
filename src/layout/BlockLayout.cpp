@@ -25,6 +25,51 @@ BlockLayout::BlockLayout(const Lexeme *node, LayoutObject *parent,
     : node_(node), parent_(parent), previous_(previous),
       font_manager_(font_manager), cursor_x_(0) {}
 
+/**
+ * Very simple linear-gradient parser.
+ * Expected format: linear-gradient(to right, red, blue)
+ */
+static bool parse_linear_gradient(const std::string &value,
+                                  std::string &direction, gfx::Color &color1,
+                                  gfx::Color &color2) {
+  if (value.find("linear-gradient(") != 0)
+    return false;
+
+  size_t start = 16; // length of "linear-gradient("
+  size_t end = value.find_last_of(')');
+  if (end == std::string::npos || end <= start)
+    return false;
+
+  std::string content = value.substr(start, end - start);
+  std::stringstream ss(content);
+  std::string part;
+  std::vector<std::string> parts;
+
+  while (std::getline(ss, part, ',')) {
+    // Trim whitespace
+    size_t f = part.find_first_not_of(" \t");
+    size_t l = part.find_last_not_of(" \t");
+    if (f != std::string::npos) {
+      parts.push_back(part.substr(f, l - f + 1));
+    }
+  }
+
+  if (parts.size() < 2)
+    return false;
+
+  if (parts.size() == 2) {
+    direction = "to bottom";
+    color1 = gfx::Color::FromName(parts[0].c_str());
+    color2 = gfx::Color::FromName(parts[1].c_str());
+  } else {
+    direction = parts[0];
+    color1 = gfx::Color::FromName(parts[1].c_str());
+    color2 = gfx::Color::FromName(parts[2].c_str());
+  }
+
+  return true;
+}
+
 BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
                          LayoutObject *parent, BlockLayout *previous,
                          gfx::FontManager &font_manager)
@@ -224,6 +269,16 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
           out.push_back(
               std::make_unique<DrawRect>(x, y, x + width, y + height, color));
         }
+      }
+    }
+
+    if (styles.find("background") != styles.end()) {
+      std::string bg = styles.at("background");
+      std::string dir;
+      gfx::Color c1, c2;
+      if (parse_linear_gradient(bg, dir, c1, c2)) {
+        out.push_back(std::make_unique<DrawLinearGradient>(
+            Rect{x, y, (int)width, (int)height}, c1, c2, dir));
       }
     }
   }

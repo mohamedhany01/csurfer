@@ -88,3 +88,20 @@ void DrawBoxShadow::execute(int scroll, int y_offset,
       {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
       radius_, dx_, dy_, color_);
 }
+
+DrawLinearGradient::DrawLinearGradient(const Rect &rect, gfx::Color color1,
+                                       gfx::Color color2, std::string direction)
+    : rect_(rect), color1_(color1), color2_(color2),
+      direction_(std::move(direction)) {
+  left = rect.x;
+  top = rect.y;
+  right = rect.x + rect.width;
+  bottom = rect.y + rect.height;
+}
+
+void DrawLinearGradient::execute(int scroll, int y_offset,
+                                 gfx::GraphicsContext &ctx) const {
+  ctx.draw_linear_gradient(
+      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      color1_, color2_, direction_);
+}

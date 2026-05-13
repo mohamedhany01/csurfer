@@ -6,6 +6,7 @@
 #include <core/SkPath.h>
 #include <core/SkRRect.h>
 #include <core/SkTypeface.h>
+#include <effects/SkGradientShader.h>
 #include <effects/SkImageFilters.h>
 #include <ports/SkFontMgr_directory.h>
 
@@ -111,6 +112,37 @@ void SkiaContext::draw_box_shadow(const Rect &rect, float radius, int dx,
       SkColorSetARGB(color.a, color.r, color.g, color.b), nullptr));
 
   // Draw the shadow using the same rect as the element
+  canvas_->drawRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
+                    paint);
+}
+
+void SkiaContext::draw_linear_gradient(const Rect &rect, const Color &color1,
+                                       const Color &color2,
+                                       const std::string &direction) {
+  if (!canvas_)
+    return;
+
+  SkPoint pts[2];
+  if (direction == "to right") {
+    pts[0] = {(float)rect.x, (float)rect.y};
+    pts[1] = {(float)rect.x + rect.width, (float)rect.y};
+  } else if (direction == "to left") {
+    pts[0] = {(float)rect.x + rect.width, (float)rect.y};
+    pts[1] = {(float)rect.x, (float)rect.y};
+  } else if (direction == "to top") {
+    pts[0] = {(float)rect.x, (float)rect.y + rect.height};
+    pts[1] = {(float)rect.x, (float)rect.y};
+  } else { // Default to "to bottom"
+    pts[0] = {(float)rect.x, (float)rect.y};
+    pts[1] = {(float)rect.x, (float)rect.y + rect.height};
+  }
+
+  SkColor colors[] = {ToSkColor(color1), ToSkColor(color2)};
+  auto shader =
+      SkGradientShader::MakeLinear(pts, colors, nullptr, 2, SkTileMode::kClamp);
+
+  SkPaint paint;
+  paint.setShader(shader);
   canvas_->drawRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
                     paint);
 }

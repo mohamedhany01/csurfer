@@ -34,6 +34,15 @@ struct Color {
       return {255, 255, 0, 255};
     if (std::string(name) == "gray")
       return {128, 128, 128, 255};
+    if (std::string(name) == "orange")
+      return {255, 165, 0, 255};
+    if (std::string(name) == "purple")
+      return {128, 0, 128, 255};
+    if (std::string(name) == "cyan")
+      return {0, 255, 255, 255};
+    if (std::string(name) == "magenta")
+      return {255, 0, 255, 255};
+
     return Black();
   }
 };

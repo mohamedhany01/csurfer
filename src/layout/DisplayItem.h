@@ -136,3 +136,20 @@ private:
   int dx_, dy_;
   gfx::Color color_;
 };
+
+/**
+ * Draws a linear gradient for a rectangle.
+ */
+class DrawLinearGradient final : public DrawCommand {
+public:
+  DrawLinearGradient(const Rect &rect, gfx::Color color1, gfx::Color color2,
+                     std::string direction);
+
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
+
+private:
+  Rect rect_;
+  gfx::Color color1_, color2_;
+  std::string direction_;
+};

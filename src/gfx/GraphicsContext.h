@@ -36,6 +36,10 @@ public:
   virtual void draw_box_shadow(const Rect &rect, float radius, int dx, int dy,
                                const Color &color) = 0;
 
+  virtual void draw_linear_gradient(const Rect &rect, const Color &color1,
+                                    const Color &color2,
+                                    const std::string &direction) = 0;
+
   // Stacking Contexts & Visual Effects
   //
   // Theory: save_layer allocates a new temporary surface for transparency.

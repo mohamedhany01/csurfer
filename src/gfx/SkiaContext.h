@@ -32,6 +32,10 @@ public:
   void draw_box_shadow(const Rect &rect, float radius, int dx, int dy,
                        const Color &color) override;
 
+  void draw_linear_gradient(const Rect &rect, const Color &color1,
+                            const Color &color2,
+                            const std::string &direction) override;
+
   void save_layer(float opacity) override;
   void restore() override;
   void clip_rect(const Rect &rect) override;
