@@ -17,9 +17,18 @@
 inline void
 paint_tree(const LayoutObject &layout_object,
            std::vector<std::unique_ptr<DrawCommand>> &display_list) {
+  float opacity = layout_object.get_opacity();
+  if (opacity < 1.0f) {
+    display_list.push_back(std::make_unique<DrawSaveLayer>(opacity));
+  }
+
   layout_object.paint(display_list);
   for (const auto &child : layout_object.children_) {
     paint_tree(*child, display_list);
+  }
+
+  if (opacity < 1.0f) {
+    display_list.push_back(std::make_unique<DrawRestore>());
   }
 }
 

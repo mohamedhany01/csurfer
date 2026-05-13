@@ -30,5 +30,9 @@ public:
   // Overridden by TextLayout to enable hit-testing.
   virtual const class Lexeme *node() const { return nullptr; }
 
+  // Return the opacity of this layout object, typically parsed from CSS.
+  // Returns 1.0f by default (fully opaque).
+  virtual float get_opacity() const { return 1.0f; }
+
   std::vector<std::unique_ptr<LayoutObject>> children_;
 };

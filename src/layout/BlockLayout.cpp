@@ -31,6 +31,20 @@ BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
       font_manager_(font_manager),
       anonymous_children_(std::move(anonymous_children)), cursor_x_(0) {}
 
+float BlockLayout::get_opacity() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("opacity") != styles.end()) {
+      try {
+        return std::stof(styles.at("opacity"));
+      } catch (...) {
+        return 1.0f;
+      }
+    }
+  }
+  return 1.0f;
+}
+
 static bool is_block_node(const Lexeme *node) {
   if (!node)
     return false;

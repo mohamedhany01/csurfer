@@ -92,3 +92,29 @@ private:
   gfx::Color color_;
   int thickness_;
 };
+
+/**
+ * Pushes a new transparent layer onto the graphics context.
+ * All subsequent drawing operations will be composited into this layer
+ * until DrawRestore is executed.
+ */
+class DrawSaveLayer final : public DrawCommand {
+public:
+  explicit DrawSaveLayer(float opacity) : opacity_(opacity) {}
+
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
+
+private:
+  float opacity_;
+};
+
+/**
+ * Restores the graphics context, compositing the previously saved layer
+ * to the screen with its specified opacity.
+ */
+class DrawRestore final : public DrawCommand {
+public:
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
+};

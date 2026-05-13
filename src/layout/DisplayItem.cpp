@@ -62,3 +62,13 @@ void DrawLine::execute(int scroll, int y_offset,
   ctx.draw_line(left, top - scroll + y_offset, right,
                 bottom - scroll + y_offset, color_, thickness_);
 }
+
+void DrawSaveLayer::execute(int /*scroll*/, int /*y_offset*/,
+                            gfx::GraphicsContext &ctx) const {
+  ctx.save_layer(opacity_);
+}
+
+void DrawRestore::execute(int /*scroll*/, int /*y_offset*/,
+                          gfx::GraphicsContext &ctx) const {
+  ctx.restore();
+}

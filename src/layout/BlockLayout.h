@@ -49,6 +49,9 @@ public:
   void layout() override;
   void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
 
+  const Lexeme *node() const override { return node_; }
+  float get_opacity() const override;
+
 private:
   const Lexeme *node_;
   LayoutObject *parent_;
