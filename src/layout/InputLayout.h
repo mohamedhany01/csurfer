@@ -1,9 +1,10 @@
 #pragma once
-
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
 #include "lexer/Lexeme.h"
+#include "gfx/Font.h"
 #include <string>
+#include <memory>
 
 /**
  * Layout object for interactive elements like <input> and <button>.
@@ -12,7 +13,7 @@
 class InputLayout final : public LayoutObject {
 public:
   InputLayout(const Lexeme *node, LayoutObject *parent, LayoutObject *previous,
-              void *font_handle, gfx::Color color);
+              std::shared_ptr<gfx::Font> font, gfx::Color color);
 
   // Compute the size and relative position of the input box
   void layout() override;
@@ -27,7 +28,7 @@ private:
   const Lexeme *node_;
   LayoutObject *parent_;
   LayoutObject *previous_;
-  void *font_handle_;
+  std::shared_ptr<gfx::Font> font_;
   gfx::Color color_;
 
   static constexpr int DEFAULT_INPUT_WIDTH = 200;

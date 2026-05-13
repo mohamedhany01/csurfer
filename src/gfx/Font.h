@@ -20,6 +20,11 @@ public:
      * Measures the width and height of the given text when rendered with this font.
      */
     virtual void measure_text(const std::string& text, int& width, int& height) = 0;
+
+    /**
+     * Returns the standard height (line skip) of this font.
+     */
+    virtual int get_height() = 0;
 };
 
 /**

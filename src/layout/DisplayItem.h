@@ -1,7 +1,9 @@
 #pragma once
 #include "gfx/Color.h"
+#include "gfx/Font.h"
 #include "layout/Rect.h"
 #include <string>
+#include <memory>
 
 namespace gfx {
 class GraphicsContext;
@@ -37,7 +39,7 @@ public:
  */
 class DrawText final : public DrawCommand {
 public:
-  DrawText(int x1, int y1, std::string text, void *font_handle,
+  DrawText(int x1, int y1, std::string text, std::shared_ptr<gfx::Font> font,
            gfx::Color color = gfx::Color::Black());
 
   void execute(int scroll, int y_offset,
@@ -45,7 +47,7 @@ public:
 
 private:
   std::string text_;
-  void *font_handle_ = nullptr;
+  std::shared_ptr<gfx::Font> font_;
   gfx::Color color_;
 };
 

@@ -13,9 +13,9 @@
 #include <sstream>
 
 Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
-         const FontMetrics &metrics)
-    : http_(std::move(http)), window_width_(window_width), metrics_(metrics),
-      url_("http://localhost/") {}
+         gfx::FontManager &font_manager)
+    : http_(std::move(http)), window_width_(window_width),
+      font_manager_(font_manager), url_("http://localhost/") {}
 
 Tab::~Tab() = default;
 
@@ -130,8 +130,8 @@ void Tab::load(const Url &url, const std::string &payload) {
       url_);
 
   // Layout
-  document_ =
-      std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
+  document_ = std::make_unique<DocumentLayout>(root_.get(), font_manager_,
+                                               window_width_);
   document_->layout();
 
   // Paint to internal display list
@@ -200,8 +200,8 @@ void Tab::rebuild_layout() {
       dynamic_cast<Element *>(root_.get()), url_,
       [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
       url_);
-  document_ =
-      std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
+  document_ = std::make_unique<DocumentLayout>(root_.get(), font_manager_,
+                                               window_width_);
   document_->layout();
   display_list_.clear();
   paint_tree(*document_, display_list_);

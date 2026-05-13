@@ -1,29 +1,30 @@
 #include "layout/InputLayout.h"
 #include "layout/DisplayItem.h"
 #include "lexer/Element.h"
-#include <SDL2/SDL_ttf.h>
 
 InputLayout::InputLayout(const Lexeme *node, LayoutObject *parent,
-                         LayoutObject *previous, void *font_handle,
+                         LayoutObject *previous, std::shared_ptr<gfx::Font> font,
                          gfx::Color color)
     : node_(node), parent_(parent), previous_(previous),
-      font_handle_(font_handle), color_(color) {}
+      font_(std::move(font)), color_(color) {}
 
 void InputLayout::layout() {
   width = DEFAULT_INPUT_WIDTH;
 
-  TTF_Font *font = static_cast<TTF_Font *>(font_handle_);
   // Position relative to previous element in the same line
   if (previous_) {
     int space_w = 0;
-    TTF_SizeUTF8(font, " ", &space_w, nullptr);
+    int h = 0;
+    if (font_) {
+      font_->measure_text(" ", space_w, h);
+    }
     x = previous_->x + previous_->width + space_w;
   } else {
     x = parent_ ? parent_->x : 0;
   }
 
   // Height is determined by the font line skip
-  height = TTF_FontLineSkip(font);
+  height = font_ ? font_->get_height() : 16;
 }
 
 void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
@@ -78,15 +79,16 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
 
   // 3. Draw the text
   if (!text.empty()) {
-    out.push_back(
-        std::make_unique<DrawText>(x + 4, y, text, font_handle_, color_));
+    out.push_back(std::make_unique<DrawText>(x + 4, y, text, font_, color_));
   }
 
   // 4. Draw Caret if focused
   if (node_ && node_->is_focused()) {
-    TTF_Font *font = static_cast<TTF_Font *>(font_handle_);
     int text_w = 0;
-    TTF_SizeUTF8(font, text.c_str(), &text_w, nullptr);
+    int h = 0;
+    if (font_) {
+      font_->measure_text(text, text_w, h);
+    }
     int caret_x = x + 4 + text_w;
     out.push_back(std::make_unique<DrawLine>(
         caret_x, y + 2, caret_x, y + height - 2, gfx::Color::Black(), 2));

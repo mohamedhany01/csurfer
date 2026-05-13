@@ -1,17 +1,11 @@
 #pragma once
 #include <unordered_map>
 #include <vector>
-
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
 #include "lexer/Element.h"
 #include "lexer/Lexeme.h"
-
-struct FontMetrics {
-  const int ascent;   // height from baseline to top
-  const int descent;  // height from baseline to bottom
-  const int lineSkip; // line height
-};
+#include "gfx/Font.h"
 
 /**
  * Font cache key for matching style states.
@@ -45,12 +39,12 @@ struct FontKeyHash {
 class BlockLayout final : public LayoutObject {
 public:
   BlockLayout(const Lexeme *node, LayoutObject *parent, BlockLayout *previous,
-              const FontMetrics &metrics);
+              gfx::FontManager &font_manager);
 
   // For anonymous block boxes that hold runs of inline elements
   BlockLayout(std::vector<const Lexeme *> anonymous_children,
               LayoutObject *parent, BlockLayout *previous,
-              const FontMetrics &metrics);
+              gfx::FontManager &font_manager);
 
   void layout() override;
   void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
@@ -59,14 +53,14 @@ private:
   const Lexeme *node_;
   LayoutObject *parent_;
   BlockLayout *previous_;
-  const FontMetrics &metrics_;
+  gfx::FontManager &font_manager_;
 
   std::vector<const Lexeme *> anonymous_children_;
 
   int cursor_x_;
 
-  // Font cache using generic handles (actually TTF_Font* inside .cpp)
-  std::unordered_map<FontKey, void *, FontKeyHash> font_cache_;
+  // Font cache using shared_ptr to gfx::Font
+  std::unordered_map<FontKey, std::shared_ptr<gfx::Font>, FontKeyHash> font_cache_;
 
   enum class LayoutMode { Inline, Block };
   LayoutMode layout_mode() const;
@@ -84,5 +78,5 @@ private:
 
   void input(const Lexeme *node);
 
-  void *currentFont(const Element *element);
+  std::shared_ptr<gfx::Font> currentFont(const Element *element);
 };

@@ -22,7 +22,7 @@
 class Tab {
 public:
   explicit Tab(std::shared_ptr<IRequest> http, int window_width,
-               const FontMetrics &metrics);
+               gfx::FontManager &font_manager);
   ~Tab();
 
   // Lifecycle
@@ -57,7 +57,7 @@ public:
 private:
   std::shared_ptr<IRequest> http_;
   int window_width_;
-  FontMetrics metrics_;
+  gfx::FontManager &font_manager_;
 
   Url url_;
   std::vector<Url> history_;

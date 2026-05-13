@@ -1,5 +1,6 @@
 #include "Browser.h"
 #include "gfx/SkiaContext.h"
+#include "gfx/SkiaFont.h"
 #include "request/HttpRequest.h"
 #include <iostream>
 
@@ -14,6 +15,7 @@ Browser::Browser(std::shared_ptr<IRequest> http)
   createWindow();
   createRenderer();
   skia_ctx_ = std::make_unique<gfx::SkiaContext>(WIDTH, HEIGHT);
+  font_manager_ = std::make_unique<gfx::SkiaFontManager>();
 }
 
 Browser::Browser::~Browser() { shutdown(); }
@@ -86,9 +88,7 @@ void Browser::load(const Url &url) {
 }
 
 void Browser::new_tab(const Url &url) {
-  FontMetrics metrics{TTF_FontAscent(font), abs(TTF_FontDescent(font)),
-                      TTF_FontLineSkip(font)};
-  auto tab = std::make_unique<Tab>(http_, WIDTH, metrics);
+  auto tab = std::make_unique<Tab>(http_, WIDTH, *font_manager_);
   tab->load(url);
   tabs_.push_back(std::move(tab));
   active_tab_index_ = tabs_.size() - 1;

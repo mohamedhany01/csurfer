@@ -1,9 +1,9 @@
 #include "layout/DisplayItem.h"
 #include "gfx/GraphicsContext.h"
 
-DrawText::DrawText(int x1, int y1, std::string text, void *font_handle,
+DrawText::DrawText(int x1, int y1, std::string text, std::shared_ptr<gfx::Font> font,
                    gfx::Color color)
-    : text_(std::move(text)), font_handle_(font_handle), color_(color) {
+    : text_(std::move(text)), font_(std::move(font)), color_(color) {
   left = x1;
   top = y1;
   right = x1;
@@ -18,7 +18,7 @@ DrawText::DrawText(int x1, int y1, std::string text, void *font_handle,
  */
 void DrawText::execute(int scroll, int y_offset,
                        gfx::GraphicsContext &ctx) const {
-  ctx.draw_text(left, top - scroll + y_offset, text_, color_, font_handle_);
+  ctx.draw_text(left, top - scroll + y_offset, text_, color_, font_);
 }
 
 DrawRect::DrawRect(int x1, int y1, int x2, int y2, gfx::Color color)

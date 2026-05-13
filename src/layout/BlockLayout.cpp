@@ -5,7 +5,6 @@
 #include "layout/TextLayout.h"
 #include "lexer/Text.h"
 #include "utils/Parser.h"
-#include <SDL2/SDL_ttf.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -21,14 +20,15 @@ static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
     "summary"};
 
 BlockLayout::BlockLayout(const Lexeme *node, LayoutObject *parent,
-                         BlockLayout *previous, const FontMetrics &metrics)
-    : node_(node), parent_(parent), previous_(previous), metrics_(metrics),
-      cursor_x_(0) {}
+                         BlockLayout *previous, gfx::FontManager &font_manager)
+    : node_(node), parent_(parent), previous_(previous),
+      font_manager_(font_manager), cursor_x_(0) {}
 
 BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
                          LayoutObject *parent, BlockLayout *previous,
-                         const FontMetrics &metrics)
-    : node_(nullptr), parent_(parent), previous_(previous), metrics_(metrics),
+                         gfx::FontManager &font_manager)
+    : node_(nullptr), parent_(parent), previous_(previous),
+      font_manager_(font_manager),
       anonymous_children_(std::move(anonymous_children)), cursor_x_(0) {}
 
 static bool is_block_node(const Lexeme *node) {
@@ -98,8 +98,8 @@ void BlockLayout::layout() {
 
       auto flush_inline_run = [&]() {
         if (!inline_run.empty()) {
-          auto next =
-              std::make_unique<BlockLayout>(inline_run, this, prev, metrics_);
+          auto next = std::make_unique<BlockLayout>(inline_run, this, prev,
+                                                    font_manager_);
           prev = next.get();
           children_.push_back(std::move(next));
           inline_run.clear();
@@ -119,8 +119,8 @@ void BlockLayout::layout() {
 
         if (is_block_node(child_node)) {
           flush_inline_run();
-          auto next =
-              std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
+          auto next = std::make_unique<BlockLayout>(child_node, this, prev,
+                                                    font_manager_);
           prev = next.get();
           children_.push_back(std::move(next));
         } else {
@@ -248,14 +248,13 @@ void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
 
 void BlockLayout::word(const Lexeme *node, const std::string &word_text,
                        const Element *parent_element) {
-  void *font_handle = currentFont(parent_element);
-  if (!font_handle)
+  std::shared_ptr<gfx::Font> font = currentFont(parent_element);
+  if (!font)
     return;
 
-  TTF_Font *font = static_cast<TTF_Font *>(font_handle);
   int w = 0;
   int h = 0;
-  TTF_SizeUTF8(font, word_text.c_str(), &w, &h);
+  font->measure_text(word_text, w, h);
 
   if (cursor_x_ + w > width) {
     new_line();
@@ -274,10 +273,11 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      auto text_layout = std::make_unique<TextLayout>(
-          node, word_text, font_handle, current_color);
+      auto text_layout =
+          std::make_unique<TextLayout>(node, word_text, font, current_color);
       int space_w = 0;
-      TTF_SizeUTF8(font, " ", &space_w, nullptr);
+      int space_h = 0;
+      font->measure_text(" ", space_w, space_h);
 
       text_layout->x = this->x + cursor_x_;
       current_line->children_.push_back(std::move(text_layout));
@@ -310,7 +310,7 @@ void BlockLayout::input(const Lexeme *node) {
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      void *font_handle = currentFont(el);
+      std::shared_ptr<gfx::Font> font = currentFont(el);
 
       gfx::Color color = gfx::Color::Black();
       auto styles = el->style();
@@ -324,22 +324,20 @@ void BlockLayout::input(const Lexeme *node) {
       }
 
       auto input_layout = std::make_unique<InputLayout>(
-          node, current_line, prev_obj, font_handle, color);
+          node, current_line, prev_obj, font, color);
       current_line->children_.push_back(std::move(input_layout));
 
       int space_w = 0;
-      if (font_handle) {
-        TTF_SizeUTF8(static_cast<TTF_Font *>(font_handle), " ", &space_w,
-                     nullptr);
+      int space_h = 0;
+      if (font) {
+        font->measure_text(" ", space_w, space_h);
       }
       cursor_x_ += w + space_w;
     }
   }
 }
 
-void *BlockLayout::currentFont(const Element *element) {
-  std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
-
+std::shared_ptr<gfx::Font> BlockLayout::currentFont(const Element *element) {
   int f_size = 16;
   bool f_bold = false;
   bool f_italic = false;
@@ -369,17 +367,7 @@ void *BlockLayout::currentFont(const Element *element) {
   if (font_cache_.contains(key))
     return font_cache_[key];
 
-  TTF_Font *font = TTF_OpenFont(font_path.c_str(), f_size);
-  if (!font)
-    return nullptr;
-
-  int style = TTF_STYLE_NORMAL;
-  if (f_bold)
-    style |= TTF_STYLE_BOLD;
-  if (f_italic)
-    style |= TTF_STYLE_ITALIC;
-  TTF_SetFontStyle(font, style);
-
+  auto font = font_manager_.get_font("Ubuntu", f_size, f_bold, f_italic);
   font_cache_[key] = font;
   return font;
 }

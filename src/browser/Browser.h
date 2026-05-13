@@ -8,6 +8,7 @@
 
 namespace gfx {
 class SkiaContext;
+class FontManager;
 }
 
 class Browser {
@@ -70,6 +71,7 @@ private:
 
   // Graphics context for rendering page content using Skia
   std::unique_ptr<gfx::SkiaContext> skia_ctx_;
+  std::unique_ptr<gfx::FontManager> font_manager_;
   SDL_Texture *skia_texture_ = nullptr;
 
   // Persistent State

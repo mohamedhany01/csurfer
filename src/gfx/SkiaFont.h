@@ -14,6 +14,7 @@ public:
     ~SkiaFont() override = default;
 
     void measure_text(const std::string& text, int& width, int& height) override;
+    int get_height() override;
 
     const SkFont& sk_font() const { return font_; }
 

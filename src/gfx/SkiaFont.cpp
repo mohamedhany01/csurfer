@@ -1,5 +1,6 @@
 #include "SkiaFont.h"
 #include <core/SkFontMetrics.h>
+#include <core/SkFontTypes.h>
 #include <ports/SkFontMgr_directory.h>
 #include <cmath>
 
@@ -19,6 +20,12 @@ void SkiaFont::measure_text(const std::string& text, int& width, int& height) {
     SkFontMetrics metrics;
     font_.getMetrics(&metrics);
     height = std::ceil(metrics.fDescent - metrics.fAscent);
+}
+
+int SkiaFont::get_height() {
+    SkFontMetrics metrics;
+    font_.getMetrics(&metrics);
+    return std::ceil(metrics.fDescent - metrics.fAscent);
 }
 
 SkiaFontManager::SkiaFontManager() {
