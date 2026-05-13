@@ -33,6 +33,9 @@ public:
   // Return the opacity of this layout object, typically parsed from CSS.
   // Returns 1.0f by default (fully opaque).
   virtual float get_opacity() const { return 1.0f; }
+  virtual std::string get_blend_mode() const { return ""; }
+  virtual bool is_overflow_clip() const { return false; }
+  virtual float get_border_radius() const { return 0.0f; }
 
   std::vector<std::unique_ptr<LayoutObject>> children_;
 };

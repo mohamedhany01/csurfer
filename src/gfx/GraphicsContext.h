@@ -45,7 +45,8 @@ public:
   // Theory: save_layer allocates a new temporary surface for transparency.
   // This is expensive because it triggers a new memory allocation and a
   // blend pass.
-  virtual void save_layer(float opacity) = 0;
+  virtual void save_layer(float opacity,
+                          const std::string &blend_mode = "") = 0;
 
   // Theory: restore collapses the current layer back into its parent.
   virtual void restore() = 0;

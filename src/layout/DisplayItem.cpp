@@ -65,7 +65,7 @@ void DrawLine::execute(int scroll, int y_offset,
 
 void DrawSaveLayer::execute(int /*scroll*/, int /*y_offset*/,
                             gfx::GraphicsContext &ctx) const {
-  ctx.save_layer(opacity_);
+  ctx.save_layer(opacity_, blend_mode_);
 }
 
 void DrawRestore::execute(int /*scroll*/, int /*y_offset*/,

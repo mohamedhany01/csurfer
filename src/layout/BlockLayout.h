@@ -51,6 +51,9 @@ public:
 
   const Lexeme *node() const override { return node_; }
   float get_opacity() const override;
+  std::string get_blend_mode() const override;
+  bool is_overflow_clip() const override;
+  float get_border_radius() const override;
 
 private:
   const Lexeme *node_;

@@ -91,6 +91,45 @@ float BlockLayout::get_opacity() const {
   return 1.0f;
 }
 
+std::string BlockLayout::get_blend_mode() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("mix-blend-mode") != styles.end()) {
+      return styles.at("mix-blend-mode");
+    }
+  }
+  return "";
+}
+
+bool BlockLayout::is_overflow_clip() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("overflow") != styles.end() &&
+        styles.at("overflow") == "clip") {
+      return true;
+    }
+  }
+  return false;
+}
+
+float BlockLayout::get_border_radius() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("border-radius") != styles.end()) {
+      std::string rad_str = styles.at("border-radius");
+      if (rad_str.find("px") != std::string::npos) {
+        rad_str = rad_str.substr(0, rad_str.find("px"));
+      }
+      try {
+        return std::stof(rad_str);
+      } catch (...) {
+        return 0.0f;
+      }
+    }
+  }
+  return 0.0f;
+}
+
 static bool is_block_node(const Lexeme *node) {
   if (!node)
     return false;

@@ -18,8 +18,15 @@ inline void
 paint_tree(const LayoutObject &layout_object,
            std::vector<std::unique_ptr<DrawCommand>> &display_list) {
   float opacity = layout_object.get_opacity();
-  if (opacity < 1.0f) {
-    display_list.push_back(std::make_unique<DrawSaveLayer>(opacity));
+  std::string blend_mode = layout_object.get_blend_mode();
+  bool is_clip = layout_object.is_overflow_clip();
+  float border_radius = layout_object.get_border_radius();
+
+  bool should_save = (opacity < 1.0f || !blend_mode.empty() || is_clip);
+
+  if (should_save) {
+    display_list.push_back(
+        std::make_unique<DrawSaveLayer>(opacity, blend_mode));
   }
 
   layout_object.paint(display_list);
@@ -27,7 +34,21 @@ paint_tree(const LayoutObject &layout_object,
     paint_tree(*child, display_list);
   }
 
-  if (opacity < 1.0f) {
+  if (is_clip) {
+    // The "destination-in" hack: we push a new layer with destination-in blend
+    // mode. Then we draw a white rounded rectangle. The intersection of this
+    // white rect with everything drawn inside the element will be preserved,
+    // and everything outside the rounded rectangle will be erased (clipped).
+    display_list.push_back(
+        std::make_unique<DrawSaveLayer>(1.0f, "destination-in"));
+    display_list.push_back(std::make_unique<DrawRoundedRect>(
+        Rect{layout_object.x, layout_object.y, layout_object.width,
+             layout_object.height},
+        border_radius, gfx::Color::White()));
+    display_list.push_back(std::make_unique<DrawRestore>());
+  }
+
+  if (should_save) {
     display_list.push_back(std::make_unique<DrawRestore>());
   }
 }

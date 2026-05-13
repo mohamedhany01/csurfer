@@ -100,13 +100,15 @@ private:
  */
 class DrawSaveLayer final : public DrawCommand {
 public:
-  explicit DrawSaveLayer(float opacity) : opacity_(opacity) {}
+  explicit DrawSaveLayer(float opacity, std::string blend_mode = "")
+      : opacity_(opacity), blend_mode_(std::move(blend_mode)) {}
 
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
   float opacity_;
+  std::string blend_mode_;
 };
 
 /**

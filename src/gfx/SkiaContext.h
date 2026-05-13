@@ -36,7 +36,7 @@ public:
                             const Color &color2,
                             const std::string &direction) override;
 
-  void save_layer(float opacity) override;
+  void save_layer(float opacity, const std::string &blend_mode = "") override;
   void restore() override;
   void clip_rect(const Rect &rect) override;
   void clear(const Color &color) override;

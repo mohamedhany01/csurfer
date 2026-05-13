@@ -147,11 +147,24 @@ void SkiaContext::draw_linear_gradient(const Rect &rect, const Color &color1,
                     paint);
 }
 
-void SkiaContext::save_layer(float opacity) {
+void SkiaContext::save_layer(float opacity, const std::string &blend_mode) {
   if (!canvas_)
     return;
   SkPaint layer_paint;
   layer_paint.setAlphaf(opacity);
+
+  if (blend_mode == "multiply") {
+    layer_paint.setBlendMode(SkBlendMode::kMultiply);
+  } else if (blend_mode == "difference") {
+    layer_paint.setBlendMode(SkBlendMode::kDifference);
+  } else if (blend_mode == "destination-in") {
+    layer_paint.setBlendMode(SkBlendMode::kDstIn);
+  } else if (blend_mode == "source-over" || blend_mode.empty()) {
+    layer_paint.setBlendMode(SkBlendMode::kSrcOver);
+  } else {
+    layer_paint.setBlendMode(SkBlendMode::kSrcOver); // default
+  }
+
   canvas_->saveLayer(nullptr, &layer_paint);
 }
 

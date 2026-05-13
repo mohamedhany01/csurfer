@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSurfer Clip Test</title>
+</head>
+<body style="background-color: white;">
+    <h1 style="color: black;">Overflow Clip Test</h1>
+
+    <h2>Without Overflow Clip</h2>
+    <div style="background-color: black; border-radius: 40px; width: 200px; height: 200px;">
+        <div style="background-color: red; width: 200px; height: 50px;">
+            <h3 style="color: white;">Corners poke out!</h3>
+        </div>
+    </div>
+
+    <br><br>
+
+    <h2>With Overflow Clip</h2>
+    <div style="background-color: black; border-radius: 40px; overflow: clip; width: 200px; height: 200px;">
+        <div style="background-color: red; width: 200px; height: 50px;">
+            <h3 style="color: white;">Corners are clipped!</h3>
+        </div>
+    </div>
+
+</body>
+</html>
