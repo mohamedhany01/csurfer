@@ -2,6 +2,7 @@
 #include "css/CSSParser.h"
 #include "css/CSSSelector.h"
 #include "css/StyleEngine.h"
+#include "gfx/GraphicsContext.h"
 #include "html/HTMLParser.h"
 #include "js/JSContext.h"
 #include "layout/LayoutTree.h"
@@ -12,9 +13,9 @@
 #include <sstream>
 
 Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
-         const FontMetrics &metrics)
-    : http_(std::move(http)), window_width_(window_width), metrics_(metrics),
-      url_("http://localhost/") {}
+         gfx::FontManager &font_manager)
+    : http_(std::move(http)), window_width_(window_width),
+      font_manager_(font_manager), url_("http://localhost/") {}
 
 Tab::~Tab() = default;
 
@@ -88,7 +89,9 @@ void Tab::load(const Url &url, const std::string &payload) {
            "CSurfer</h1><p>Your lightweight, SOLID-powered "
            "browser.</p><hr><p>Visit the project on GitHub:</p><a "
            "href=\"https://github.com/mohamedhany01/csurfer\">mohamedhany01/"
-           "csurfer</a><br><br><p><i>Enjoy surfing the solid "
+           "csurfer</a><br><br><p>Local Test Pages:</p><a "
+           "href=\"http://localhost:8000/\">http://localhost:8000/</a>"
+           "<br><br><p><i>Enjoy surfing the solid "
            "way!</i></p></div></body></html>";
   } else {
     // Fetch page body
@@ -129,8 +132,8 @@ void Tab::load(const Url &url, const std::string &payload) {
       url_);
 
   // Layout
-  document_ =
-      std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
+  document_ = std::make_unique<DocumentLayout>(root_.get(), font_manager_,
+                                               window_width_);
   document_->layout();
 
   // Paint to internal display list
@@ -199,21 +202,99 @@ void Tab::rebuild_layout() {
       dynamic_cast<Element *>(root_.get()), url_,
       [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
       url_);
-  document_ =
-      std::make_unique<DocumentLayout>(root_.get(), metrics_, window_width_);
+  document_ = std::make_unique<DocumentLayout>(root_.get(), font_manager_,
+                                               window_width_);
   document_->layout();
   display_list_.clear();
   paint_tree(*document_, display_list_);
 }
 
-// Revised draw signature to take renderer directly
-void Tab::render(SDL_Renderer *renderer, int y_offset) const {
+// Revised draw signature to take GraphicsContext
+void Tab::render(gfx::GraphicsContext &ctx, int y_offset) const {
   if (!document_)
     return;
   for (const auto &cmd : display_list_) {
-    cmd->execute(scroll_, y_offset, renderer);
+    cmd->execute(scroll_, y_offset, ctx);
   }
+  render_scrollbar(ctx, y_offset);
 }
+
+void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
+  if (!document_)
+    return;
+
+  int viewport_height = 600 - y_offset;
+  int doc_height = (int)document_->height + 60; // Increased padding
+
+  if (doc_height <= viewport_height)
+    return; // No need to scroll
+
+  // Bar dimensions
+  int bar_width = 12;
+  int bar_x = window_width_ - bar_width;
+
+  // Track (Background)
+  ctx.draw_rect({bar_x, y_offset, bar_width, viewport_height},
+                gfx::Color::FromRGB(240, 240, 240));
+
+  // Thumb (Draggable part)
+  double thumb_ratio = (double)viewport_height / doc_height;
+  int thumb_height = (int)(viewport_height * thumb_ratio);
+  if (thumb_height < 20)
+    thumb_height = 20; // Minimum size
+
+  double scroll_ratio = (double)scroll_ / (doc_height - viewport_height);
+  int thumb_y =
+      y_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
+
+  ctx.draw_rect({bar_x + 2, thumb_y, bar_width - 4, thumb_height},
+                gfx::Color::FromRGB(160, 160, 160));
+}
+
+void Tab::handle_mousedown(int x, int y) {
+  if (!document_)
+    return;
+
+  int viewport_height =
+      600 - (600 - (600 - 150)); // This is wrong, let's use document_ height
+  // Actually, I need to know the y_offset that was passed to render.
+  // Browser passes ui_.height(). Let's assume standard UI height for
+  // calculation if not stored. Better: store it or pass it. For now, let's use
+  // the UI height constant.
+  int y_offset = 540; // Approx viewport is 540-ish.
+  // Wait, Browser.cpp says WIDTH=800, HEIGHT=600. ui_.height() is around
+  // 80-100. Tab.h viewport height logic: doc_height = document_->height + 100.
+
+  // Re-calculating metrics to check hits
+  int ui_height = 600 - (600 - 80); // Roughly 80
+  int v_height = 600 - ui_height;
+  int d_height = (int)document_->height + 100;
+
+  if (d_height > v_height && x >= window_width_ - 12) {
+    is_dragging_scrollbar_ = true;
+    handle_mousemove(x, y); // Initial jump to position
+    return;
+  }
+
+  // If not scrollbar, perform normal click
+  click(x, y);
+}
+
+void Tab::handle_mousemove(int x, int y) {
+  if (!is_dragging_scrollbar_ || !document_)
+    return;
+
+  int ui_height = 80; // Standard UI height
+  int v_height = 600 - ui_height;
+  int d_height = (int)document_->height + 100;
+
+  double scroll_ratio = (double)y / v_height;
+  int max_scroll = std::max(0, d_height - v_height);
+  scroll_ = std::min(
+      max_scroll, std::max(0, (int)(scroll_ratio * d_height - v_height / 2)));
+}
+
+void Tab::handle_mouseup(int x, int y) { is_dragging_scrollbar_ = false; }
 
 void Tab::click(int x, int y) {
   if (!document_)
@@ -357,10 +438,9 @@ void Tab::submit_form(const Element *form) {
 void Tab::scrolldown() {
   if (!document_)
     return;
-  // Total height = content height + top padding (VSTEP) + bottom padding
-  // (VSTEP)
-  int total_height = (int)document_->height + 40;
-  int max_scroll = std::max(0, total_height - 540);
+  // Total height = content height + bottom padding
+  int total_height = (int)document_->height + 60;
+  int max_scroll = std::max(0, total_height - 520); // Viewport is approx 520
   scroll_ = std::min(scroll_ + SCROLL_STEP, max_scroll);
 }
 

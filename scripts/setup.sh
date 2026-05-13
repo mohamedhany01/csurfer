@@ -32,11 +32,11 @@ fi
 if [ -f /etc/debian_version ] || [ "$ID" == "linuxmint" ]; then
     OS="debian"
     INSTALL_CMD="sudo apt-get update || echo '[Warning] apt-get update had some issues, trying to proceed...'; sudo apt-get install -y"
-    PKGS="build-essential cmake ninja-build clang clang-tidy clang-format libssl-dev libsdl2-dev libsdl2-ttf-dev libfreetype-dev"
+    PKGS="build-essential cmake ninja-build clang clang-tidy clang-format libssl-dev libsdl2-dev libsdl2-ttf-dev libfreetype-dev libfontconfig-dev libglu1-mesa-dev libharfbuzz-dev"
 elif [ -f /etc/fedora-release ]; then
     OS="fedora"
     INSTALL_CMD="sudo dnf install -y"
-    PKGS="gcc-c++ cmake ninja-build clang clang-tools-extra openssl-devel SDL2-devel SDL2_ttf-devel freetype-devel"
+    PKGS="gcc-c++ cmake ninja-build clang clang-tools-extra openssl-devel SDL2-devel SDL2_ttf-devel freetype-devel fontconfig-devel mesa-libGLU-devel harfbuzz-devel"
 else
     echo "[Error] Unsupported OS. Please install dependencies manually."
     exit 1

@@ -1,4 +1,6 @@
 #include "Browser.h"
+#include "gfx/SkiaContext.h"
+#include "gfx/SkiaFont.h"
 #include "request/HttpRequest.h"
 #include <iostream>
 
@@ -12,6 +14,8 @@ Browser::Browser(std::shared_ptr<IRequest> http)
   loadFont();
   createWindow();
   createRenderer();
+  skia_ctx_ = std::make_unique<gfx::SkiaContext>(WIDTH, HEIGHT);
+  font_manager_ = std::make_unique<gfx::SkiaFontManager>();
 }
 
 Browser::Browser::~Browser() { shutdown(); }
@@ -32,8 +36,7 @@ void Browser::initTTF() {
 }
 
 void Browser::loadFont() {
-  std::string font_path =
-      std::string(ASSETS_DIR) + "/fonts/NotoSansCJK-Regular.ttc";
+  std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
   font = TTF_OpenFont(font_path.c_str(), 16);
   if (!font) {
     std::cerr << "Font error: " << TTF_GetError() << std::endl;
@@ -61,6 +64,8 @@ void Browser::createRenderer() {
 
 void Browser::shutdown() {
   SDL_StopTextInput();
+  if (skia_texture_)
+    SDL_DestroyTexture(skia_texture_);
   if (renderer)
     SDL_DestroyRenderer(renderer);
   if (window)
@@ -83,9 +88,7 @@ void Browser::load(const Url &url) {
 }
 
 void Browser::new_tab(const Url &url) {
-  FontMetrics metrics{TTF_FontAscent(font), abs(TTF_FontDescent(font)),
-                      TTF_FontLineSkip(font)};
-  auto tab = std::make_unique<Tab>(http_, WIDTH, metrics);
+  auto tab = std::make_unique<Tab>(http_, WIDTH, *font_manager_);
   tab->load(url);
   tabs_.push_back(std::move(tab));
   active_tab_index_ = tabs_.size() - 1;
@@ -139,13 +142,23 @@ void Browser::handleEvents() {
     if (e.type == SDL_QUIT)
       running = false;
 
-    if (e.type == SDL_MOUSEBUTTONDOWN) {
-      if (e.button.button == SDL_BUTTON_LEFT) {
-        if (e.button.y < ui_.height()) {
-          ui_.click(e.button.x, e.button.y);
-        } else if (active_tab()) {
-          active_tab()->click(e.button.x, e.button.y - ui_.height());
-        }
+    if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+      if (e.button.y < ui_.height()) {
+        ui_.click(e.button.x, e.button.y);
+      } else if (active_tab()) {
+        active_tab()->handle_mousedown(e.button.x, e.button.y - ui_.height());
+      }
+    }
+
+    if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+      if (active_tab()) {
+        active_tab()->handle_mouseup(e.button.x, e.button.y - ui_.height());
+      }
+    }
+
+    if (e.type == SDL_MOUSEMOTION) {
+      if (active_tab()) {
+        active_tab()->handle_mousemove(e.button.x, e.button.y - ui_.height());
       }
     }
 
@@ -199,11 +212,33 @@ void Browser::go_back() {
 }
 
 void Browser::draw() {
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+  // Clear the screen to a light gray for UI area contrast
+  SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
   SDL_RenderClear(renderer);
 
-  if (active_tab()) {
-    active_tab()->render(renderer, ui_.height());
+  if (active_tab() && skia_ctx_) {
+    // 1. Clear the Skia surface to white
+    skia_ctx_->clear(gfx::Color::White());
+
+    // 2. Render the current tab's content into the Skia surface
+    active_tab()->render(*skia_ctx_, ui_.height());
+
+    // 3. Prepare SDL Texture for blitting (Create if first time)
+    if (!skia_texture_) {
+      skia_texture_ =
+          SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                            SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
+    }
+
+    // 4. Copy raw pixels from Skia surface to SDL Texture
+    void *pixels = skia_ctx_->get_pixels();
+    int pitch = skia_ctx_->row_bytes();
+    if (pixels) {
+      SDL_UpdateTexture(skia_texture_, nullptr, pixels, pitch);
+    }
+
+    // 5. Present the Skia texture
+    SDL_RenderCopy(renderer, skia_texture_, nullptr, nullptr);
   }
 
   ui_.render(renderer);

@@ -1,36 +1,27 @@
 #include "layout/DisplayItem.h"
+#include "gfx/GraphicsContext.h"
 
-DrawText::DrawText(int x1, int y1, std::string text, TTF_Font *font,
-                   SDL_Color color)
-    : text_(std::move(text)), font_(font), color_(color) {
+DrawText::DrawText(int x1, int y1, std::string text,
+                   std::shared_ptr<gfx::Font> font, gfx::Color color)
+    : text_(std::move(text)), font_(std::move(font)), color_(color) {
   left = x1;
   top = y1;
   right = x1;
-  bottom = y1 + (font_ ? TTF_FontLineSkip(font_) : 0);
+  // Note: bottom is usually calculated from font metrics, but for now we
+  // initialize it to top. The actual bounding box is updated during layout.
+  bottom = y1;
 }
 
-void DrawText::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
-  if (!renderer || !font_)
-    return;
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font_, text_.c_str(), color_);
-  if (!surface)
-    return;
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  SDL_Rect dst{left, top - scroll + y_offset, surface->w, surface->h};
-  SDL_RenderCopy(renderer, texture, nullptr, &dst);
-
-  SDL_DestroyTexture(texture);
-  SDL_FreeSurface(surface);
+/**
+ * Stage 1.2: DrawText now uses the generic GraphicsContext.
+ * It passes the opaque font handle.
+ */
+void DrawText::execute(int scroll, int y_offset,
+                       gfx::GraphicsContext &ctx) const {
+  ctx.draw_text(left, top - scroll + y_offset, text_, color_, font_);
 }
 
-DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
+DrawRect::DrawRect(int x1, int y1, int x2, int y2, gfx::Color color)
     : color_(color) {
   left = x1;
   top = y1;
@@ -38,16 +29,23 @@ DrawRect::DrawRect(int x1, int y1, int x2, int y2, SDL_Color color)
   bottom = y2;
 }
 
-void DrawRect::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
-  if (!renderer)
-    return;
-
-  SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
-  SDL_Rect rect{left, top - scroll + y_offset, right - left, bottom - top};
-  SDL_RenderFillRect(renderer, &rect);
+/**
+ * Stage 1.2: DrawRect now uses ctx.draw_rect with gfx::Color.
+ */
+void DrawRect::execute(int scroll, int y_offset,
+                       gfx::GraphicsContext &ctx) const {
+  ctx.draw_rect({left, top - scroll + y_offset, right - left, bottom - top},
+                color_);
 }
 
-DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
+void DrawRoundedRect::execute(int scroll, int y_offset,
+                              gfx::GraphicsContext &ctx) const {
+  ctx.draw_rounded_rect(
+      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      radius_, color_);
+}
+
+DrawLine::DrawLine(int x1, int y1, int x2, int y2, gfx::Color color,
                    int thickness)
     : color_(color), thickness_(thickness) {
   left = x1;
@@ -56,15 +54,54 @@ DrawLine::DrawLine(int x1, int y1, int x2, int y2, SDL_Color color,
   bottom = y2;
 }
 
-void DrawLine::execute(int scroll, int y_offset, SDL_Renderer *renderer) const {
-  if (!renderer)
-    return;
+/**
+ * Stage 1.2: DrawLine now uses ctx.draw_line with gfx::Color.
+ */
+void DrawLine::execute(int scroll, int y_offset,
+                       gfx::GraphicsContext &ctx) const {
+  ctx.draw_line(left, top - scroll + y_offset, right,
+                bottom - scroll + y_offset, color_, thickness_);
+}
 
-  SDL_SetRenderDrawColor(renderer, color_.r, color_.g, color_.b, color_.a);
-  // Simple thickness implementation using multiple lines if needed (for
-  // simplicity here we just do 1 line or offset)
-  for (int i = 0; i < thickness_; ++i) {
-    SDL_RenderDrawLine(renderer, left + i, top - scroll + y_offset, right + i,
-                       bottom - scroll + y_offset);
-  }
+void DrawSaveLayer::execute(int /*scroll*/, int /*y_offset*/,
+                            gfx::GraphicsContext &ctx) const {
+  ctx.save_layer(opacity_, blend_mode_);
+}
+
+void DrawRestore::execute(int /*scroll*/, int /*y_offset*/,
+                          gfx::GraphicsContext &ctx) const {
+  ctx.restore();
+}
+
+DrawBoxShadow::DrawBoxShadow(const Rect &rect, float radius, int dx, int dy,
+                             gfx::Color color)
+    : rect_(rect), radius_(radius), dx_(dx), dy_(dy), color_(color) {
+  left = rect.x + std::min(0, dx) - (int)radius;
+  top = rect.y + std::min(0, dy) - (int)radius;
+  right = rect.x + rect.width + std::max(0, dx) + (int)radius;
+  bottom = rect.y + rect.height + std::max(0, dy) + (int)radius;
+}
+
+void DrawBoxShadow::execute(int scroll, int y_offset,
+                            gfx::GraphicsContext &ctx) const {
+  ctx.draw_box_shadow(
+      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      radius_, dx_, dy_, color_);
+}
+
+DrawLinearGradient::DrawLinearGradient(const Rect &rect, gfx::Color color1,
+                                       gfx::Color color2, std::string direction)
+    : rect_(rect), color1_(color1), color2_(color2),
+      direction_(std::move(direction)) {
+  left = rect.x;
+  top = rect.y;
+  right = rect.x + rect.width;
+  bottom = rect.y + rect.height;
+}
+
+void DrawLinearGradient::execute(int scroll, int y_offset,
+                                 gfx::GraphicsContext &ctx) const {
+  ctx.draw_linear_gradient(
+      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      color1_, color2_, direction_);
 }

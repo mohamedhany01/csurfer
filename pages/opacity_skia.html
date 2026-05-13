@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSurfer Opacity Test</title>
+</head>
+<body style="background-color: white;">
+    <h1 style="color: black;">Opacity & Layering Test</h1>
+
+    <h2 style="color: black;">1. No Opacity (Solid)</h2>
+    <div style="background-color: blue;">
+        <h3 style="color: white;">Blue Parent Block</h3>
+        <div style="background-color: red;">
+            <h3 style="color: white;">Red Child Block</h3>
+        </div>
+        <div style="background-color: yellow;">
+            <h3 style="color: black;">Yellow Child Block</h3>
+        </div>
+    </div>
+
+    <br>
+
+    <h2 style="color: black;">2. With Opacity (0.5)</h2>
+    <p style="color: black;">The blue parent has opacity 0.5. Because we use saveLayer, the red and yellow children do NOT show the blue background through them. The entire blue+red+yellow group fades together.</p>
+    
+    <div style="background-color: blue; opacity: 0.5;">
+        <h3 style="color: white;">Blue Parent Block (0.5 Opacity)</h3>
+        <div style="background-color: red;">
+            <h3 style="color: white;">Red Child Block</h3>
+        </div>
+        <div style="background-color: yellow;">
+            <h3 style="color: black;">Yellow Child Block</h3>
+        </div>
+    </div>
+
+</body>
+</html>

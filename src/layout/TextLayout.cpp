@@ -1,8 +1,9 @@
 #include "layout/TextLayout.h"
 
-TextLayout::TextLayout(const Lexeme *node, std::string word, TTF_Font *font,
-                       SDL_Color color)
-    : node_(node), word_(std::move(word)), font_(font), color_(color) {}
+TextLayout::TextLayout(const Lexeme *node, std::string word,
+                       std::shared_ptr<gfx::Font> font, gfx::Color color)
+    : node_(node), word_(std::move(word)), font_(std::move(font)),
+      color_(color) {}
 
 void TextLayout::layout() {
   if (!font_ || word_.empty()) {
@@ -11,12 +12,9 @@ void TextLayout::layout() {
     return;
   }
 
-  // Measure the width and height of this specific word based on its font.
-  // Note: We do NOT set x and y here! The parent LineLayout is responsible
-  // for positioning us along the line and aligning our baseline.
   int w = 0;
   int h = 0;
-  TTF_SizeUTF8(font_, word_.c_str(), &w, &h);
+  font_->measure_text(word_, w, h);
 
   width = w;
   height = h;

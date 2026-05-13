@@ -32,10 +32,21 @@ std::string CSSParser::word() {
       break;
     }
   }
-  if (pos_ == start) {
-    throw std::runtime_error("Parsing error: expected word");
-  }
   return text_.substr(start, pos_ - start);
+}
+
+std::string CSSParser::value() {
+  size_t start = pos_;
+  while (pos_ < text_.length() && text_[pos_] != ';' && text_[pos_] != '}') {
+    pos_++;
+  }
+  // Trim trailing whitespace
+  size_t end = pos_;
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(text_[end - 1]))) {
+    end--;
+  }
+  return text_.substr(start, end - start);
 }
 
 // Convert a string to lowercase to handle case-insensitive properties
@@ -50,7 +61,7 @@ std::pair<std::string, std::string> CSSParser::pair() {
   whitespace();
   literal(':');
   whitespace();
-  std::string val = word();
+  std::string val = value();
   return {casefold(prop), val};
 }
 

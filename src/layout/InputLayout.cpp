@@ -3,9 +3,9 @@
 #include "lexer/Element.h"
 
 InputLayout::InputLayout(const Lexeme *node, LayoutObject *parent,
-                         LayoutObject *previous, TTF_Font *font,
-                         SDL_Color color)
-    : node_(node), parent_(parent), previous_(previous), font_(font),
+                         LayoutObject *previous,
+                         std::shared_ptr<gfx::Font> font, gfx::Color color)
+    : node_(node), parent_(parent), previous_(previous), font_(std::move(font)),
       color_(color) {}
 
 void InputLayout::layout() {
@@ -14,14 +14,17 @@ void InputLayout::layout() {
   // Position relative to previous element in the same line
   if (previous_) {
     int space_w = 0;
-    TTF_SizeUTF8(font_, " ", &space_w, nullptr);
+    int h = 0;
+    if (font_) {
+      font_->measure_text(" ", space_w, h);
+    }
     x = previous_->x + previous_->width + space_w;
   } else {
     x = parent_ ? parent_->x : 0;
   }
 
   // Height is determined by the font line skip
-  height = TTF_FontLineSkip(font_);
+  height = font_ ? font_->get_height() : 16;
 }
 
 void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
@@ -30,22 +33,23 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
     return;
 
   // 1. Draw background/border of the input/button
-  SDL_Color border_color = {160, 160, 160, 255}; // Light Gray
-  SDL_Color bg_color = {240, 240, 240, 255};     // Default
+  gfx::Color border_color = gfx::Color::FromRGB(160, 160, 160); // Light Gray
+  gfx::Color bg_color = gfx::Color::FromRGB(240, 240, 240);     // Default
 
   if (el->tag() == "input") {
-    bg_color = {173, 216, 230, 255}; // Light Blue
+    bg_color = gfx::Color::FromRGB(173, 216, 230); // Light Blue
   } else if (el->tag() == "button") {
-    bg_color = {255, 165, 0, 255}; // Orange
+    bg_color = gfx::Color::FromRGB(255, 165, 0); // Orange
   }
 
-  if (node_->is_focused()) {
-    border_color = {0, 0, 255, 255}; // Blue when focused
+  if (node_ && node_->is_focused()) {
+    border_color = gfx::Color::FromRGB(0, 0, 255); // Blue when focused
   }
 
   // Draw background
   out.push_back(
       std::make_unique<DrawRect>(x, y, x + width, y + height, bg_color));
+
   // Draw simple border (4 lines)
   out.push_back(
       std::make_unique<DrawLine>(x, y, x + width, y, border_color, 1));
@@ -79,12 +83,15 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
   }
 
   // 4. Draw Caret if focused
-  if (node_->is_focused()) {
+  if (node_ && node_->is_focused()) {
     int text_w = 0;
-    TTF_SizeUTF8(font_, text.c_str(), &text_w, nullptr);
+    int h = 0;
+    if (font_) {
+      font_->measure_text(text, text_w, h);
+    }
     int caret_x = x + 4 + text_w;
     out.push_back(std::make_unique<DrawLine>(
-        caret_x, y + 2, caret_x, y + height - 2, SDL_Color{0, 0, 0, 255}, 2));
+        caret_x, y + 2, caret_x, y + height - 2, gfx::Color::Black(), 2));
   }
 }
 

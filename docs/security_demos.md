@@ -1,4 +1,4 @@
-# Chapter 10: Security Demonstrations
+# Security Demonstrations
 
 This document provides instructions for verifying the security features implemented in Phase 4 (CSP) and Phase 5 (CookieJar/SameSite).
 
@@ -8,7 +8,7 @@ This document provides instructions for verifying the security features implemen
 **Goal**: Prove that a third-party script cannot be executed unless specifically authorized by the server.
 
 ### Setup
-- Start the server: `./scripts/run_server.sh`
+- Start the server: ../scripts/test/server.sh`
 - The server provides a CSP header for `/bank_protected.html`: `default-src 'self'`.
 
 ### Execution

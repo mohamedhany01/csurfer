@@ -1,15 +1,14 @@
 #include "layout/BlockLayout.h"
 
-#include "lexer/Text.h"
-#include "utils/Parser.h"
-
 #include "layout/InputLayout.h"
 #include "layout/LineLayout.h"
 #include "layout/TextLayout.h"
-#include <SDL2/SDL_ttf.h>
+#include "lexer/Text.h"
+#include "utils/Parser.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <unordered_set>
 
 static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
@@ -22,15 +21,114 @@ static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
     "summary"};
 
 BlockLayout::BlockLayout(const Lexeme *node, LayoutObject *parent,
-                         BlockLayout *previous, const FontMetrics &metrics)
-    : node_(node), parent_(parent), previous_(previous), metrics_(metrics),
-      cursor_x_(0) {}
+                         BlockLayout *previous, gfx::FontManager &font_manager)
+    : node_(node), parent_(parent), previous_(previous),
+      font_manager_(font_manager), cursor_x_(0) {}
+
+/**
+ * Very simple linear-gradient parser.
+ * Expected format: linear-gradient(to right, red, blue)
+ */
+static bool parse_linear_gradient(const std::string &value,
+                                  std::string &direction, gfx::Color &color1,
+                                  gfx::Color &color2) {
+  if (value.find("linear-gradient(") != 0)
+    return false;
+
+  size_t start = 16; // length of "linear-gradient("
+  size_t end = value.find_last_of(')');
+  if (end == std::string::npos || end <= start)
+    return false;
+
+  std::string content = value.substr(start, end - start);
+  std::stringstream ss(content);
+  std::string part;
+  std::vector<std::string> parts;
+
+  while (std::getline(ss, part, ',')) {
+    // Trim whitespace
+    size_t f = part.find_first_not_of(" \t");
+    size_t l = part.find_last_not_of(" \t");
+    if (f != std::string::npos) {
+      parts.push_back(part.substr(f, l - f + 1));
+    }
+  }
+
+  if (parts.size() < 2)
+    return false;
+
+  if (parts.size() == 2) {
+    direction = "to bottom";
+    color1 = gfx::Color::FromName(parts[0].c_str());
+    color2 = gfx::Color::FromName(parts[1].c_str());
+  } else {
+    direction = parts[0];
+    color1 = gfx::Color::FromName(parts[1].c_str());
+    color2 = gfx::Color::FromName(parts[2].c_str());
+  }
+
+  return true;
+}
 
 BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
                          LayoutObject *parent, BlockLayout *previous,
-                         const FontMetrics &metrics)
-    : node_(nullptr), parent_(parent), previous_(previous), metrics_(metrics),
+                         gfx::FontManager &font_manager)
+    : node_(nullptr), parent_(parent), previous_(previous),
+      font_manager_(font_manager),
       anonymous_children_(std::move(anonymous_children)), cursor_x_(0) {}
+
+float BlockLayout::get_opacity() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("opacity") != styles.end()) {
+      try {
+        return std::stof(styles.at("opacity"));
+      } catch (...) {
+        return 1.0f;
+      }
+    }
+  }
+  return 1.0f;
+}
+
+std::string BlockLayout::get_blend_mode() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("mix-blend-mode") != styles.end()) {
+      return styles.at("mix-blend-mode");
+    }
+  }
+  return "";
+}
+
+bool BlockLayout::is_overflow_clip() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("overflow") != styles.end() &&
+        styles.at("overflow") == "clip") {
+      return true;
+    }
+  }
+  return false;
+}
+
+float BlockLayout::get_border_radius() const {
+  if (const auto *el = dynamic_cast<const Element *>(node_)) {
+    auto styles = el->style();
+    if (styles.find("border-radius") != styles.end()) {
+      std::string rad_str = styles.at("border-radius");
+      if (rad_str.find("px") != std::string::npos) {
+        rad_str = rad_str.substr(0, rad_str.find("px"));
+      }
+      try {
+        return std::stof(rad_str);
+      } catch (...) {
+        return 0.0f;
+      }
+    }
+  }
+  return 0.0f;
+}
 
 static bool is_block_node(const Lexeme *node) {
   if (!node)
@@ -99,8 +197,8 @@ void BlockLayout::layout() {
 
       auto flush_inline_run = [&]() {
         if (!inline_run.empty()) {
-          auto next =
-              std::make_unique<BlockLayout>(inline_run, this, prev, metrics_);
+          auto next = std::make_unique<BlockLayout>(inline_run, this, prev,
+                                                    font_manager_);
           prev = next.get();
           children_.push_back(std::move(next));
           inline_run.clear();
@@ -120,8 +218,8 @@ void BlockLayout::layout() {
 
         if (is_block_node(child_node)) {
           flush_inline_run();
-          auto next =
-              std::make_unique<BlockLayout>(child_node, this, prev, metrics_);
+          auto next = std::make_unique<BlockLayout>(child_node, this, prev,
+                                                    font_manager_);
           prev = next.get();
           children_.push_back(std::move(next));
         } else {
@@ -165,29 +263,64 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
   const auto *el = dynamic_cast<const Element *>(node_);
   if (el) {
     auto styles = el->style();
+
+    // Support for Rounded Corners (Chapter 11, Section 4)
+    float radius = 0.0f;
+    if (styles.find("border-radius") != styles.end()) {
+      std::string rad_str = styles.at("border-radius");
+      // Basic px-stripping (e.g. "10px" -> "10")
+      if (rad_str.find("px") != std::string::npos) {
+        rad_str = rad_str.substr(0, rad_str.find("px"));
+      }
+      try {
+        radius = std::stof(rad_str);
+      } catch (...) {
+        radius = 0.0f; // Parsing error fallback
+      }
+    }
+
+    if (styles.find("box-shadow") != styles.end()) {
+      std::string shadow_str = styles.at("box-shadow");
+      std::stringstream ss(shadow_str);
+      std::string dx_str, dy_str, blur_str, color_str;
+      if (ss >> dx_str >> dy_str >> blur_str >> color_str) {
+        try {
+          int dx = std::stoi(dx_str);
+          int dy = std::stoi(dy_str);
+          int blur = std::stoi(blur_str);
+          gfx::Color color = gfx::Color::FromName(color_str.c_str());
+          out.push_back(std::make_unique<DrawBoxShadow>(
+              Rect{x, y, (int)width, (int)height}, (float)blur, dx, dy, color));
+        } catch (...) {
+        }
+      }
+    }
+
     if (styles.find("background-color") != styles.end()) {
       std::string bgcolor = styles.at("background-color");
       if (bgcolor != "transparent" && !bgcolor.empty()) {
-        // Very simple color parsing for now (assuming named colors or hex)
-        // Just map some basic colors to prove it works
-        SDL_Color color{200, 200, 200, 255}; // Default Gray
-        if (bgcolor == "blue")
-          color = {0, 0, 255, 255};
-        else if (bgcolor == "red")
-          color = {255, 0, 0, 255};
-        else if (bgcolor == "green")
-          color = {0, 255, 0, 255};
-        else if (bgcolor == "yellow")
-          color = {255, 255, 0, 255};
-        else if (bgcolor == "black")
-          color = {0, 0, 0, 255};
+        gfx::Color color = gfx::Color::FromName(bgcolor.c_str());
 
-        out.push_back(
-            std::make_unique<DrawRect>(x, y, x + width, y + height, color));
+        if (radius > 0.0f) {
+          out.push_back(std::make_unique<DrawRoundedRect>(
+              Rect{x, y, (int)width, (int)height}, radius, color));
+        } else {
+          out.push_back(
+              std::make_unique<DrawRect>(x, y, x + width, y + height, color));
+        }
+      }
+    }
+
+    if (styles.find("background") != styles.end()) {
+      std::string bg = styles.at("background");
+      std::string dir;
+      gfx::Color c1, c2;
+      if (parse_linear_gradient(bg, dir, c1, c2)) {
+        out.push_back(std::make_unique<DrawLinearGradient>(
+            Rect{x, y, (int)width, (int)height}, c1, c2, dir));
       }
     }
   }
-  // In inline mode, the text is painted by TextLayout nodes doing paint_tree
 }
 
 void BlockLayout::recurse(const Lexeme *node) { layoutNode(node); }
@@ -197,11 +330,7 @@ void BlockLayout::layoutNode(const Lexeme *node) {
     return;
 
   if (node->type() == LexemeType::Text) {
-    // A Text node itself doesn't have styles, its parent does.
     const Element *parent_el = nullptr;
-    // We need to trace back from LayoutTree or find parent in DOM.
-    // Lexeme doesn't have parent() in the interface, but Element/Text do.
-    // Fortunately Text has parent(). But node is a Lexeme*.
     if (const auto *t = dynamic_cast<const Text *>(node)) {
       parent_el = dynamic_cast<const Element *>(t->parent());
     }
@@ -216,7 +345,7 @@ void BlockLayout::layoutNode(const Lexeme *node) {
         new_line();
       } else if (el->tag() == "input" || el->tag() == "button") {
         input(el);
-        return; // Atomic widget handling
+        return;
       }
     }
     layoutElement(el);
@@ -237,9 +366,6 @@ void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
   auto words = utils::splitWords(text);
   for (const auto &w : words) {
     if (w == "\n") {
-      // In HTML, source-code newlines should just collapse into whitespace.
-      // Since word() adds a space gap after each word automatically, we just
-      // skip it.
       continue;
     }
     word(text_node, w, parent_element);
@@ -248,35 +374,23 @@ void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
 
 void BlockLayout::word(const Lexeme *node, const std::string &word_text,
                        const Element *parent_element) {
-  TTF_Font *font = currentFont(parent_element);
+  std::shared_ptr<gfx::Font> font = currentFont(parent_element);
   if (!font)
     return;
 
   int w = 0;
   int h = 0;
-  TTF_SizeUTF8(font, word_text.c_str(), &w, &h);
+  font->measure_text(word_text, w, h);
 
   if (cursor_x_ + w > width) {
     new_line();
   }
 
-  SDL_Color current_color = {0, 0, 0, 255}; // Default black
+  gfx::Color current_color = gfx::Color::Black();
   if (parent_element) {
     auto styles = parent_element->style();
     if (styles.find("color") != styles.end()) {
-      std::string c_str = styles.at("color");
-      if (c_str == "red")
-        current_color = {255, 0, 0, 255};
-      else if (c_str == "green")
-        current_color = {0, 128, 0, 255};
-      else if (c_str == "blue")
-        current_color = {0, 0, 255, 255};
-      else if (c_str == "yellow")
-        current_color = {255, 255, 0, 255};
-      else if (c_str == "white")
-        current_color = {255, 255, 255, 255};
-      else if (c_str == "black")
-        current_color = {0, 0, 0, 255};
+      current_color = gfx::Color::FromName(styles.at("color").c_str());
     }
   }
 
@@ -287,21 +401,11 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
     if (current_line) {
       auto text_layout =
           std::make_unique<TextLayout>(node, word_text, font, current_color);
-      // Give it its relative block position (y is set during
-      // LineLayout::layout) but relative to the block, not the line. Wait,
-      // TextLayout::layout sets own width/height. But we need to position it
-      // inline!
-
-      // We must implement positioning inside LineLayout or TextLayout.
-      // Following Chapter 7 logic, text_layout->x gets set relative.
-      // Wait, let's just do it here for inline text flow:
       int space_w = 0;
-      TTF_SizeUTF8(font, " ", &space_w, nullptr);
+      int space_h = 0;
+      font->measure_text(" ", space_w, space_h);
 
-      // Let's position it horizontally here
       text_layout->x = this->x + cursor_x_;
-
-      // The parent of TextLayout is the LineLayout (not used, but logical)
       current_line->children_.push_back(std::move(text_layout));
       cursor_x_ += w + space_w;
     }
@@ -316,8 +420,6 @@ void BlockLayout::new_line() {
   }
 
   children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
-  // std::cout << "[DEBUG] new_line() called in block " << node_ << " (mode " <<
-  // (int)layout_mode() << ")\n";
 }
 
 void BlockLayout::input(const Lexeme *node) {
@@ -334,16 +436,12 @@ void BlockLayout::input(const Lexeme *node) {
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      TTF_Font *font = currentFont(el);
+      std::shared_ptr<gfx::Font> font = currentFont(el);
 
-      // Color from style
-      SDL_Color color = {0, 0, 0, 255};
+      gfx::Color color = gfx::Color::Black();
       auto styles = el->style();
       if (styles.count("color")) {
-        if (styles.at("color") == "red")
-          color = {255, 0, 0, 255};
-        else if (styles.at("color") == "blue")
-          color = {0, 0, 255, 255};
+        color = gfx::Color::FromName(styles.at("color").c_str());
       }
 
       LayoutObject *prev_obj = nullptr;
@@ -356,16 +454,16 @@ void BlockLayout::input(const Lexeme *node) {
       current_line->children_.push_back(std::move(input_layout));
 
       int space_w = 0;
-      TTF_SizeUTF8(font, " ", &space_w, nullptr);
+      int space_h = 0;
+      if (font) {
+        font->measure_text(" ", space_w, space_h);
+      }
       cursor_x_ += w + space_w;
     }
   }
 }
 
-TTF_Font *BlockLayout::currentFont(const Element *element) {
-  std::string font_path =
-      std::string(ASSETS_DIR) + "/fonts/NotoSansCJK-Regular.ttc";
-
+std::shared_ptr<gfx::Font> BlockLayout::currentFont(const Element *element) {
   int f_size = 16;
   bool f_bold = false;
   bool f_italic = false;
@@ -395,17 +493,7 @@ TTF_Font *BlockLayout::currentFont(const Element *element) {
   if (font_cache_.contains(key))
     return font_cache_[key];
 
-  TTF_Font *font = TTF_OpenFont(font_path.c_str(), f_size);
-  if (!font)
-    return nullptr;
-
-  int style = TTF_STYLE_NORMAL;
-  if (f_bold)
-    style |= TTF_STYLE_BOLD;
-  if (f_italic)
-    style |= TTF_STYLE_ITALIC;
-  TTF_SetFontStyle(font, style);
-
+  auto font = font_manager_.get_font("Ubuntu", f_size, f_bold, f_italic);
   font_cache_[key] = font;
   return font;
 }

@@ -24,7 +24,10 @@ void LineLayout::layout() {
   }
 
   if (children_.empty()) {
-    height = 0;
+    // If a line is empty (like an isolated <br>), give it a default height
+    // so it actually produces vertical spacing. 16px font * 1.25 line-height =
+    // 20
+    height = 20;
     return;
   }
 

@@ -18,6 +18,12 @@ fi
 # We are not removing the build directory here to preserve the CMake cache.
 # If you need a fully clean state, use 'cmake --build --preset default --target clean' instead.
 
+# Ensure Skia is built if it's missing (required for Ninja)
+if [ ! -f "external/skia/out/Static/libskia.a" ]; then
+    echo "[Info] Skia library not found in external/skia/out/Static. Building Skia..."
+    ./scripts/internal/build_skia.sh
+fi
+
 echo "Configuring with preset 'default'..."
 cmake --preset default -B "$BUILD_DIR"
 

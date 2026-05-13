@@ -35,6 +35,6 @@ graph TD
 - **State**: Visual focus, Address Bar text buffer.
 
 ### Tab (The Engine)
-- **State**: History, Scroll, URL, DOM
-- **Logic**: HTML -> DOM -> Style -> Layout -> DisplayList
+- **State**: History, Scroll, URL, DOM, **SkiaContext**, **SkiaFontManager**.
+- **Logic**: HTML -> DOM -> Style -> Layout -> DisplayList -> **Skia Canvas** -> **SDL2 Window**.
 - **about:welcome**: Hardcoded internal page for server-independent fallback.

@@ -11,6 +11,10 @@ classDiagram
         +layout()*
         +paint(out)*
         +const Lexeme* node() virtual
+        +get_opacity() virtual
+        +get_blend_mode() virtual
+        +is_overflow_clip() virtual
+        +get_border_radius() virtual
     }
 
     class DocumentLayout {
@@ -39,10 +43,16 @@ classDiagram
         +const Lexeme* node() override
     }
 
+    class InputLayout {
+        +layout()
+        +paint()
+    }
+
     LayoutObject <|-- DocumentLayout
     LayoutObject <|-- BlockLayout
     LayoutObject <|-- LineLayout
     LayoutObject <|-- TextLayout
+    LayoutObject <|-- InputLayout
 
     DocumentLayout o-- BlockLayout : root_
     BlockLayout o-- BlockLayout : block mode (children_)
