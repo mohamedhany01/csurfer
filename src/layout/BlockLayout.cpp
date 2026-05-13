@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <unordered_set>
 
 static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
@@ -191,6 +192,23 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
         radius = std::stof(rad_str);
       } catch (...) {
         radius = 0.0f; // Parsing error fallback
+      }
+    }
+
+    if (styles.find("box-shadow") != styles.end()) {
+      std::string shadow_str = styles.at("box-shadow");
+      std::stringstream ss(shadow_str);
+      std::string dx_str, dy_str, blur_str, color_str;
+      if (ss >> dx_str >> dy_str >> blur_str >> color_str) {
+        try {
+          int dx = std::stoi(dx_str);
+          int dy = std::stoi(dy_str);
+          int blur = std::stoi(blur_str);
+          gfx::Color color = gfx::Color::FromName(color_str.c_str());
+          out.push_back(std::make_unique<DrawBoxShadow>(
+              Rect{x, y, (int)width, (int)height}, (float)blur, dx, dy, color));
+        } catch (...) {
+        }
       }
     }
 

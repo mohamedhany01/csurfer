@@ -72,3 +72,19 @@ void DrawRestore::execute(int /*scroll*/, int /*y_offset*/,
                           gfx::GraphicsContext &ctx) const {
   ctx.restore();
 }
+
+DrawBoxShadow::DrawBoxShadow(const Rect &rect, float radius, int dx, int dy,
+                             gfx::Color color)
+    : rect_(rect), radius_(radius), dx_(dx), dy_(dy), color_(color) {
+  left = rect.x + std::min(0, dx) - (int)radius;
+  top = rect.y + std::min(0, dy) - (int)radius;
+  right = rect.x + rect.width + std::max(0, dx) + (int)radius;
+  bottom = rect.y + rect.height + std::max(0, dy) + (int)radius;
+}
+
+void DrawBoxShadow::execute(int scroll, int y_offset,
+                            gfx::GraphicsContext &ctx) const {
+  ctx.draw_box_shadow(
+      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      radius_, dx_, dy_, color_);
+}

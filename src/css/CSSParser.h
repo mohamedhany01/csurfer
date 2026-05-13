@@ -18,6 +18,7 @@ private:
   void whitespace();
   void literal(char c);
   std::string word();
+  std::string value();
   std::pair<std::string, std::string> pair();
   std::unordered_map<std::string, std::string> body();
   std::shared_ptr<CSSSelector> selector();

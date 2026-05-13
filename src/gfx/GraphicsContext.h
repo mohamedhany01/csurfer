@@ -33,6 +33,9 @@ public:
   virtual void draw_rounded_rect(const Rect &rect, float radius,
                                  const Color &color) = 0;
 
+  virtual void draw_box_shadow(const Rect &rect, float radius, int dx, int dy,
+                               const Color &color) = 0;
+
   // Stacking Contexts & Visual Effects
   //
   // Theory: save_layer allocates a new temporary surface for transparency.

@@ -5,6 +5,8 @@
 #include <core/SkFontMgr.h>
 #include <core/SkPath.h>
 #include <core/SkRRect.h>
+#include <core/SkTypeface.h>
+#include <effects/SkImageFilters.h>
 #include <ports/SkFontMgr_directory.h>
 
 namespace gfx {
@@ -92,6 +94,25 @@ void SkiaContext::draw_rounded_rect(const Rect &rect, float radius,
   rrect.setRectXY(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
                   radius, radius);
   canvas_->drawRRect(rrect, paint_);
+}
+
+void SkiaContext::draw_box_shadow(const Rect &rect, float radius, int dx,
+                                  int dy, const Color &color) {
+  if (!canvas_)
+    return;
+
+  SkPaint paint;
+  paint.setColor(SkColorSetARGB(color.a, color.r, color.g, color.b));
+
+  // Note: Skia's DropShadow filter takes sigma, which is roughly radius/2
+  float sigma = radius / 2.0f;
+  paint.setImageFilter(SkImageFilters::DropShadow(
+      (float)dx, (float)dy, sigma, sigma,
+      SkColorSetARGB(color.a, color.r, color.g, color.b), nullptr));
+
+  // Draw the shadow using the same rect as the element
+  canvas_->drawRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
+                    paint);
 }
 
 void SkiaContext::save_layer(float opacity) {

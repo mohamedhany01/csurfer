@@ -28,6 +28,10 @@ public:
                  std::shared_ptr<Font> font = nullptr) override;
   void draw_rounded_rect(const Rect &rect, float radius,
                          const Color &color) override;
+
+  void draw_box_shadow(const Rect &rect, float radius, int dx, int dy,
+                       const Color &color) override;
+
   void save_layer(float opacity) override;
   void restore() override;
   void clip_rect(const Rect &rect) override;

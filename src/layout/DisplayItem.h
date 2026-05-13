@@ -118,3 +118,21 @@ public:
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 };
+
+/**
+ * Draws a drop shadow for a rectangle.
+ */
+class DrawBoxShadow final : public DrawCommand {
+public:
+  DrawBoxShadow(const Rect &rect, float radius, int dx, int dy,
+                gfx::Color color);
+
+  void execute(int scroll, int y_offset,
+               gfx::GraphicsContext &ctx) const override;
+
+private:
+  Rect rect_;
+  float radius_;
+  int dx_, dy_;
+  gfx::Color color_;
+};
