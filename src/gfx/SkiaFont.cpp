@@ -13,10 +13,10 @@ SkiaFont::SkiaFont(sk_sp<SkTypeface> typeface, float size)
 }
 
 void SkiaFont::measure_text(const std::string &text, int &width, int &height) {
-  SkRect bounds;
-  font_.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8, &bounds);
+  SkScalar advance =
+      font_.measureText(text.c_str(), text.size(), SkTextEncoding::kUTF8);
 
-  width = std::ceil(bounds.width());
+  width = std::ceil(advance);
 
   SkFontMetrics metrics;
   font_.getMetrics(&metrics);
