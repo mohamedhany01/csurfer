@@ -3,10 +3,10 @@
 #include "lexer/Element.h"
 
 InputLayout::InputLayout(const Lexeme *node, LayoutObject *parent,
-                         LayoutObject *previous, std::shared_ptr<gfx::Font> font,
-                         gfx::Color color)
-    : node_(node), parent_(parent), previous_(previous),
-      font_(std::move(font)), color_(color) {}
+                         LayoutObject *previous,
+                         std::shared_ptr<gfx::Font> font, gfx::Color color)
+    : node_(node), parent_(parent), previous_(previous), font_(std::move(font)),
+      color_(color) {}
 
 void InputLayout::layout() {
   width = DEFAULT_INPUT_WIDTH;

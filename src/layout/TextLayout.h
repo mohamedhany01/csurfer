@@ -1,11 +1,11 @@
 #pragma once
+#include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
 #include "lexer/Lexeme.h"
-#include "gfx/Font.h"
 
-#include <string>
 #include <memory>
+#include <string>
 
 /**
  * Represents a single word of text in the layout tree.
@@ -15,8 +15,8 @@
  */
 class TextLayout final : public LayoutObject {
 public:
-  TextLayout(const Lexeme *node, std::string word, std::shared_ptr<gfx::Font> font,
-             gfx::Color color);
+  TextLayout(const Lexeme *node, std::string word,
+             std::shared_ptr<gfx::Font> font, gfx::Color color);
 
   void layout() override;
   void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;

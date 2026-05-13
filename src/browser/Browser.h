@@ -9,7 +9,7 @@
 namespace gfx {
 class SkiaContext;
 class FontManager;
-}
+} // namespace gfx
 
 class Browser {
 public:

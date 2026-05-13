@@ -1,7 +1,8 @@
 #include "layout/DocumentLayout.h"
 #include "layout/LayoutConstants.h"
 
-DocumentLayout::DocumentLayout(const Element *node, gfx::FontManager &font_manager,
+DocumentLayout::DocumentLayout(const Element *node,
+                               gfx::FontManager &font_manager,
                                int viewport_width)
     : node_(node), font_manager_(font_manager),
       viewport_width_(viewport_width) {}

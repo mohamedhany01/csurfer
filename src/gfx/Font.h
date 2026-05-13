@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 
 namespace gfx {
 
@@ -14,17 +14,19 @@ namespace gfx {
  */
 class Font {
 public:
-    virtual ~Font() = default;
+  virtual ~Font() = default;
 
-    /**
-     * Measures the width and height of the given text when rendered with this font.
-     */
-    virtual void measure_text(const std::string& text, int& width, int& height) = 0;
+  /**
+   * Measures the width and height of the given text when rendered with this
+   * font.
+   */
+  virtual void measure_text(const std::string &text, int &width,
+                            int &height) = 0;
 
-    /**
-     * Returns the standard height (line skip) of this font.
-     */
-    virtual int get_height() = 0;
+  /**
+   * Returns the standard height (line skip) of this font.
+   */
+  virtual int get_height() = 0;
 };
 
 /**
@@ -32,12 +34,13 @@ public:
  */
 class FontManager {
 public:
-    virtual ~FontManager() = default;
+  virtual ~FontManager() = default;
 
-    /**
-     * Returns a Font instance matching the requested style.
-     */
-    virtual std::shared_ptr<Font> get_font(const std::string& family, int size, bool bold, bool italic) = 0;
+  /**
+   * Returns a Font instance matching the requested style.
+   */
+  virtual std::shared_ptr<Font> get_font(const std::string &family, int size,
+                                         bool bold, bool italic) = 0;
 };
 
 } // namespace gfx

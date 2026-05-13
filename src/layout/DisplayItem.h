@@ -2,8 +2,8 @@
 #include "gfx/Color.h"
 #include "gfx/Font.h"
 #include "layout/Rect.h"
-#include <string>
 #include <memory>
+#include <string>
 
 namespace gfx {
 class GraphicsContext;

@@ -1,11 +1,11 @@
 #pragma once
-#include <unordered_map>
-#include <vector>
+#include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
 #include "lexer/Element.h"
 #include "lexer/Lexeme.h"
-#include "gfx/Font.h"
+#include <unordered_map>
+#include <vector>
 
 /**
  * Font cache key for matching style states.
@@ -60,7 +60,8 @@ private:
   int cursor_x_;
 
   // Font cache using shared_ptr to gfx::Font
-  std::unordered_map<FontKey, std::shared_ptr<gfx::Font>, FontKeyHash> font_cache_;
+  std::unordered_map<FontKey, std::shared_ptr<gfx::Font>, FontKeyHash>
+      font_cache_;
 
   enum class LayoutMode { Inline, Block };
   LayoutMode layout_mode() const;

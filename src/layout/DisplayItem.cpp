@@ -1,8 +1,8 @@
 #include "layout/DisplayItem.h"
 #include "gfx/GraphicsContext.h"
 
-DrawText::DrawText(int x1, int y1, std::string text, std::shared_ptr<gfx::Font> font,
-                   gfx::Color color)
+DrawText::DrawText(int x1, int y1, std::string text,
+                   std::shared_ptr<gfx::Font> font, gfx::Color color)
     : text_(std::move(text)), font_(std::move(font)), color_(color) {
   left = x1;
   top = y1;

@@ -1,10 +1,10 @@
 #pragma once
+#include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
 #include "lexer/Lexeme.h"
-#include "gfx/Font.h"
-#include <string>
 #include <memory>
+#include <string>
 
 /**
  * Layout object for interactive elements like <input> and <button>.

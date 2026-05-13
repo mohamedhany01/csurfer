@@ -1,8 +1,8 @@
 #pragma once
+#include "gfx/Font.h"
 #include "layout/BlockLayout.h"
 #include "layout/LayoutObject.h"
 #include "lexer/Element.h"
-#include "gfx/Font.h"
 
 // Root of the layout tree for a document.
 //
@@ -18,7 +18,8 @@ class DocumentLayout final : public LayoutObject {
 public:
   // Create a document layout for the given HTML root and viewport width.
   // The viewport width is the total window width; padding is applied inside.
-  DocumentLayout(const Element *node, gfx::FontManager &font_manager, int viewport_width);
+  DocumentLayout(const Element *node, gfx::FontManager &font_manager,
+                 int viewport_width);
 
   // Compute x, y, width and height for this document and its child.
   void layout() override;

@@ -323,8 +323,8 @@ void BlockLayout::input(const Lexeme *node) {
         prev_obj = current_line->children_.back().get();
       }
 
-      auto input_layout = std::make_unique<InputLayout>(
-          node, current_line, prev_obj, font, color);
+      auto input_layout = std::make_unique<InputLayout>(node, current_line,
+                                                        prev_obj, font, color);
       current_line->children_.push_back(std::move(input_layout));
 
       int space_w = 0;
