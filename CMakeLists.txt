@@ -145,6 +145,7 @@ add_executable(csurfer
     src/css/StyleEngine.cpp
     src/js/JSContext.cpp
     src/gfx/SkiaContext.cpp
+    src/gfx/SkiaFont.cpp
 )
 
 # Add include directories for src/

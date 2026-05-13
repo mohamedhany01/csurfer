@@ -1,4 +1,5 @@
 #include "SkiaContext.h"
+#include "SkiaFont.h"
 #include <core/SkColor.h>
 #include <core/SkFontMetrics.h>
 #include <core/SkFontMgr.h>
@@ -20,8 +21,7 @@ SkiaContext::SkiaContext(int width, int height)
     canvas_->drawColor(SK_ColorWHITE);
   }
 
-  // Stage 2.2.1: Load explicit font to fix "invisible" text
-  // We use a custom directory FontMgr to keep it simple and hermetic
+  // Fallback typeface if no font is provided during draw_text
   std::string fonts_dir = std::string(ASSETS_DIR) + "/fonts";
   sk_sp<SkFontMgr> font_mgr = SkFontMgr_New_Custom_Directory(fonts_dir.c_str());
 
@@ -57,23 +57,29 @@ void SkiaContext::draw_line(int x1, int y1, int x2, int y2, const Color &color,
 }
 
 void SkiaContext::draw_text(int x, int y, const std::string &text,
-                            const Color &color, void *font_handle) {
-  if (!canvas_ || !typeface_)
+                            const Color &color, std::shared_ptr<Font> font) {
+  if (!canvas_)
     return;
   paint_.setColor(ToSkColor(color));
   paint_.setStyle(SkPaint::kFill_Style);
 
-  // Use the loaded typeface (Stage 2.2.2)
-  SkFont font(typeface_, 16);
+  SkFont sk_font;
+  if (font) {
+    auto skia_font = std::static_pointer_cast<SkiaFont>(font);
+    sk_font = skia_font->sk_font();
+  } else {
+    // Fallback to internal typeface if no font provided
+    sk_font = SkFont(typeface_, 16);
+  }
 
-  // Stage 2.2.3: Baseline Correction
+  // Baseline Correction
   // Skia's y is the baseline. Our layout y is the top.
   // Shifting downward by the font's ascent correctly aligns the two.
   SkFontMetrics metrics;
-  font.getMetrics(&metrics);
+  sk_font.getMetrics(&metrics);
   float y_baseline = y + std::abs(metrics.fAscent);
 
-  canvas_->drawString(text.c_str(), x, y_baseline, font, paint_);
+  canvas_->drawString(text.c_str(), x, y_baseline, sk_font, paint_);
 }
 
 void SkiaContext::draw_rounded_rect(const Rect &rect, float radius,
