@@ -1,5 +1,4 @@
 #include "Browser.h"
-#include "gfx/SDLGraphicsContext.h"
 #include "gfx/SkiaContext.h"
 #include "request/HttpRequest.h"
 #include <iostream>
