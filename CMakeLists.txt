@@ -153,6 +153,7 @@ add_library(csurfer_lib STATIC
     src/js/JSContext.cpp
     src/gfx/SkiaContext.cpp
     src/gfx/SkiaFont.cpp
+    src/gfx/Color.cpp
 )
 
 target_include_directories(csurfer_lib PUBLIC
@@ -245,3 +246,7 @@ if (GTest_ADDED)
     target_link_libraries(test_geometry PRIVATE GTest::gtest_main csurfer_lib)
     add_test(NAME GeometryTests COMMAND test_geometry)
 endif()
+
+add_executable(test_color unit-tests/gfx/test_color.cpp)
+target_link_libraries(test_color PRIVATE csurfer_lib GTest::gtest_main)
+add_test(NAME ColorTests COMMAND test_color)

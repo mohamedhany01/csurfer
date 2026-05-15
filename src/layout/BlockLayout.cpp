@@ -59,12 +59,14 @@ static bool parse_linear_gradient(const std::string &value,
 
   if (parts.size() == 2) {
     direction = "to bottom";
-    color1 = gfx::Color::FromName(parts[0].c_str());
-    color2 = gfx::Color::FromName(parts[1].c_str());
-  } else {
+    color1 = gfx::Color::from_name(parts[0]);
+    color2 = gfx::Color::from_name(parts[1]);
+    return true;
+  }
+  if (parts.size() == 3) {
     direction = parts[0];
-    color1 = gfx::Color::FromName(parts[1].c_str());
-    color2 = gfx::Color::FromName(parts[2].c_str());
+    color1 = gfx::Color::from_name(parts[1]);
+    color2 = gfx::Color::from_name(parts[2]);
   }
 
   return true;
@@ -288,7 +290,7 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
           int dx = std::stoi(dx_str);
           int dy = std::stoi(dy_str);
           int blur = std::stoi(blur_str);
-          gfx::Color color = gfx::Color::FromName(color_str.c_str());
+          gfx::Color color = gfx::Color::from_name(color_str);
           out.push_back(std::make_unique<DrawBoxShadow>(
               utils::Rect{{bounds.origin.x, bounds.origin.y},
                           (int)bounds.width,
@@ -302,7 +304,7 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
     if (styles.find("background-color") != styles.end()) {
       std::string bgcolor = styles.at("background-color");
       if (bgcolor != "transparent" && !bgcolor.empty()) {
-        gfx::Color color = gfx::Color::FromName(bgcolor.c_str());
+        gfx::Color color = gfx::Color::from_name(bgcolor);
 
         if (radius > 0.0f) {
           out.push_back(std::make_unique<DrawRoundedRect>(
@@ -400,7 +402,7 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
   if (parent_element) {
     auto styles = parent_element->style();
     if (styles.find("color") != styles.end()) {
-      current_color = gfx::Color::FromName(styles.at("color").c_str());
+      current_color = gfx::Color::from_name(styles.at("color"));
     }
   }
 
@@ -451,7 +453,7 @@ void BlockLayout::input(const Lexeme *node) {
       gfx::Color color = gfx::Color::Black();
       auto styles = el->style();
       if (styles.count("color")) {
-        color = gfx::Color::FromName(styles.at("color").c_str());
+        color = gfx::Color::from_name(styles.at("color"));
       }
 
       LayoutObject *prev_obj = nullptr;

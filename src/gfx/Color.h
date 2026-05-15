@@ -1,50 +1,45 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace gfx {
 
+/**
+ * Story: Represents an RGBA color with 8-bit precision per channel.
+ *
+ * Use-case: Used throughout the engine for styling, painting, and
+ * backend-specific rendering (Skia/SDL). It encapsulates the complexity
+ * of color parsing from names and hex codes.
+ */
 struct Color {
-  uint8_t r, g, b, a;
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
+  uint8_t alpha;
 
-  static Color FromRGB(uint8_t r, uint8_t g, uint8_t b) {
-    return {r, g, b, 255};
-  }
+  /**
+   * Use-case: Create a color from individual integer components.
+   * Assumes full opacity if alpha is not provided.
+   */
+  static Color from_rgb(uint8_t red, uint8_t green, uint8_t blue);
+  static Color from_rgba(uint8_t red, uint8_t green, uint8_t blue,
+                         uint8_t alpha);
 
-  static Color FromRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    return {r, g, b, a};
-  }
+  /**
+   * Use-case: Parse a CSS color name (e.g., "red", "cornflowerblue").
+   */
+  static Color from_name(std::string_view name);
 
-  static const Color Black() { return {0, 0, 0, 255}; }
-  static const Color White() { return {255, 255, 255, 255}; }
-  static const Color Transparent() { return {0, 0, 0, 0}; }
+  /**
+   * Use-case: Parse a hex string (e.g., "#FF0000" or "#F00").
+   */
+  static Color from_hex(std::string_view hex);
 
-  static Color FromName(const char *name) {
-    if (std::string(name) == "white")
-      return White();
-    if (std::string(name) == "black")
-      return Black();
-    if (std::string(name) == "red")
-      return {255, 0, 0, 255};
-    if (std::string(name) == "green")
-      return {0, 128, 0, 255};
-    if (std::string(name) == "blue")
-      return {0, 0, 255, 255};
-    if (std::string(name) == "yellow")
-      return {255, 255, 0, 255};
-    if (std::string(name) == "gray")
-      return {128, 128, 128, 255};
-    if (std::string(name) == "orange")
-      return {255, 165, 0, 255};
-    if (std::string(name) == "purple")
-      return {128, 0, 128, 255};
-    if (std::string(name) == "cyan")
-      return {0, 255, 255, 255};
-    if (std::string(name) == "magenta")
-      return {255, 0, 255, 255};
-
-    return Black();
-  }
+  // Common Constants
+  static const Color Black();
+  static const Color White();
+  static const Color Transparent();
 };
 
 } // namespace gfx

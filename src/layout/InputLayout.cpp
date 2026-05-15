@@ -34,17 +34,17 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
     return;
 
   // 1. Draw background/border of the input/button
-  gfx::Color border_color = gfx::Color::FromRGB(160, 160, 160); // Light Gray
-  gfx::Color bg_color = gfx::Color::FromRGB(240, 240, 240);     // Default
+  gfx::Color border_color = gfx::Color::from_rgb(160, 160, 160); // Light Gray
+  gfx::Color bg_color = gfx::Color::from_rgb(240, 240, 240);     // Default
 
   if (el->tag() == "input") {
-    bg_color = gfx::Color::FromRGB(173, 216, 230); // Light Blue
+    bg_color = gfx::Color::from_rgb(173, 216, 230); // Light Blue
   } else if (el->tag() == "button") {
-    bg_color = gfx::Color::FromRGB(255, 165, 0); // Orange
+    bg_color = gfx::Color::from_rgb(255, 165, 0); // Orange
   }
 
   if (node_ && node_->is_focused()) {
-    border_color = gfx::Color::FromRGB(0, 0, 255); // Blue when focused
+    border_color = gfx::Color::from_rgb(0, 0, 255); // Blue when focused
   }
 
   // Draw background

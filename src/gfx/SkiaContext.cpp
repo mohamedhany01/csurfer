@@ -13,7 +13,7 @@
 namespace gfx {
 
 static SkColor ToSkColor(const Color &c) {
-  return SkColorSetARGB(c.a, c.r, c.g, c.b);
+  return SkColorSetARGB(c.alpha, c.red, c.green, c.blue);
 }
 
 SkiaContext::SkiaContext(int width, int height)
@@ -105,13 +105,15 @@ void SkiaContext::draw_box_shadow(const utils::Rect &rect, float radius, int dx,
     return;
 
   SkPaint paint;
-  paint.setColor(SkColorSetARGB(color.a, color.r, color.g, color.b));
+  paint.setColor(
+      SkColorSetARGB(color.alpha, color.red, color.green, color.blue));
 
   // Note: Skia's DropShadow filter takes sigma, which is roughly radius/2
   float sigma = radius / 2.0f;
   paint.setImageFilter(SkImageFilters::DropShadow(
       (float)dx, (float)dy, sigma, sigma,
-      SkColorSetARGB(color.a, color.r, color.g, color.b), nullptr));
+      SkColorSetARGB(color.alpha, color.red, color.green, color.blue),
+      nullptr));
 
   // Draw the shadow using the same rect as the element
   canvas_->drawRect(

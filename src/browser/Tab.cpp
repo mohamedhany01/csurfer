@@ -245,7 +245,7 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
 
   // Track (Background)
   ctx.draw_rect({{bar_x, y_offset}, bar_width, viewport_height},
-                gfx::Color::FromRGB(240, 240, 240));
+                gfx::Color::from_rgb(240, 240, 240));
 
   // Thumb (Draggable part)
   double thumb_ratio = (double)viewport_height / doc_height;
@@ -258,7 +258,7 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
       y_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
 
   ctx.draw_rect({{bar_x + 2, thumb_y}, bar_width - 4, thumb_height},
-                gfx::Color::FromRGB(160, 160, 160));
+                gfx::Color::from_rgb(160, 160, 160));
 }
 
 void Tab::handle_mousedown(int x, int y) {
