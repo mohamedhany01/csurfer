@@ -4,8 +4,8 @@
 #include "CSSRule.h"
 #include "DefaultStyles.h"
 #include "StyleComputation.h"
-#include "lexer/Element.h"
-#include "lexer/Lexeme.h"
+#include "dom/Element.h"
+#include "dom/Lexeme.h"
 
 #include <algorithm>
 #include <functional>
@@ -68,7 +68,7 @@ void StyleEngine::apply(
     return;
 
   // 1. Parse the built-in browser default styles
-  CSSParser default_parser(CSS::DEFAULT_BROWSER_CSS);
+  CSSParser default_parser(config::DEFAULT_BROWSER_CSS);
   std::vector<CSSRule> all_rules = default_parser.parse();
 
   // 2. Fetch and parse external stylesheets

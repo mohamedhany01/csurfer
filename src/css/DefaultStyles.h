@@ -1,6 +1,6 @@
 #pragma once
 
-namespace CSS {
+namespace config {
 
 const char *const DEFAULT_BROWSER_CSS = R"(
     h1 { font-size: 2em; font-weight: bold; }
@@ -12,4 +12,4 @@ const char *const DEFAULT_BROWSER_CSS = R"(
     a { color: blue; text-decoration: underline; }
 )";
 
-} // namespace CSS
+} // namespace config
