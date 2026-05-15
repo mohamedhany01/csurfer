@@ -1,4 +1,5 @@
 #include "CookieJar.h"
+#include "config/Config.h"
 #include "url/Url.h"
 #include "utils/StringUtils.h"
 #include <algorithm>
@@ -6,12 +7,15 @@
 #include <iostream>
 #include <sstream>
 
-namespace {
-const std::string COOKIE_FILE = ".csurfer_cookies";
-} // namespace
-
 CookieJar::CookieJar() { load_from_disk(); }
 
+/**
+ * Story: Parses a 'Set-Cookie' header and stores it in the jar.
+ * This implementation supports Domain, Path, and SameSite attributes.
+ *
+ * Use-case: When a server responds with a cookie, this method ensures
+ * it is persisted and available for future requests to the same domain.
+ */
 void CookieJar::store_cookie(const Url &url,
                              const std::string &set_cookie_header) {
   std::stringstream ss(set_cookie_header);
@@ -60,6 +64,10 @@ void CookieJar::store_cookie(const Url &url,
   }
 }
 
+/**
+ * Story: Retrieves all valid cookies for a target URL.
+ * Implements SameSite (Lax/Strict) security policies to prevent CSRF.
+ */
 std::string CookieJar::get_cookies(const Url &target_url,
                                    const Url &referrer_url,
                                    const std::string &http_method) const {
@@ -99,8 +107,11 @@ std::string CookieJar::get_cookies(const Url &target_url,
   return cookie_header_value;
 }
 
+/**
+ * Story: Persists the current cookie state to a local file.
+ */
 void CookieJar::save_to_disk() const {
-  std::ofstream f(COOKIE_FILE);
+  std::ofstream f(std::string(config::COOKIE_FILE_NAME));
   if (!f.is_open())
     return;
 
@@ -112,8 +123,11 @@ void CookieJar::save_to_disk() const {
   }
 }
 
+/**
+ * Story: Loads cookies from local storage on startup.
+ */
 void CookieJar::load_from_disk() {
-  std::ifstream f(COOKIE_FILE);
+  std::ifstream f(std::string(config::COOKIE_FILE_NAME));
   if (!f.is_open())
     return;
 
