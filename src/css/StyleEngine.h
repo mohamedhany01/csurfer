@@ -33,5 +33,10 @@ public:
       const Url &referrer = {});
 
 private:
+  void fetch_external_stylesheets(
+      Element *root, const Url &base_url, const Url &referrer,
+      std::function<bool(const Url &, const std::string &)> csp_check,
+      std::vector<CSSRule> &all_rules);
+
   std::shared_ptr<IRequest> network_engine_;
 };
