@@ -21,15 +21,14 @@ StyleEngine::StyleEngine(std::shared_ptr<IRequest> network_engine)
 static std::vector<std::string>
 collect_stylesheet_hrefs(const Element *root_element) {
   std::vector<std::string> hrefs;
-  dom::TreeWalker walker(const_cast<Element *>(root_element));
+  auto links = dom::TreeWalker::find_elements(
+      const_cast<Element *>(root_element), "link");
 
-  while (Element *element = walker.next()) {
-    if (element->tag() == "link") {
-      auto attributes = element->attributes();
-      if (attributes.count("rel") && attributes.at("rel") == "stylesheet" &&
-          attributes.count("href")) {
-        hrefs.push_back(attributes.at("href"));
-      }
+  for (auto *element : links) {
+    auto attributes = element->attributes();
+    if (attributes.count("rel") && attributes.at("rel") == "stylesheet" &&
+        attributes.count("href")) {
+      hrefs.push_back(attributes.at("href"));
     }
   }
 

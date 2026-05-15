@@ -1,8 +1,8 @@
 #pragma once
+#include "dom/Lexeme.h"
 #include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
-#include "dom/Lexeme.h"
 
 #include <memory>
 #include <string>

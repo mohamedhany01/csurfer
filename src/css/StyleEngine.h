@@ -1,9 +1,11 @@
 #pragma once
 
+#include "CSSRule.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
 #include <functional>
 #include <memory>
+#include <vector>
 
 class Element;
 

@@ -106,7 +106,7 @@ void Tab::load(const Url &url, const std::string &payload) {
         csp_directives_.clear();
       }
     } catch (const std::exception &error) {
-      load_error_page(std::string("Network Error: ") + error.what());
+      process_document(std::string("Network Error: ") + error.what());
       return;
     }
   }
@@ -352,7 +352,7 @@ void Tab::click(int x, int y) {
             try {
               load(url_.resolve(element->attributes().at("href")));
             } catch (const utils::UrlError &error) {
-              load_error_page(error.what());
+              process_document(error.what());
             }
             return;
           } else if (element->tag() == "input") {
@@ -453,12 +453,12 @@ void Tab::submit_form(const Element *form_element) {
   }
 
   std::string action_url_string = form_element->attributes().at("action");
-  std::cout << "[Tab] Submitting form to: " << action_url_string
-            << " with payload: " << payload_string << std::endl;
+  CS_LOG_INFO("Submitting form to: {} with payload: {}", action_url_string,
+              payload_string);
   try {
     load(url_.resolve(action_url_string), payload_string);
   } catch (const utils::UrlError &error) {
-    load_error_page(error.what());
+    process_document(error.what());
   }
 }
 
@@ -481,7 +481,7 @@ void Tab::go_back() {
     history_.pop_back();
     Url previous_url = history_.back();
     history_.pop_back();
-    std::cout << "[Tab] Going back to: " << previous_url.href() << std::endl;
+    CS_LOG_INFO("Going back to: {}", previous_url.href());
     load(previous_url);
   }
 }

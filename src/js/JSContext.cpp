@@ -1,6 +1,7 @@
 #include "JSContext.h"
 #include "dom/Element.h"
 #include "dom/TreeWalker.h"
+#include "request/IRequest.h"
 
 #include <fstream>
 #include <iostream>

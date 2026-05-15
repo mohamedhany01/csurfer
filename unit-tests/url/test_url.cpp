@@ -41,8 +41,7 @@ TEST(UrlTest, Resolve) {
 
   EXPECT_EQ(base.resolve("other.html").href(),
             "https://example.com/path/other.html");
-  EXPECT_EQ(base.resolve("/root.html").href(),
-            "https://example.com/root.html");
+  EXPECT_EQ(base.resolve("/root.html").href(), "https://example.com/root.html");
   EXPECT_EQ(base.resolve("http://other.site/").href(), "http://other.site/");
 }
 

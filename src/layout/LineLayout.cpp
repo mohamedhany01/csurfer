@@ -1,4 +1,5 @@
 #include "layout/LineLayout.h"
+#include "config/Config.h"
 
 #include <algorithm>
 

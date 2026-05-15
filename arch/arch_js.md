@@ -13,6 +13,7 @@ The `JSContext` class is the main interface for the browser to interact with the
 - **Function Registration**: Exposes C++ functions to the JS global scope.
 - **Handle Registry**: Maps C++ `Element` objects to integer IDs (handles) that JS can use.
 - **Event Dispatching**: Orchestrates the flow of events from C++ to JS.
+- **IJSHost Decoupling**: Communicates with the browser through the `IJSHost` interface, breaking direct dependency on the `Tab` class for better testability and multi-threading readiness.
 
 ### 2. Runtime Script (JS side)
 A built-in script (`assets/runtime.js`) is executed upon context initialization to provide a standard-ish DOM environment.

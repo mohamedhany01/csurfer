@@ -1,9 +1,9 @@
 #pragma once
 
-#include "layout/LayoutObject.h"
 #include "dom/Element.h"
 #include "dom/Lexeme.h"
 #include "dom/Text.h"
+#include "layout/LayoutObject.h"
 #include <memory>
 #include <vector>
 

@@ -1,9 +1,9 @@
 #pragma once
+#include "dom/Element.h"
+#include "dom/Lexeme.h"
 #include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
-#include "dom/Element.h"
-#include "dom/Lexeme.h"
 #include <unordered_map>
 #include <vector>
 
@@ -69,6 +69,8 @@ private:
 
   enum class LayoutMode { Inline, Block };
   LayoutMode determine_layout_mode() const;
+  void layout_block_children();
+  void layout_inline_children();
 
   void recurse_node(const Lexeme *current_node);
   void layout_node(const Lexeme *current_node);

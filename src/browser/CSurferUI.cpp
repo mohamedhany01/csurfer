@@ -1,7 +1,7 @@
 #include "CSurferUI.h"
 #include "Tab.h"
 #include "config/Config.h"
-#include <iostream>
+#include "utils/Logger.h"
 
 CSurferUI::CSurferUI(IBrowserCommands *browser) : browser_(browser) {
   // Story: Initialize bounding boxes for the browser shell UI components.
@@ -9,14 +9,14 @@ CSurferUI::CSurferUI(IBrowserCommands *browser) : browser_(browser) {
   // Back button (<)
   back_button_rect_ = {
       {config::UI_PADDING, config::TAB_HEIGHT + config::UI_PADDING / 2},
-      40,
+      config::TAB_HEIGHT + 5,
       config::ADDR_HEIGHT - config::UI_PADDING};
 
   // Address bar (URL input field)
   address_bar_rect_ = {{back_button_rect_.origin.x + back_button_rect_.width +
                             config::UI_PADDING,
                         config::TAB_HEIGHT + config::UI_PADDING / 2},
-                       600, // Width
+                       config::ADDRESS_BAR_WIDTH,
                        config::ADDR_HEIGHT - config::UI_PADDING};
 
   // New Tab (+) button (Far right)
@@ -211,12 +211,12 @@ void CSurferUI::keypress(SDL_Keycode key, const std::string &text) {
     address_bar_text_ += text;
   }
 
-  std::cout << "[UI] Typing URL: " << address_bar_text_ << std::endl;
+  CS_LOG_INFO("Typing URL: {}", address_bar_text_);
 }
 
 void CSurferUI::enter() {
   if (address_bar_focused_ && !address_bar_text_.empty()) {
-    std::cout << "[UI] Navigating to: " << address_bar_text_ << std::endl;
+    CS_LOG_INFO("Navigating to: {}", address_bar_text_);
     // Story: Auto-prepend protocol if missing (User convenience)
     std::string final_url_string = address_bar_text_;
     if (final_url_string.find("://") == std::string::npos) {
