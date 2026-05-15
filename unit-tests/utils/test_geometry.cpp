@@ -31,3 +31,19 @@ TEST(GeometryTest, RectContainsPoint) {
   EXPECT_FALSE(rect.contains({30, 70}));
   EXPECT_FALSE(rect.contains({70, 30}));
 }
+
+TEST(GeometryTest, Equality) {
+  Point p1 = {10, 20};
+  Point p2 = {10, 20};
+  Point p3 = {11, 20};
+
+  EXPECT_EQ(p1, p2);
+  EXPECT_NE(p1, p3);
+
+  Rect r1 = {{10, 20}, 100, 200};
+  Rect r2 = {{10, 20}, 100, 200};
+  Rect r3 = {{11, 20}, 100, 200};
+
+  EXPECT_EQ(r1, r2);
+  EXPECT_NE(r1, r3);
+}

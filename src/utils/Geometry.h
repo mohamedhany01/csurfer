@@ -13,6 +13,11 @@ namespace utils {
 struct Point {
   int x;
   int y;
+
+  bool operator==(const Point &other) const {
+    return x == other.x && y == other.y;
+  }
+  bool operator!=(const Point &other) const { return !(*this == other); }
 };
 
 /**
@@ -38,6 +43,12 @@ struct Rect {
     return point.x >= origin.x && point.x <= origin.x + width &&
            point.y >= origin.y && point.y <= origin.y + height;
   }
+
+  bool operator==(const Rect &other) const {
+    return origin == other.origin && width == other.width &&
+           height == other.height;
+  }
+  bool operator!=(const Rect &other) const { return !(*this == other); }
 };
 
 } // namespace utils

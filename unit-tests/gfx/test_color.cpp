@@ -38,3 +38,12 @@ TEST(ColorTest, FromRGB) {
   EXPECT_EQ(custom.blue, 30);
   EXPECT_EQ(custom.alpha, 255);
 }
+
+TEST(ColorTest, Equality) {
+  gfx::Color c1 = {100, 150, 200, 255};
+  gfx::Color c2 = {100, 150, 200, 255};
+  gfx::Color c3 = {101, 150, 200, 255};
+
+  EXPECT_EQ(c1, c2);
+  EXPECT_NE(c1, c3);
+}

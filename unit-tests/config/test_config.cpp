@@ -20,4 +20,7 @@ TEST(ConfigTest, SanityChecks) {
   EXPECT_GT(config::WINDOW_WIDTH, 0);
   EXPECT_GT(config::WINDOW_HEIGHT, 0);
   EXPECT_GT(config::DEFAULT_FONT_SIZE, 0);
+  EXPECT_GT(config::ADDRESS_BAR_WIDTH, 0);
+  EXPECT_GT(config::TAB_CLOSE_BUTTON_WIDTH, 0);
+  EXPECT_GT(config::FRAME_DELAY_MS, 0);
 }
