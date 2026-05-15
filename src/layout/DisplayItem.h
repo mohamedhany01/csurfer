@@ -38,7 +38,7 @@ public:
  */
 class DrawText final : public DrawCommand {
 public:
-  DrawText(int x_pos, int y_pos, std::string content,
+  DrawText(int x_position, int y_position, std::string content,
            std::shared_ptr<gfx::Font> font_handle,
            gfx::Color text_color = gfx::Color::Black());
 
@@ -46,7 +46,7 @@ public:
                gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  int x_, y_;
+  int x_position_, y_position_;
   std::string content_;
   std::shared_ptr<gfx::Font> font_;
   gfx::Color color_;
@@ -57,13 +57,14 @@ private:
  */
 class DrawRect final : public DrawCommand {
 public:
-  DrawRect(int x1, int y1, int x2, int y2, gfx::Color fill_color);
+  DrawRect(int start_x, int start_y, int end_x, int end_y,
+           gfx::Color fill_color);
 
   void execute(int scroll_offset, int y_screen_offset,
                gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  int x1_, y1_, x2_, y2_;
+  int start_x_, start_y_, end_x_, end_y_;
   gfx::Color color_ = gfx::Color::Black();
 };
 
@@ -90,14 +91,14 @@ private:
  */
 class DrawLine final : public DrawCommand {
 public:
-  DrawLine(int x1, int y1, int x2, int y2, gfx::Color line_color,
-           int thickness = 1);
+  DrawLine(int start_x, int start_y, int end_x, int end_y,
+           gfx::Color line_color, int thickness = 1);
 
   void execute(int scroll_offset, int y_screen_offset,
                gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  int x1_, y1_, x2_, y2_;
+  int start_x_, start_y_, end_x_, end_y_;
   gfx::Color color_;
   int thickness_;
 };
@@ -132,8 +133,8 @@ public:
  */
 class DrawBoxShadow final : public DrawCommand {
 public:
-  DrawBoxShadow(const utils::Rect &bounds, float blur_radius, int dx, int dy,
-                gfx::Color shadow_color);
+  DrawBoxShadow(const utils::Rect &bounds, float blur_radius, int offset_x,
+                int offset_y, gfx::Color shadow_color);
 
   void execute(int scroll_offset, int y_screen_offset,
                gfx::GraphicsContext &graphics_context) const override;
@@ -141,7 +142,7 @@ public:
 private:
   utils::Rect bounds_;
   float radius_;
-  int dx_, dy_;
+  int offset_x_, offset_y_;
   gfx::Color color_;
 };
 

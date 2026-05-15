@@ -21,20 +21,21 @@ public:
 
   // Basic Primitives
   virtual void draw_rect(const utils::Rect &rect, const Color &color) = 0;
-  virtual void draw_line(int x1, int y1, int x2, int y2, const Color &color,
-                         int thickness = 1) = 0;
+  virtual void draw_line(int start_x, int start_y, int end_x, int end_y,
+                         const Color &color, int thickness = 1) = 0;
 
   // Text Rendering (Using a simplified font abstraction)
-  virtual void draw_text(int x, int y, const std::string &text,
-                         const Color &color,
+  virtual void draw_text(int x_position, int y_position,
+                         const std::string &text, const Color &color,
                          std::shared_ptr<Font> font = nullptr) = 0;
 
   // Rounded Rectangles
   virtual void draw_rounded_rect(const utils::Rect &rect, float radius,
                                  const Color &color) = 0;
 
-  virtual void draw_box_shadow(const utils::Rect &rect, float radius, int dx,
-                               int dy, const Color &color) = 0;
+  virtual void draw_box_shadow(const utils::Rect &rect, float radius,
+                               int offset_x, int offset_y,
+                               const Color &color) = 0;
 
   virtual void draw_linear_gradient(const utils::Rect &rect,
                                     const Color &color1, const Color &color2,
