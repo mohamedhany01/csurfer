@@ -14,9 +14,9 @@
 #include <iostream>
 #include <sstream>
 
-Tab::Tab(std::shared_ptr<IRequest> http, int window_width,
+Tab::Tab(std::shared_ptr<IRequest> network_engine, int window_width,
          gfx::FontManager &font_manager)
-    : http_(std::move(http)), window_width_(window_width),
+    : network_engine_(std::move(network_engine)), window_width_(window_width),
       font_manager_(font_manager), url_("http://localhost/") {}
 
 Tab::~Tab() = default;
@@ -47,9 +47,10 @@ void Tab::parse_csp(const std::string &header_value) {
   }
 }
 
-bool Tab::is_allowed(const Url &url, const std::string &directive) const {
+bool Tab::is_allowed(const Url &target_url,
+                     const std::string &directive) const {
   if (csp_directives_.empty())
-    return true; // No policy = allow all
+    return true; // Story: No policy = allow all
 
   std::vector<std::string> allowed;
   if (csp_directives_.count(directive)) {
@@ -60,7 +61,7 @@ bool Tab::is_allowed(const Url &url, const std::string &directive) const {
     return true; // Directive not specified and no default-src
   }
 
-  std::string target_origin = url.origin();
+  std::string target_origin = target_url.origin();
 
   for (const auto &origin : allowed) {
     if (origin == target_origin)
@@ -71,7 +72,7 @@ bool Tab::is_allowed(const Url &url, const std::string &directive) const {
 }
 
 void Tab::load(const Url &url, const std::string &payload) {
-  focus_ = nullptr;
+  focused_element_ = nullptr;
   if (history_.empty() || history_.back().href() != url.href()) {
     history_.push_back(url);
   }
@@ -82,6 +83,7 @@ void Tab::load(const Url &url, const std::string &payload) {
 
   std::string body;
   if (url_.href() == "about:welcome") {
+    // Story: Hardcoded welcome page for new users
     body = "<html><head><title>Welcome</title></head><body>"
            "<div style=\"text-align:center; padding:50px;\">"
            "<h1>Welcome in CSurfer</h1>"
@@ -95,7 +97,7 @@ void Tab::load(const Url &url, const std::string &payload) {
            "</div></body></html>";
   } else {
     try {
-      auto response = http_->request(url_, payload, referrer);
+      auto response = network_engine_->request(url_, payload, referrer);
       body = response.body;
 
       if (response.headers.count("content-security-policy")) {
@@ -115,13 +117,13 @@ void Tab::load(const Url &url, const std::string &payload) {
            url_.href() + "</b>. Check the URL and try again.</p></body></html>";
   }
 
-  load_error_page(body); // Reusing this for rendering logic
+  load_error_page(body);
 }
 
 void Tab::load_error_page(const std::string &content_or_message) {
   std::string body = content_or_message;
 
-  // If it's just a message (no tags), wrap it in HTML
+  // Story: If it's just a message (no tags), wrap it in HTML
   if (body.find('<') == std::string::npos) {
     body = "<html><body style=\"padding:20px; font-family:sans-serif;\">"
            "<h1 style=\"color:red;\">Navigation Error</h1>"
@@ -135,69 +137,70 @@ void Tab::load_error_page(const std::string &content_or_message) {
   HTMLParser parser(body);
   root_ = parser.parse();
 
-  StyleEngine style_engine(http_);
+  StyleEngine style_engine(network_engine_);
   style_engine.apply(
       dynamic_cast<Element *>(root_.get()), url_,
       [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
       url_);
 
-  document_ = std::make_unique<DocumentLayout>(root_.get(), font_manager_,
-                                               window_width_);
-  document_->layout();
+  document_layout_ = std::make_unique<DocumentLayout>(
+      root_.get(), font_manager_, window_width_);
+  document_layout_->layout();
 
   display_list_.clear();
-  paint_tree(*document_, display_list_);
-  scroll_ = 0;
-  js_ = std::make_unique<JSContext>(this);
+  paint_tree(*document_layout_, display_list_);
+  current_scroll_ = 0;
+  javascript_context_ = std::make_unique<JSContext>(this);
 
-  // Find and run all <script> tags
+  // Story: Find and run all <script> tags in the document
   auto selector = CSSParser::parse_selector("script");
   if (selector && root_) {
     std::vector<Element *> scripts;
-    // Simple recursive finder
-    auto find_scripts = [&](auto self, Element *node) -> void {
-      if (selector->matches(node)) {
-        scripts.push_back(node);
+    std::function<void(Element *)> find_scripts =
+        [&](Element *element) -> void {
+      if (selector->matches(element)) {
+        scripts.push_back(element);
       }
-      for (auto &child_lex : node->children()) {
-        if (child_lex->type() == LexemeType::Element) {
-          self(self, static_cast<Element *>(child_lex.get()));
+      for (auto &child_lexeme : element->children()) {
+        if (child_lexeme->type() == LexemeType::Element) {
+          find_scripts(static_cast<Element *>(child_lexeme.get()));
         }
       }
     };
-    find_scripts(find_scripts, dynamic_cast<Element *>(root_.get()));
+    find_scripts(dynamic_cast<Element *>(root_.get()));
 
     for (auto *script : scripts) {
-      auto attrs = script->attributes();
-      if (attrs.count("src")) {
-        std::string script_url = attrs.at("src");
+      auto attributes = script->attributes();
+      if (attributes.count("src")) {
+        std::string script_url_string = attributes.at("src");
         try {
-          Url resolved_url = url_.resolve(script_url);
+          Url resolved_script_url = url_.resolve(script_url_string);
 
-          if (!is_allowed(resolved_url, "script-src")) {
-            std::cout << "[SOP/CSP] Blocked script loading from: " << script_url
-                      << " (CSP Violation)" << std::endl;
+          if (!is_allowed(resolved_script_url, "script-src")) {
+            std::cout << "[SOP/CSP] Blocked script loading from: "
+                      << script_url_string << " (CSP Violation)" << std::endl;
             continue;
           }
 
-          std::cout << "[Tab] Loading external script: " << script_url
+          std::cout << "[Tab] Loading external script: " << script_url_string
                     << std::endl;
-          std::string content = http_->request(resolved_url, "", url_).body;
-          if (!content.empty()) {
-            js_->run(script_url, content);
+          std::string script_content =
+              network_engine_->request(resolved_script_url, "", url_).body;
+          if (!script_content.empty()) {
+            javascript_context_->run(script_url_string, script_content);
           }
         } catch (const std::exception &) {
-          // Ignore bad script URLs
+          // Skip malformed script URLs
         }
       } else {
-        std::string content;
-        for (auto &child_lex : script->children()) {
-          if (child_lex->type() == LexemeType::Text) {
-            content += child_lex->text();
+        std::string inline_content;
+        for (auto &child_lexeme : script->children()) {
+          if (child_lexeme->type() == LexemeType::Text) {
+            inline_content += child_lexeme->text();
           }
         }
-        if (!content.empty()) {
-          js_->run("inline", content);
+        if (!inline_content.empty()) {
+          javascript_context_->run("inline", inline_content);
         }
       }
     }
@@ -207,260 +210,266 @@ void Tab::load_error_page(const std::string &content_or_message) {
 void Tab::rebuild_layout() {
   if (!root_)
     return;
-  StyleEngine style_engine(http_);
+  StyleEngine style_engine(network_engine_);
   style_engine.apply(
       dynamic_cast<Element *>(root_.get()), url_,
       [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
       url_);
-  document_ = std::make_unique<DocumentLayout>(root_.get(), font_manager_,
-                                               window_width_);
-  document_->layout();
+  document_layout_ = std::make_unique<DocumentLayout>(
+      root_.get(), font_manager_, window_width_);
+  document_layout_->layout();
   display_list_.clear();
-  paint_tree(*document_, display_list_);
+  paint_tree(*document_layout_, display_list_);
 }
 
-// Revised draw signature to take GraphicsContext
-void Tab::render(gfx::GraphicsContext &ctx, int y_offset) const {
-  if (!document_)
+void Tab::render(gfx::GraphicsContext &ctx, int y_screen_offset) const {
+  if (!document_layout_)
     return;
-  for (const auto &cmd : display_list_) {
-    cmd->execute(scroll_, y_offset, ctx);
+  for (const auto &command : display_list_) {
+    command->execute(current_scroll_, y_screen_offset, ctx);
   }
-  render_scrollbar(ctx, y_offset);
+  render_scrollbar(ctx, y_screen_offset);
 }
 
-void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
-  if (!document_)
+void Tab::render_scrollbar(gfx::GraphicsContext &ctx,
+                           int y_screen_offset) const {
+  if (!document_layout_)
     return;
 
-  int viewport_height = config::WINDOW_HEIGHT - y_offset;
-  int doc_height = (int)document_->bounds().height + 60; // Increased padding
+  int viewport_height = config::WINDOW_HEIGHT - y_screen_offset;
+  int document_height = (int)document_layout_->bounds().height + 60;
 
-  if (doc_height <= viewport_height)
-    return; // No need to scroll
+  if (document_height <= viewport_height)
+    return; // Story: No need to scroll if content fits in viewport
 
-  // Bar dimensions
   int bar_width = config::SCROLLBAR_WIDTH;
   int bar_x = window_width_ - bar_width;
 
-  // Track (Background)
-  ctx.draw_rect({{bar_x, y_offset}, bar_width, viewport_height},
+  // Story: Draw the Scrollbar Track
+  ctx.draw_rect({{bar_x, y_screen_offset}, bar_width, viewport_height},
                 gfx::Color::from_rgb(240, 240, 240));
 
-  // Thumb (Draggable part)
-  double thumb_ratio = (double)viewport_height / doc_height;
+  // Story: Draw the Scrollbar Thumb
+  double thumb_ratio = (double)viewport_height / document_height;
   int thumb_height = (int)(viewport_height * thumb_ratio);
   if (thumb_height < 20)
     thumb_height = 20; // Minimum size
 
-  double scroll_ratio = (double)scroll_ / (doc_height - viewport_height);
+  double scroll_ratio =
+      (double)current_scroll_ / (document_height - viewport_height);
   int thumb_y =
-      y_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
+      y_screen_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
 
   ctx.draw_rect({{bar_x + 2, thumb_y}, bar_width - 4, thumb_height},
                 gfx::Color::from_rgb(160, 160, 160));
 }
 
 void Tab::handle_mousedown(int x, int y) {
-  if (!document_)
+  if (!document_layout_)
     return;
 
   int ui_height = config::UI_HEIGHT;
-  int v_height = config::WINDOW_HEIGHT - ui_height;
-  int d_height = (int)document_->bounds().height + 100;
+  int viewport_height = config::WINDOW_HEIGHT - ui_height;
+  int document_height = (int)document_layout_->bounds().height + 100;
 
-  if (d_height > v_height && x >= window_width_ - config::SCROLLBAR_WIDTH) {
+  if (document_height > viewport_height &&
+      x >= window_width_ - config::SCROLLBAR_WIDTH) {
     is_dragging_scrollbar_ = true;
-    handle_mousemove(x, y); // Initial jump to position
+    handle_mousemove(x, y);
     return;
   }
 
-  // If not scrollbar, perform normal click
   click(x, y);
 }
 
 void Tab::handle_mousemove(int x, int y) {
-  if (!is_dragging_scrollbar_ || !document_)
+  if (!is_dragging_scrollbar_ || !document_layout_)
     return;
 
   int ui_height = config::UI_HEIGHT;
-  int v_height = config::WINDOW_HEIGHT - ui_height;
-  int d_height = (int)document_->bounds().height + 100;
+  int viewport_height = config::WINDOW_HEIGHT - ui_height;
+  int document_height = (int)document_layout_->bounds().height + 100;
 
-  double scroll_ratio = (double)y / v_height;
-  int max_scroll = std::max(0, d_height - v_height);
-  scroll_ = std::min(
-      max_scroll, std::max(0, (int)(scroll_ratio * d_height - v_height / 2)));
+  double scroll_ratio = (double)y / viewport_height;
+  int max_scroll = std::max(0, document_height - viewport_height);
+  current_scroll_ = std::min(
+      max_scroll,
+      std::max(0, (int)(scroll_ratio * document_height - viewport_height / 2)));
 }
 
-void Tab::handle_mouseup(int x, int y) { is_dragging_scrollbar_ = false; }
+void Tab::handle_mouseup(int /*x*/, int /*y*/) {
+  is_dragging_scrollbar_ = false;
+}
 
 void Tab::click(int x, int y) {
-  if (!document_)
+  if (!document_layout_)
     return;
 
-  // y already comes in as relative to tab top (from Browser routing)
-  auto total_y = y + scroll_;
+  auto total_y = y + current_scroll_;
 
-  auto all = tree_to_list(*document_);
+  auto all_nodes = tree_to_list(*document_layout_);
   const Lexeme *clicked_node = nullptr;
 
-  for (auto it = all.rbegin(); it != all.rend(); ++it) {
-    const LayoutObject *obj = *it;
-    if (obj->bounds().contains({x, total_y})) {
-      clicked_node = obj->node();
+  for (auto it = all_nodes.rbegin(); it != all_nodes.rend(); ++it) {
+    const LayoutObject *object = *it;
+    if (object->bounds().contains({x, total_y})) {
+      clicked_node = object->node();
       if (clicked_node)
         break;
     }
   }
 
   if (clicked_node) {
-    if (focus_) {
-      focus_->set_focused(false);
+    if (focused_element_) {
+      focused_element_->set_focused(false);
     }
-    focus_ = nullptr;
+    focused_element_ = nullptr;
 
-    const Lexeme *curr = clicked_node;
-    while (curr) {
-      if (curr->type() == LexemeType::Element) {
-        const auto *el = dynamic_cast<const Element *>(curr);
-        if (el) {
-          if (js_ && js_->dispatch_event("click", const_cast<Element *>(el))) {
+    const Lexeme *current_lexeme = clicked_node;
+    while (current_lexeme) {
+      if (current_lexeme->type() == LexemeType::Element) {
+        const auto *element = dynamic_cast<const Element *>(current_lexeme);
+        if (element) {
+          if (javascript_context_ &&
+              javascript_context_->dispatch_event(
+                  "click", const_cast<Element *>(element))) {
             return;
           }
-          if (el->tag() == "a" && el->attributes().contains("href")) {
+          if (element->tag() == "a" && element->attributes().contains("href")) {
             try {
-              load(url_.resolve(el->attributes().at("href")));
+              load(url_.resolve(element->attributes().at("href")));
             } catch (const utils::UrlError &error) {
               load_error_page(error.what());
             }
             return;
-          } else if (el->tag() == "input") {
-            focus_ = const_cast<Element *>(el);
-            focus_->set_focused(true);
-            focus_->set_attribute("value", ""); // Clear on click (Ch8)
-            // Refresh display list to show caret
+          } else if (element->tag() == "input") {
+            focused_element_ = const_cast<Element *>(element);
+            focused_element_->set_focused(true);
+            focused_element_->set_attribute("value", "");
+
             display_list_.clear();
-            paint_tree(*document_, display_list_);
+            paint_tree(*document_layout_, display_list_);
             return;
-          } else if (el->tag() == "button") {
-            // Find parent form
-            const Element *f_curr = el;
-            while (f_curr) {
-              if (f_curr->tag() == "form" &&
-                  f_curr->attributes().contains("action")) {
-                submit_form(f_curr);
+          } else if (element->tag() == "button") {
+            const Element *form_search = element;
+            while (form_search) {
+              if (form_search->tag() == "form" &&
+                  form_search->attributes().contains("action")) {
+                submit_form(form_search);
                 return;
               }
-              f_curr = dynamic_cast<const Element *>(f_curr->parent());
+              form_search =
+                  dynamic_cast<const Element *>(form_search->parent());
             }
           }
         }
       }
-      curr = curr->parent();
+      current_lexeme = current_lexeme->parent();
     }
   }
 
-  // Refresh if focus changed to null
   display_list_.clear();
-  paint_tree(*document_, display_list_);
+  paint_tree(*document_layout_, display_list_);
 }
 
 void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
-  if (!focus_)
+  if (!focused_element_)
     return;
 
-  auto *el = dynamic_cast<Element *>(focus_);
-  if (!el)
+  auto *element = dynamic_cast<Element *>(focused_element_);
+  if (!element)
     return;
 
-  if (js_ && js_->dispatch_event("keydown", el)) {
+  if (javascript_context_ &&
+      javascript_context_->dispatch_event("keydown", element)) {
     return;
   }
 
-  auto attrs = el->attributes();
-  std::string value = attrs.count("value") ? attrs.at("value") : "";
+  auto attributes = element->attributes();
+  std::string value_string =
+      attributes.count("value") ? attributes.at("value") : "";
 
   if (key == SDLK_BACKSPACE) {
-    if (!value.empty()) {
-      value.pop_back();
+    if (!value_string.empty()) {
+      value_string.pop_back();
     }
   } else if (!text.empty()) {
-    value += text;
+    value_string += text;
   }
 
-  el->set_attribute("value", value);
+  element->set_attribute("value", value_string);
 
-  // Re-layout and re-paint to update text width/caret position
-  // In a full browser, we might only re-layout the changed element.
-  // Here we re-run layout for the whole document for simplicity.
-  document_->layout();
+  document_layout_->layout();
   display_list_.clear();
-  paint_tree(*document_, display_list_);
+  paint_tree(*document_layout_, display_list_);
 }
 
-void Tab::submit_form(const Element *form) {
-  if (!form)
+void Tab::submit_form(const Element *form_element) {
+  if (!form_element)
     return;
 
-  if (js_ && js_->dispatch_event("submit", const_cast<Element *>(form))) {
+  if (javascript_context_ &&
+      javascript_context_->dispatch_event(
+          "submit", const_cast<Element *>(form_element))) {
     return;
   }
 
-  std::string payload;
+  std::string payload_string;
 
-  // Find all <input> children that have a 'name'
-  std::vector<const Lexeme *> queue = {form};
+  std::vector<const Lexeme *> queue = {form_element};
   while (!queue.empty()) {
     const Lexeme *node = queue.front();
     queue.erase(queue.begin());
 
     if (node->type() == LexemeType::Element) {
-      const auto *el = dynamic_cast<const Element *>(node);
-      if (el->tag() == "input" && el->attributes().contains("name")) {
-        std::string name = el->attributes().at("name");
-        std::string value =
-            el->attributes().count("value") ? el->attributes().at("value") : "";
-        if (!payload.empty())
-          payload += "&";
-        payload += utils::url_percent_encode(name) + "=" +
-                   utils::url_percent_encode(value);
+      const auto *element = dynamic_cast<const Element *>(node);
+      if (element->tag() == "input" && element->attributes().contains("name")) {
+        std::string name = element->attributes().at("name");
+        std::string value = element->attributes().count("value")
+                                ? element->attributes().at("value")
+                                : "";
+        if (!payload_string.empty())
+          payload_string += "&";
+        payload_string += utils::url_percent_encode(name) + "=" +
+                          utils::url_percent_encode(value);
       }
-      for (const auto &child : el->children()) {
+      for (const auto &child : element->children()) {
         queue.push_back(child.get());
       }
     }
   }
 
-  std::string action = form->attributes().at("action");
-  std::cout << "[Tab] Submitting form to: " << action
-            << " with payload: " << payload << std::endl;
+  std::string action_url_string = form_element->attributes().at("action");
+  std::cout << "[Tab] Submitting form to: " << action_url_string
+            << " with payload: " << payload_string << std::endl;
   try {
-    load(url_.resolve(action), payload);
+    load(url_.resolve(action_url_string), payload_string);
   } catch (const utils::UrlError &error) {
     load_error_page(error.what());
   }
 }
 
-void Tab::scrolldown() {
-  if (!document_)
+void Tab::scroll_down() {
+  if (!document_layout_)
     return;
-  // Total height = content height + bottom padding
-  int total_height = (int)document_->bounds().height + 60;
-  int max_scroll =
-      std::max(0, total_height - (config::WINDOW_HEIGHT - config::UI_HEIGHT));
-  scroll_ = std::min(scroll_ + config::SCROLL_STEP, max_scroll);
+  int total_content_height = (int)document_layout_->bounds().height + 60;
+  int max_scroll_offset = std::max(
+      0, total_content_height - (config::WINDOW_HEIGHT - config::UI_HEIGHT));
+  current_scroll_ =
+      std::min(current_scroll_ + config::SCROLL_STEP, max_scroll_offset);
 }
 
-void Tab::scrollup() { scroll_ = std::max(0, scroll_ - config::SCROLL_STEP); }
+void Tab::scroll_up() {
+  current_scroll_ = std::max(0, current_scroll_ - config::SCROLL_STEP);
+}
 
 void Tab::go_back() {
   if (history_.size() > 1) {
-    history_.pop_back(); // Remove current
-    Url previous = history_.back();
-    history_.pop_back(); // load() will push it back
-    std::cout << "[Tab] Going back to: " << previous.href() << std::endl;
-    load(previous);
+    history_.pop_back();
+    Url previous_url = history_.back();
+    history_.pop_back();
+    std::cout << "[Tab] Going back to: " << previous_url.href() << std::endl;
+    load(previous_url);
   }
 }
 
@@ -468,21 +477,21 @@ const std::string Tab::title() const {
   if (!root_)
     return url_.host();
 
-  // Find <title> tag
+  // Story: Search for the <title> tag in the DOM tree
   std::vector<const Lexeme *> queue = {root_.get()};
   while (!queue.empty()) {
     const Lexeme *node = queue.front();
     queue.erase(queue.begin());
 
     if (node->type() == LexemeType::Element) {
-      const auto *el = dynamic_cast<const Element *>(node);
-      if (el->tag() == "title" && !el->children().empty()) {
+      const auto *element = dynamic_cast<const Element *>(node);
+      if (element->tag() == "title" && !element->children().empty()) {
         const auto *text_node =
-            dynamic_cast<const Text *>(el->children().front().get());
+            dynamic_cast<const Text *>(element->children().front().get());
         if (text_node)
           return text_node->text();
       }
-      for (const auto &child : el->children()) {
+      for (const auto &child : element->children()) {
         queue.push_back(child.get());
       }
     }
