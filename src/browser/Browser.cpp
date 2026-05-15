@@ -76,6 +76,20 @@ void Browser::shutdown() {
   SDL_Quit();
 }
 
+void Browser::load(const std::string &raw_url) {
+  if (!running)
+    return;
+
+  try {
+    load(Url(raw_url));
+  } catch (const utils::UrlError &error) {
+    std::cerr << "[Browser] URL Error: " << error.what() << std::endl;
+    if (active_tab()) {
+      active_tab()->load_error_page(error.what());
+    }
+  }
+}
+
 void Browser::load(const Url &url) {
   if (!running)
     return;

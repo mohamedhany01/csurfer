@@ -29,3 +29,9 @@ TEST(HttpResponseTest, HeaderStorage) {
   EXPECT_EQ(res.headers.size(), 1);
   EXPECT_EQ(res.headers["content-type"], "text/html");
 }
+TEST(UrlTest, InvalidUrls) {
+  EXPECT_THROW(Url("///www.foo.com"), utils::UrlError);
+  EXPECT_THROW(Url("ftp://test.com"), utils::UrlError);
+  EXPECT_THROW(Url("http:///"), utils::UrlError);
+  EXPECT_THROW(Url("not a url"), utils::UrlError);
+}

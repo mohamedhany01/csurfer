@@ -19,7 +19,10 @@ public:
   explicit Browser(std::shared_ptr<IRequest> http);
   ~Browser();
 
-  // Load a URL, build the layout tree into the active tab.
+  // Load a URL string, handles validation and error pages.
+  void load(const std::string &raw_url);
+
+  // Load a pre-parsed URL object.
   void load(const Url &url);
 
   // Interaction (delegated to tab)

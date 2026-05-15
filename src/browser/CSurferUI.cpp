@@ -204,7 +204,7 @@ void CSurferUI::enter() {
     if (final_url.find("://") == std::string::npos) {
       final_url = "http://" + final_url;
     }
-    browser_->load(Url(final_url));
+    browser_->load(final_url);
     address_bar_focused_ = false;
   }
 }

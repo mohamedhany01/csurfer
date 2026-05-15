@@ -27,6 +27,7 @@ public:
 
   // Lifecycle
   void load(const Url &url, const std::string &payload = "");
+  void load_error_page(const std::string &error_message);
 
   // Interaction
   void click(int x, int y);
