@@ -7,6 +7,11 @@
 #include <unordered_map>
 #include <vector>
 
+namespace layout {
+class BlockPainter;
+class InlineLayoutHelper;
+} // namespace layout
+
 /**
  * Story: A cache key for matching font styles (size, weight, style).
  */
@@ -35,6 +40,9 @@ struct FontKeyHash {
  * 2. Inline Mode: Children are text or inline elements wrapped into lines.
  */
 class BlockLayout final : public LayoutObject {
+  friend class layout::BlockPainter;
+  friend class layout::InlineLayoutHelper;
+
 public:
   BlockLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
               BlockLayout *previous_sibling, gfx::FontManager &font_manager);
@@ -71,19 +79,4 @@ private:
   LayoutMode determine_layout_mode() const;
   void layout_block_children();
   void layout_inline_children();
-
-  void recurse_node(const Lexeme *current_node);
-  void layout_node(const Lexeme *current_node);
-  void layout_element(const Element *element_node);
-  void layout_text(const Lexeme *text_node, const std::string &content,
-                   const Element *parent_element);
-
-  void layout_word(const Lexeme *origin_node, const std::string &word_text,
-                   const Element *parent_element);
-
-  void start_new_line();
-
-  void layout_input(const Lexeme *input_node);
-
-  std::shared_ptr<gfx::Font> get_current_font(const Element *element_node);
 };

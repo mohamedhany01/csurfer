@@ -1,13 +1,16 @@
 #include "layout/BlockLayout.h"
-
+#include "config/Config.h"
+#include "css/CSSUtils.h"
 #include "dom/Text.h"
+#include "layout/BlockPainter.h"
+#include "layout/InlineLayoutHelper.h"
 #include "layout/InputLayout.h"
 #include "layout/LineLayout.h"
 #include "layout/TextLayout.h"
+#include "utils/Logger.h"
 #include "utils/Parser.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <sstream>
 #include <unordered_set>
 
@@ -36,59 +39,14 @@ BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
       anonymous_children_(std::move(anonymous_children)), current_cursor_x_(0) {
 }
 
-/**
- * Story: A simple parser for CSS linear gradients.
- */
-static bool parse_linear_gradient(const std::string &value,
-                                  std::string &direction, gfx::Color &color1,
-                                  gfx::Color &color2) {
-  if (value.find("linear-gradient(") != 0)
-    return false;
-
-  size_t start_index = 16; // length of "linear-gradient("
-  size_t end_index = value.find_last_of(')');
-  if (end_index == std::string::npos || end_index <= start_index)
-    return false;
-
-  std::string content = value.substr(start_index, end_index - start_index);
-  std::stringstream ss(content);
-  std::string part;
-  std::vector<std::string> parts;
-
-  while (std::getline(ss, part, ',')) {
-    // Trim whitespace
-    size_t first = part.find_first_not_of(" \t");
-    size_t last = part.find_last_not_of(" \t");
-    if (first != std::string::npos) {
-      parts.push_back(part.substr(first, last - first + 1));
-    }
-  }
-
-  if (parts.size() < 2)
-    return false;
-
-  if (parts.size() == 2) {
-    direction = "to bottom";
-    color1 = gfx::Color::from_name(parts[0]);
-    color2 = gfx::Color::from_name(parts[1]);
-    return true;
-  }
-  if (parts.size() == 3) {
-    direction = parts[0];
-    color1 = gfx::Color::from_name(parts[1]);
-    color2 = gfx::Color::from_name(parts[2]);
-  }
-
-  return true;
-}
-
 float BlockLayout::get_opacity() const {
   if (const auto *element = dynamic_cast<const Element *>(node_)) {
     auto styles = element->style();
     if (styles.find("opacity") != styles.end()) {
       try {
         return std::stof(styles.at("opacity"));
-      } catch (...) {
+      } catch (const std::exception &e) {
+        CS_LOG_ERROR("Failed to parse opacity: {}", e.what());
         return 1.0f;
       }
     }
@@ -127,7 +85,8 @@ float BlockLayout::get_border_radius() const {
       }
       try {
         return std::stof(radius_string);
-      } catch (...) {
+      } catch (const std::exception &e) {
+        CS_LOG_ERROR("Failed to parse border-radius: {}", e.what());
         return 0.0f;
       }
     }
@@ -279,284 +238,10 @@ void BlockLayout::layout_block_children() {
  * into LineLayout containers, performing line-wrapping when necessary.
  */
 void BlockLayout::layout_inline_children() {
-  current_cursor_x_ = 0;
-  start_new_line();
-  if (!anonymous_children_.empty()) {
-    for (const auto *node : anonymous_children_) {
-      recurse_node(node);
-    }
-  } else {
-    recurse_node(node_);
-  }
+  layout::InlineLayoutHelper::layout(*this);
 }
 
 void BlockLayout::paint(
     std::vector<std::unique_ptr<DrawCommand>> &display_list) const {
-  const auto *element = dynamic_cast<const Element *>(node_);
-  if (element) {
-    auto styles = element->style();
-
-    float border_radius = 0.0f;
-    if (styles.find("border-radius") != styles.end()) {
-      std::string radius_string = styles.at("border-radius");
-      if (radius_string.find("px") != std::string::npos) {
-        radius_string = radius_string.substr(0, radius_string.find("px"));
-      }
-      try {
-        border_radius = std::stof(radius_string);
-      } catch (...) {
-        border_radius = 0.0f;
-      }
-    }
-
-    if (styles.find("box-shadow") != styles.end()) {
-      std::string shadow_string = styles.at("box-shadow");
-      std::stringstream ss(shadow_string);
-      std::string dx_str, dy_str, blur_str, color_str;
-      if (ss >> dx_str >> dy_str >> blur_str >> color_str) {
-        try {
-          int dx = std::stoi(dx_str);
-          int dy = std::stoi(dy_str);
-          int blur = std::stoi(blur_str);
-          gfx::Color shadow_color = gfx::Color::from_name(color_str);
-          display_list.push_back(std::make_unique<DrawBoxShadow>(
-              utils::Rect{{bounds_.origin.x, bounds_.origin.y},
-                          (int)bounds_.width,
-                          (int)bounds_.height},
-              (float)blur, dx, dy, shadow_color));
-        } catch (...) {
-        }
-      }
-    }
-
-    if (styles.find("background-color") != styles.end()) {
-      std::string background_color_name = styles.at("background-color");
-      if (background_color_name != "transparent" &&
-          !background_color_name.empty()) {
-        gfx::Color color = gfx::Color::from_name(background_color_name);
-
-        if (border_radius > 0.0f) {
-          display_list.push_back(std::make_unique<DrawRoundedRect>(
-              utils::Rect{{bounds_.origin.x, bounds_.origin.y},
-                          (int)bounds_.width,
-                          (int)bounds_.height},
-              border_radius, color));
-        } else {
-          display_list.push_back(std::make_unique<DrawRect>(
-              bounds_.origin.x, bounds_.origin.y,
-              bounds_.origin.x + bounds_.width,
-              bounds_.origin.y + bounds_.height, color));
-        }
-      }
-    }
-
-    if (styles.find("background") != styles.end()) {
-      std::string background_value = styles.at("background");
-      std::string gradient_direction;
-      gfx::Color color_start, color_end;
-      if (parse_linear_gradient(background_value, gradient_direction,
-                                color_start, color_end)) {
-        display_list.push_back(std::make_unique<DrawLinearGradient>(
-            utils::Rect{{bounds_.origin.x, bounds_.origin.y},
-                        (int)bounds_.width,
-                        (int)bounds_.height},
-            color_start, color_end, gradient_direction));
-      }
-    }
-  }
-}
-
-void BlockLayout::recurse_node(const Lexeme *node) { layout_node(node); }
-
-void BlockLayout::layout_node(const Lexeme *node) {
-  if (!node)
-    return;
-
-  if (node->type() == LexemeType::Text) {
-    const Element *parent_element = nullptr;
-    if (const auto *text_node = dynamic_cast<const Text *>(node)) {
-      parent_element = dynamic_cast<const Element *>(text_node->parent());
-    }
-    layout_text(node, node->text(), parent_element);
-    return;
-  }
-
-  if (node->type() == LexemeType::Element) {
-    const auto *element = dynamic_cast<const Element *>(node);
-    if (element) {
-      if (element->tag() == "br") {
-        start_new_line();
-      } else if (element->tag() == "input" || element->tag() == "button") {
-        layout_input(element);
-        return;
-      }
-    }
-    layout_element(element);
-  }
-}
-
-void BlockLayout::layout_element(const Element *element_node) {
-  if (!element_node)
-    return;
-
-  for (const auto &child : element_node->children()) {
-    layout_node(child.get());
-  }
-}
-
-void BlockLayout::layout_text(const Lexeme *text_node,
-                              const std::string &content,
-                              const Element *parent_element) {
-  auto words = utils::split_into_words(content);
-  for (const auto &word_text : words) {
-    if (word_text == "\n") {
-      continue;
-    }
-    layout_word(text_node, word_text, parent_element);
-  }
-}
-
-/**
- * Story: Measures and positions a single word within a line.
- * If the word exceeds the line width, a new line is started.
- */
-void BlockLayout::layout_word(const Lexeme *origin_node,
-                              const std::string &word_text,
-                              const Element *parent_element) {
-  std::shared_ptr<gfx::Font> font = get_current_font(parent_element);
-  if (!font)
-    return;
-
-  int word_width = 0;
-  int word_height = 0;
-  font->measure_text(word_text, word_width, word_height);
-
-  if (current_cursor_x_ + word_width > bounds_.width) {
-    start_new_line();
-  }
-
-  gfx::Color current_text_color = gfx::Color::Black();
-  if (parent_element) {
-    auto styles = parent_element->style();
-    if (styles.find("color") != styles.end()) {
-      current_text_color = gfx::Color::from_name(styles.at("color"));
-    }
-  }
-
-  if (!children_.empty()) {
-    LineLayout *current_line =
-        dynamic_cast<LineLayout *>(children_.back().get());
-    if (current_line) {
-      auto text_layout = std::make_unique<TextLayout>(origin_node, word_text,
-                                                      font, current_text_color);
-      int space_width = 0;
-      int space_height = 0;
-      font->measure_text(" ", space_width, space_height);
-
-      utils::Rect text_bounds = text_layout->bounds();
-      text_bounds.origin.x = this->bounds_.origin.x + current_cursor_x_;
-      text_layout->set_bounds(text_bounds);
-
-      current_line->children().push_back(std::move(text_layout));
-      current_cursor_x_ += word_width + space_width;
-    }
-  }
-}
-
-/**
- * Story: Appends a new LineLayout container to the block's children.
- * This is called whenever an inline run exceeds its width or a <br> is hit.
- */
-void BlockLayout::start_new_line() {
-  current_cursor_x_ = 0;
-  LayoutObject *previous_line = nullptr;
-  if (!children_.empty()) {
-    previous_line = children_.back().get();
-  }
-
-  add_child(std::make_unique<LineLayout>(node_, this, previous_line));
-}
-
-/**
- * Story: Positions an interactive element (input/button) within a line.
- */
-void BlockLayout::layout_input(const Lexeme *input_node) {
-  const auto *element = dynamic_cast<const Element *>(input_node);
-  if (!element)
-    return;
-
-  int input_width = config::DEFAULT_INPUT_WIDTH;
-  if (current_cursor_x_ + input_width > bounds_.width) {
-    start_new_line();
-  }
-
-  if (!children_.empty()) {
-    LineLayout *current_line =
-        dynamic_cast<LineLayout *>(children_.back().get());
-    if (current_line) {
-      std::shared_ptr<gfx::Font> font = get_current_font(element);
-
-      gfx::Color text_color = gfx::Color::Black();
-      auto styles = element->style();
-      if (styles.count("color")) {
-        text_color = gfx::Color::from_name(styles.at("color"));
-      }
-
-      LayoutObject *previous_object = nullptr;
-      if (!current_line->children().empty()) {
-        previous_object = current_line->children().back().get();
-      }
-
-      auto input_layout = std::make_unique<InputLayout>(
-          input_node, current_line, previous_object, font, text_color);
-      current_line->children().push_back(std::move(input_layout));
-
-      int space_width = 0;
-      int space_height = 0;
-      if (font) {
-        font->measure_text(" ", space_width, space_height);
-      }
-      current_cursor_x_ += input_width + space_width;
-    }
-  }
-}
-
-#include "config/Config.h"
-
-std::shared_ptr<gfx::Font>
-BlockLayout::get_current_font(const Element *element_node) {
-  int font_size = config::DEFAULT_FONT_SIZE;
-  bool is_bold = false;
-  bool is_italic = false;
-
-  if (element_node) {
-    auto styles = element_node->style();
-    if (styles.find("font-size") != styles.end()) {
-      std::string font_size_string = styles.at("font-size");
-      if (font_size_string.length() > 2 &&
-          font_size_string.substr(font_size_string.length() - 2) == "px") {
-        try {
-          font_size = std::stoi(
-              font_size_string.substr(0, font_size_string.length() - 2));
-        } catch (...) {
-        }
-      }
-    }
-    if (styles.find("font-weight") != styles.end() &&
-        styles.at("font-weight") == "bold") {
-      is_bold = true;
-    }
-    if (styles.find("font-style") != styles.end() &&
-        styles.at("font-style") == "italic") {
-      is_italic = true;
-    }
-  }
-
-  FontKey font_key{font_size, is_bold, is_italic};
-  if (font_cache_.contains(font_key))
-    return font_cache_[font_key];
-
-  auto font = font_manager_.get_font("Ubuntu", font_size, is_bold, is_italic);
-  font_cache_[font_key] = font;
-  return font;
+  layout::BlockPainter::paint(*this, display_list);
 }

@@ -134,6 +134,8 @@ add_library(csurfer_lib STATIC
     src/html/HTMLParser.cpp
     src/layout/InputLayout.cpp
     src/layout/BlockLayout.cpp
+    src/layout/BlockPainter.cpp
+    src/layout/InlineLayoutHelper.cpp
     src/layout/DocumentLayout.cpp
     src/layout/DisplayItem.cpp
     src/layout/LineLayout.cpp
