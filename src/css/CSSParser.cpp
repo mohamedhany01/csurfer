@@ -5,122 +5,131 @@
 #include <stdexcept>
 
 CSSParser::CSSParser(std::string css_text)
-    : text_(std::move(css_text)), pos_(0) {}
+    : text_(std::move(css_text)), position_(0) {}
 
-void CSSParser::whitespace() {
-  while (pos_ < text_.length() &&
-         std::isspace(static_cast<unsigned char>(text_[pos_]))) {
-    pos_++;
+void CSSParser::consume_whitespace() {
+  while (position_ < text_.length() &&
+         std::isspace(static_cast<unsigned char>(text_[position_]))) {
+    position_++;
   }
 }
 
-void CSSParser::literal(char c) {
-  if (pos_ < text_.length() && text_[pos_] == c) {
-    pos_++;
+void CSSParser::consume_literal(char expected_character) {
+  if (position_ < text_.length() && text_[position_] == expected_character) {
+    position_++;
   } else {
-    throw std::runtime_error("Parsing error: expected literal");
+    throw std::runtime_error("Parsing error: expected literal '" +
+                             std::string(1, expected_character) + "'");
   }
 }
 
-std::string CSSParser::word() {
-  size_t start = pos_;
-  while (pos_ < text_.length()) {
-    char c = text_[pos_];
-    if (std::isalnum(static_cast<unsigned char>(c)) || c == '#' || c == '-' ||
-        c == '.' || c == '%') {
-      pos_++;
+std::string CSSParser::consume_word() {
+  size_t start_index = position_;
+  while (position_ < text_.length()) {
+    char current_character = text_[position_];
+    if (std::isalnum(static_cast<unsigned char>(current_character)) ||
+        current_character == '#' || current_character == '-' ||
+        current_character == '.' || current_character == '%' ||
+        current_character == '(' || current_character == ')' ||
+        current_character == ',') {
+      position_++;
     } else {
       break;
     }
   }
-  return text_.substr(start, pos_ - start);
+  return text_.substr(start_index, position_ - start_index);
 }
 
-std::string CSSParser::value() {
-  size_t start = pos_;
-  while (pos_ < text_.length() && text_[pos_] != ';' && text_[pos_] != '}') {
-    pos_++;
+std::string CSSParser::consume_value() {
+  size_t start_index = position_;
+  while (position_ < text_.length() && text_[position_] != ';' &&
+         text_[position_] != '}') {
+    position_++;
   }
-  return utils::trim(text_.substr(start, pos_ - start));
+  return utils::trim(text_.substr(start_index, position_ - start_index));
 }
 
-std::pair<std::string, std::string> CSSParser::pair() {
-  std::string prop = word();
-  whitespace();
-  literal(':');
-  whitespace();
-  std::string val = value();
-  return {utils::to_lower(prop), val};
+std::pair<std::string, std::string> CSSParser::consume_declaration() {
+  std::string property_name = consume_word();
+  consume_whitespace();
+  consume_literal(':');
+  consume_whitespace();
+  std::string property_value = consume_value();
+  return {utils::to_lower(property_name), property_value};
 }
 
-char CSSParser::ignore_until(const std::vector<char> &chars) {
-  while (pos_ < text_.length()) {
-    char c = text_[pos_];
-    if (std::find(chars.begin(), chars.end(), c) != chars.end()) {
-      return c;
+char CSSParser::ignore_until(const std::vector<char> &stop_characters) {
+  while (position_ < text_.length()) {
+    char current_character = text_[position_];
+    if (std::find(stop_characters.begin(), stop_characters.end(),
+                  current_character) != stop_characters.end()) {
+      return current_character;
     }
-    pos_++;
+    position_++;
   }
-  return '\0'; // Return null char if end of string is reached
+  return '\0';
 }
 
-std::unordered_map<std::string, std::string> CSSParser::body() {
-  std::unordered_map<std::string, std::string> pairs;
-  while (pos_ < text_.length() && text_[pos_] != '}') {
+std::unordered_map<std::string, std::string> CSSParser::consume_body() {
+  std::unordered_map<std::string, std::string> declarations;
+  while (position_ < text_.length() && text_[position_] != '}') {
     try {
-      auto p = pair();
-      pairs[p.first] = p.second;
-      whitespace();
-      literal(';');
-      whitespace();
+      auto declaration_pair = consume_declaration();
+      declarations[declaration_pair.first] = declaration_pair.second;
+      consume_whitespace();
+      consume_literal(';');
+      consume_whitespace();
     } catch (const std::exception &e) {
-      char why = ignore_until({';', '}'});
-      if (why == ';') {
-        literal(';');
-        whitespace();
+      char stop_char = ignore_until({';', '}'});
+      if (stop_char == ';') {
+        consume_literal(';');
+        consume_whitespace();
       } else {
         break;
       }
     }
   }
-  return pairs;
+  return declarations;
 }
 
-std::shared_ptr<CSSSelector> CSSParser::selector() {
-  std::string tag = utils::to_lower(word());
-  std::shared_ptr<CSSSelector> out = std::make_shared<TagSelector>(tag);
-  whitespace();
+std::shared_ptr<CSSSelector> CSSParser::consume_selector() {
+  std::string tag_name = utils::to_lower(consume_word());
+  std::shared_ptr<CSSSelector> selector =
+      std::make_shared<TagSelector>(tag_name);
+  consume_whitespace();
 
-  while (pos_ < text_.length() && text_[pos_] != '{') {
-    std::string descendant_tag = utils::to_lower(word());
+  while (position_ < text_.length() && text_[position_] != '{') {
+    std::string descendant_tag = utils::to_lower(consume_word());
+    if (descendant_tag.empty())
+      break;
     std::shared_ptr<CSSSelector> descendant =
         std::make_shared<TagSelector>(descendant_tag);
-    out = std::make_shared<DescendantSelector>(out, descendant);
-    whitespace();
+    selector = std::make_shared<DescendantSelector>(selector, descendant);
+    consume_whitespace();
   }
-  return out;
+  return selector;
 }
 
 std::vector<CSSRule> CSSParser::parse() {
   std::vector<CSSRule> rules;
-  while (pos_ < text_.length()) {
+  while (position_ < text_.length()) {
     try {
-      whitespace();
-      if (pos_ >= text_.length())
+      consume_whitespace();
+      if (position_ >= text_.length())
         break;
 
-      auto sel = selector();
-      literal('{');
-      whitespace();
-      auto b = body();
-      literal('}');
+      auto current_selector = consume_selector();
+      consume_literal('{');
+      consume_whitespace();
+      auto declarations = consume_body();
+      consume_literal('}');
 
-      rules.push_back({sel, b});
+      rules.push_back({current_selector, declarations});
     } catch (const std::exception &e) {
-      char why = ignore_until({'}', '{'});
-      if (why == '}') {
-        literal('}');
-        whitespace();
+      char stop_char = ignore_until({'}', '{'});
+      if (stop_char == '}') {
+        consume_literal('}');
+        consume_whitespace();
       } else {
         break;
       }
@@ -132,6 +141,6 @@ std::vector<CSSRule> CSSParser::parse() {
 std::shared_ptr<CSSSelector>
 CSSParser::parse_selector(std::string selector_text) {
   CSSParser parser(std::move(selector_text));
-  parser.whitespace();
-  return parser.selector();
+  parser.consume_whitespace();
+  return parser.consume_selector();
 }

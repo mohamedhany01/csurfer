@@ -6,27 +6,68 @@
 #include <unordered_map>
 #include <vector>
 
+/**
+ * Story: A recursive-descent parser for CSS.
+ *
+ * Use-case: Converts CSS source text into a list of CSSRule objects.
+ * It handles selectors, property blocks, and basic error recovery.
+ */
 class CSSParser {
 public:
   explicit CSSParser(std::string css_text);
 
-  // Parses the entire CSS string provided in the constructor.
+  /**
+   * Story: Parses the full text and returns all valid CSS rules.
+   */
   std::vector<CSSRule> parse();
+
+  /**
+   * Story: Static helper for parsing a standalone selector (used by JS).
+   */
   static std::shared_ptr<CSSSelector> parse_selector(std::string selector_text);
 
 private:
-  void whitespace();
-  void literal(char c);
-  std::string word();
-  std::string value();
-  std::pair<std::string, std::string> pair();
-  std::unordered_map<std::string, std::string> body();
-  std::shared_ptr<CSSSelector> selector();
+  /**
+   * Story: Advances the position past any whitespace.
+   */
+  void consume_whitespace();
 
-  // Helper to recover from parsing errors by ignoring characters up to certain
-  // stops.
-  char ignore_until(const std::vector<char> &chars);
+  /**
+   * Story: Expects and consumes a specific literal character.
+   */
+  void consume_literal(char expected_character);
+
+  /**
+   * Story: Consumes a word (alpha-numeric plus CSS-valid symbols).
+   */
+  std::string consume_word();
+
+  /**
+   * Story: Consumes a property value until a terminator (; or }) is found.
+   */
+  std::string consume_value();
+
+  /**
+   * Story: Parses a single property:value declaration.
+   */
+  std::pair<std::string, std::string> consume_declaration();
+
+  /**
+   * Story: Parses the contents of a rule block { ... }.
+   */
+  std::unordered_map<std::string, std::string> consume_body();
+
+  /**
+   * Story: Parses a selector, including descendants.
+   */
+  std::shared_ptr<CSSSelector> consume_selector();
+
+  /**
+   * Story: Error recovery helper. Skips input until one of the stop characters
+   * is found.
+   */
+  char ignore_until(const std::vector<char> &stop_characters);
 
   std::string text_;
-  size_t pos_;
+  size_t position_ = 0;
 };
