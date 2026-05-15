@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CSurferUI.h"
+#include "IBrowserCommands.h"
 #include "Tab.h"
 #include "config/Config.h"
 #include "request/CookieJar.h"
@@ -22,29 +23,29 @@ class FontManager;
  * and the main execution loop. It acts as the "host" for both the
  * browser shell (UI) and the web content (Tabs).
  */
-class Browser {
+class Browser : public IBrowserCommands {
 public:
   Browser();
   explicit Browser(std::shared_ptr<IRequest> network_engine);
   ~Browser();
 
-  // Navigation Logic
-  void load(const std::string &raw_url);
+  // Navigation Logic (IBrowserCommands implementation)
+  void load(const std::string &raw_url) override;
   void load(const Url &url);
 
   // Interaction delegation
   void click(utils::Point point);
-  void go_back();
+  void go_back() override;
 
-  // Tab Management
-  void new_tab(const Url &url);
-  void switch_to_tab(size_t index);
-  void close_tab(size_t index);
+  // Tab Management (IBrowserCommands implementation)
+  void new_tab(const Url &url) override;
+  void switch_to_tab(size_t index) override;
+  void close_tab(size_t index) override;
 
   Tab *active_tab() const;
-  Tab *get_tab(size_t index) const { return tabs_[index].get(); }
-  size_t tab_count() const { return tabs_.size(); }
-  size_t active_tab_index() const { return active_tab_index_; }
+  Tab *get_tab(size_t index) const override { return tabs_[index].get(); }
+  size_t tab_count() const override { return tabs_.size(); }
+  size_t active_tab_index() const override { return active_tab_index_; }
 
   /**
    * Story: The heartbeat of the application.
@@ -52,7 +53,7 @@ public:
    */
   void main_loop();
 
-  TTF_Font *ui_font() const { return ui_font_; }
+  TTF_Font *ui_font() const override { return ui_font_; }
 
 private:
   std::shared_ptr<IRequest> network_engine_;

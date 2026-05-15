@@ -1,4 +1,5 @@
 #pragma once
+#include "IBrowserCommands.h"
 #include "config/Config.h"
 #include "layout/DisplayItem.h"
 #include "url/Url.h"
@@ -6,8 +7,6 @@
 #include <SDL2/SDL.h>
 #include <string>
 #include <vector>
-
-class Browser; // Forward declaration
 
 /**
  * CSurferUI handles the browser's graphical interface (GUI).
@@ -17,7 +16,7 @@ class Browser; // Forward declaration
  */
 class CSurferUI {
 public:
-  explicit CSurferUI(Browser *browser);
+  explicit CSurferUI(IBrowserCommands *browser);
   ~CSurferUI() = default;
 
   // Interaction
@@ -33,7 +32,7 @@ public:
   bool address_bar_focused() const { return address_bar_focused_; }
 
 private:
-  Browser *browser_;
+  IBrowserCommands *browser_;
 
   // UI State
   std::string address_bar_text_;

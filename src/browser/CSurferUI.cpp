@@ -1,9 +1,9 @@
 #include "CSurferUI.h"
-#include "Browser.h"
+#include "Tab.h"
 #include "config/Config.h"
 #include <iostream>
 
-CSurferUI::CSurferUI(Browser *browser) : browser_(browser) {
+CSurferUI::CSurferUI(IBrowserCommands *browser) : browser_(browser) {
   // Story: Initialize bounding boxes for the browser shell UI components.
 
   // Back button (<)
