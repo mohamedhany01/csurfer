@@ -35,3 +35,19 @@ TEST(UrlTest, InvalidUrls) {
   EXPECT_THROW(Url("http:///"), utils::UrlError);
   EXPECT_THROW(Url("not a url"), utils::UrlError);
 }
+
+TEST(UrlTest, Resolve) {
+  Url base("https://example.com/path/file.html");
+
+  EXPECT_EQ(base.resolve("other.html").href(),
+            "https://example.com/path/other.html");
+  EXPECT_EQ(base.resolve("/root.html").href(),
+            "https://example.com/root.html");
+  EXPECT_EQ(base.resolve("http://other.site/").href(), "http://other.site/");
+}
+
+TEST(UrlTest, AboutScheme) {
+  Url u("about:welcome");
+  EXPECT_EQ(u.scheme(), "about");
+  EXPECT_EQ(u.path(), "welcome");
+}
