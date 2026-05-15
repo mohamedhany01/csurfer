@@ -8,10 +8,10 @@
 #include "html/HTMLParser.h"
 #include "js/JSContext.h"
 #include "layout/LayoutTree.h"
+#include "utils/Logger.h"
 #include "utils/Parser.h"
 #include "utils/StringUtils.h"
 #include <algorithm>
-#include <iostream>
 #include <sstream>
 
 Tab::Tab(std::shared_ptr<IRequest> network_engine, int window_width,
@@ -79,7 +79,7 @@ void Tab::load(const Url &url, const std::string &payload) {
 
   Url referrer = url_;
   url_ = url;
-  std::cout << "[Tab] Navigating to: " << url_.href() << std::endl;
+  CS_LOG_INFO("Navigating to: {}", url_.href());
 
   std::string body;
   if (url_.href() == "about:welcome") {

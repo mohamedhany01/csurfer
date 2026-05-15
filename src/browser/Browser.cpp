@@ -2,7 +2,7 @@
 #include "gfx/SkiaContext.h"
 #include "gfx/SkiaFont.h"
 #include "request/HttpRequest.h"
-#include <iostream>
+#include "utils/Logger.h"
 
 Browser::Browser() : Browser(std::make_shared<HttpRequest>(&cookie_jar_)) {}
 
@@ -21,7 +21,7 @@ Browser::~Browser() { shutdown(); }
 
 void Browser::init_sdl() {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+    CS_LOG_ERROR("SDL_Init Error: {}", SDL_GetError());
     is_running_ = false;
   }
   SDL_StartTextInput(); // Story: Enable text input for the address bar and
@@ -30,16 +30,16 @@ void Browser::init_sdl() {
 
 void Browser::init_ttf() {
   if (TTF_Init() != 0) {
-    std::cerr << "TTF_Init Error: " << TTF_GetError() << std::endl;
+    CS_LOG_ERROR("TTF_Init Error: {}", TTF_GetError());
     is_running_ = false;
   }
 }
 
 void Browser::load_ui_font() {
   std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
-  ui_font_ = TTF_OpenFont(font_path.c_str(), 16);
+  ui_font_ = TTF_OpenFont(font_path.c_str(), config::DEFAULT_FONT_SIZE);
   if (!ui_font_) {
-    std::cerr << "Font error: " << TTF_GetError() << std::endl;
+    CS_LOG_ERROR("Font error: {}", TTF_GetError());
     is_running_ = false;
   }
 }
@@ -49,7 +49,7 @@ void Browser::create_window() {
                              SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                              width_, height_, SDL_WINDOW_SHOWN);
   if (!window_) {
-    std::cerr << "Window error: " << SDL_GetError() << std::endl;
+    CS_LOG_ERROR("Window error: {}", SDL_GetError());
     is_running_ = false;
   }
 }
@@ -57,7 +57,7 @@ void Browser::create_window() {
 void Browser::create_renderer() {
   renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
   if (!renderer_) {
-    std::cerr << "Renderer error: " << SDL_GetError() << std::endl;
+    CS_LOG_ERROR("Renderer error: {}", SDL_GetError());
     is_running_ = false;
   }
 }
@@ -83,9 +83,9 @@ void Browser::load(const std::string &raw_url) {
   try {
     load(Url(raw_url));
   } catch (const utils::UrlError &error) {
-    std::cerr << "[Browser] URL Error: " << error.what() << std::endl;
+    CS_LOG_ERROR("URL Error: {}", error.what());
     if (active_tab()) {
-      active_tab()->load_error_page(error.what());
+      active_tab()->process_document(error.what());
     }
   }
 }
@@ -146,7 +146,7 @@ void Browser::main_loop() {
     if (!is_running_)
       break;
     draw();
-    SDL_Delay(16); // Story: Target ~60 FPS
+    SDL_Delay(config::FRAME_DELAY_MS); // Story: Target ~60 FPS
   }
 }
 
