@@ -3,11 +3,11 @@
 #include "css/CSSParser.h"
 #include "css/CSSSelector.h"
 #include "css/StyleEngine.h"
+#include "dom/Text.h"
 #include "gfx/GraphicsContext.h"
 #include "html/HTMLParser.h"
 #include "js/JSContext.h"
 #include "layout/LayoutTree.h"
-#include "dom/Text.h"
 #include "utils/Parser.h"
 #include "utils/StringUtils.h"
 #include <algorithm>

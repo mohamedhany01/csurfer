@@ -1,9 +1,10 @@
 #pragma once
 
+#include "dom/Element.h"
+#include "js/IJSHost.h"
 #include "js/JSContext.h"
 #include "layout/DisplayItem.h"
 #include "layout/DocumentLayout.h"
-#include "dom/Element.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
 #include <SDL2/SDL.h>
@@ -20,7 +21,7 @@
  * CSS styles, and JavaScript context. It handles the complete pipeline
  * from fetching a URL to rendering pixels on a display list.
  */
-class Tab {
+class Tab : public IJSHost {
 public:
   explicit Tab(std::shared_ptr<IRequest> network_engine, int window_width,
                gfx::FontManager &font_manager);
@@ -52,11 +53,14 @@ public:
    */
   void render(gfx::GraphicsContext &ctx, int y_screen_offset) const;
 
-  // Accessors
-  const Url &url() const { return url_; }
+  // Accessors (IJSHost implementation)
+  const Url &url() const override { return url_; }
+  Element *root() const override { return root_.get(); }
+  std::shared_ptr<IRequest> network_engine() const override {
+    return network_engine_;
+  }
+
   const std::string title() const;
-  Element *root() const { return root_.get(); }
-  std::shared_ptr<IRequest> network_engine() const { return network_engine_; }
 
 private:
   std::shared_ptr<IRequest> network_engine_;

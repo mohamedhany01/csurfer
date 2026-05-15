@@ -1,12 +1,11 @@
 #include "JSContext.h"
-#include "browser/Tab.h"
 #include "dom/Element.h"
 #include "dom/TreeWalker.h"
 
 #include <fstream>
 #include <iostream>
 
-JSContext::JSContext(Tab *tab) : tab_(tab) {
+JSContext::JSContext(IJSHost *host) : host_(host) {
   duktape_context_ = duk_create_heap_default();
 
   // Story: Store 'this' pointer in the global stash for native C callback
@@ -40,23 +39,6 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
 
   // Register native cookie handlers
   duk_push_c_function(duktape_context_, native_cookie_get, 0);
-  duk_put_global_string(duktape_context_, "native_cookie_get"); // FIXED: This was a typo in original or is it? Wait.
-  // Actually, the original was: duk_put_global_string(duktape_context_, "native_cookie_get");
-  // Let me re-read. Line 41: duk_put_global_string(duktape_context_, "native_cookie_get");
-  // Okay, I'll keep the original logic but fix naming if needed.
-  // Wait, I should not change the JS-visible names unless planned. 
-  // The plan only said "Fix naming: native_querySelectorAll -> native_query_selector_all".
-  // It didn't say change the global JS string names.
-  
-  // Re-reading original lines 40-43:
-  // duk_push_c_function(duktape_context_, native_cookie_get, 0);
-  // duk_put_global_string(duktape_context_, "native_cookie_get");
-  // duk_push_c_function(duktape_context_, native_cookie_set, 1);
-  // duk_put_global_string(duktape_context_, "native_cookie_set");
-
-  // I'll keep those JS names.
-
-  duk_push_c_function(duktape_context_, native_cookie_get, 0);
   duk_put_global_string(duktape_context_, "native_cookie_get");
   duk_push_c_function(duktape_context_, native_cookie_set, 1);
   duk_put_global_string(duktape_context_, "native_cookie_set");
@@ -88,7 +70,8 @@ void JSContext::run(const std::string &script_name, const std::string &code) {
   duk_pop(duktape_context_);
 }
 
-bool JSContext::dispatch_event(const std::string &event_type, Element *element) {
+bool JSContext::dispatch_event(const std::string &event_type,
+                               Element *element) {
   duk_get_global_string(duktape_context_, "dispatchEvent");
   duk_push_string(duktape_context_, event_type.c_str());
   duk_push_int(duktape_context_, get_handle(element));
@@ -130,14 +113,14 @@ duk_ret_t JSContext::native_print(duk_context *ctx) {
 
 duk_ret_t JSContext::native_query_selector_all(duk_context *ctx) {
   JSContext *self = get_context(ctx);
-  if (!self || !self->tab_ || !self->tab_->root()) {
+  if (!self || !self->host_ || !self->host_->root()) {
     duk_push_array(ctx);
     return 1;
   }
 
   const char *selector_string = duk_to_string(ctx, 0);
   std::vector<Element *> results = dom::TreeWalker::find_elements(
-      dynamic_cast<Element *>(self->tab_->root()), selector_string);
+      dynamic_cast<Element *>(self->host_->root()), selector_string);
 
   duk_push_array(ctx);
   for (size_t i = 0; i < results.size(); ++i) {
@@ -176,15 +159,15 @@ duk_ret_t JSContext::native_inner_html_set(duk_context *ctx) {
 
 duk_ret_t JSContext::native_xml_http_request_send(duk_context *ctx) {
   JSContext *self = get_context(ctx);
-  if (!self || !self->tab_)
+  if (!self || !self->host_)
     return 0;
 
   const char *method = duk_to_string(ctx, 0);
   const char *url_string = duk_to_string(ctx, 1);
   const char *request_body = duk_to_string(ctx, 2);
 
-  Url target_url = self->tab_->url().resolve(url_string);
-  std::string page_origin = self->tab_->url().origin();
+  Url target_url = self->host_->url().resolve(url_string);
+  std::string page_origin = self->host_->url().origin();
   std::string target_origin = target_url.origin();
 
   // Story: Same-Origin Policy (SOP) check
@@ -198,7 +181,7 @@ duk_ret_t JSContext::native_xml_http_request_send(duk_context *ctx) {
   std::cout << "[JS XHR] Sending " << method << " request to "
             << target_url.href() << std::endl;
   auto response =
-      self->tab_->network_engine()->request(target_url, request_body);
+      self->host_->network_engine()->request(target_url, request_body);
 
   duk_push_string(ctx, response.body.c_str());
   return 1;
@@ -206,21 +189,21 @@ duk_ret_t JSContext::native_xml_http_request_send(duk_context *ctx) {
 
 duk_ret_t JSContext::native_cookie_get(duk_context *ctx) {
   JSContext *self = get_context(ctx);
-  if (!self || !self->tab_)
+  if (!self || !self->host_)
     return 0;
 
   std::string cookies =
-      self->tab_->network_engine()->get_cookies(self->tab_->url());
+      self->host_->network_engine()->get_cookies(self->host_->url());
   duk_push_string(ctx, cookies.c_str());
   return 1;
 }
 
 duk_ret_t JSContext::native_cookie_set(duk_context *ctx) {
   JSContext *self = get_context(ctx);
-  if (!self || !self->tab_)
+  if (!self || !self->host_)
     return 0;
 
   const char *cookie_value = duk_to_string(ctx, 0);
-  self->tab_->network_engine()->set_cookie(self->tab_->url(), cookie_value);
+  self->host_->network_engine()->set_cookie(self->host_->url(), cookie_value);
   return 0;
 }

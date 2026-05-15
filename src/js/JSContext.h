@@ -1,11 +1,11 @@
 #pragma once
 
+#include "IJSHost.h"
 #include "duktape.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-class Tab;
 class Element;
 
 /**
@@ -17,7 +17,7 @@ class Element;
  */
 class JSContext {
 public:
-  explicit JSContext(Tab *tab_host);
+  explicit JSContext(IJSHost *js_host);
   ~JSContext();
 
   /**
@@ -49,7 +49,7 @@ private:
    */
   static JSContext *get_context(duk_context *ctx);
 
-  Tab *tab_;
+  IJSHost *host_;
   duk_context *duktape_context_;
 
   std::unordered_map<Element *, int> element_to_handle_;
