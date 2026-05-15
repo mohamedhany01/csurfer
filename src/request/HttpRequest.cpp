@@ -3,6 +3,7 @@
 #include "config/Config.h"
 #include "url/Url.h"
 #include "utils/StringUtils.h"
+#include <memory>
 
 #include <algorithm>
 #include <arpa/inet.h>

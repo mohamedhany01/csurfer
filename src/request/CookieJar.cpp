@@ -111,7 +111,7 @@ std::string CookieJar::get_cookies(const Url &target_url,
  * Story: Persists the current cookie state to a local file.
  */
 void CookieJar::save_to_disk() const {
-  std::ofstream f(std::string(config::COOKIE_FILE_NAME));
+  std::ofstream f{std::string{config::COOKIE_FILE_NAME}};
   if (!f.is_open())
     return;
 
@@ -127,7 +127,7 @@ void CookieJar::save_to_disk() const {
  * Story: Loads cookies from local storage on startup.
  */
 void CookieJar::load_from_disk() {
-  std::ifstream f(std::string(config::COOKIE_FILE_NAME));
+  std::ifstream f{std::string{config::COOKIE_FILE_NAME}};
   if (!f.is_open())
     return;
 

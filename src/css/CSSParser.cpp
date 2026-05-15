@@ -2,6 +2,7 @@
 #include "utils/StringUtils.h"
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 #include <stdexcept>
 
 CSSParser::CSSParser(std::string css_text)
