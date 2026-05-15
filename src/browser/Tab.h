@@ -29,7 +29,7 @@ public:
 
   // Web Page Lifecycle
   void load(const Url &url, const std::string &payload = "");
-  void load_error_page(const std::string &error_message);
+  void process_document(const std::string &content_or_message);
 
   // Interaction delegation
   void click(int x, int y);
@@ -82,4 +82,5 @@ private:
   std::map<std::string, std::vector<std::string>> csp_directives_;
 
   void render_scrollbar(gfx::GraphicsContext &ctx, int y_screen_offset) const;
+  void process_scripts();
 };

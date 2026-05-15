@@ -117,10 +117,15 @@ void Tab::load(const Url &url, const std::string &payload) {
            url_.href() + "</b>. Check the URL and try again.</p></body></html>";
   }
 
-  load_error_page(body);
+  process_document(body);
 }
 
-void Tab::load_error_page(const std::string &content_or_message) {
+/**
+ * Story: The core pipeline for processing a new HTML document.
+ * It parses the HTML, applies styles, computes the layout, and
+ * initializes the JavaScript environment.
+ */
+void Tab::process_document(const std::string &content_or_message) {
   std::string body = content_or_message;
 
   // Story: If it's just a message (no tags), wrap it in HTML
@@ -152,56 +157,64 @@ void Tab::load_error_page(const std::string &content_or_message) {
   current_scroll_ = 0;
   javascript_context_ = std::make_unique<JSContext>(this);
 
-  // Story: Find and run all <script> tags in the document
+  process_scripts();
+}
+
+/**
+ * Story: Scans the DOM tree for all <script> tags and executes them.
+ * External scripts are fetched from the network, while inline scripts
+ * are executed directly. Respects Content Security Policy (CSP).
+ */
+void Tab::process_scripts() {
   auto selector = CSSParser::parse_selector("script");
-  if (selector && root_) {
-    std::vector<Element *> scripts;
-    std::function<void(Element *)> find_scripts =
-        [&](Element *element) -> void {
-      if (selector->matches(element)) {
-        scripts.push_back(element);
+  if (!selector || !root_)
+    return;
+
+  std::vector<Element *> scripts;
+  std::function<void(Element *)> find_scripts = [&](Element *element) -> void {
+    if (selector->matches(element)) {
+      scripts.push_back(element);
+    }
+    for (auto &child_lexeme : element->children()) {
+      if (child_lexeme->type() == LexemeType::Element) {
+        find_scripts(static_cast<Element *>(child_lexeme.get()));
       }
-      for (auto &child_lexeme : element->children()) {
-        if (child_lexeme->type() == LexemeType::Element) {
-          find_scripts(static_cast<Element *>(child_lexeme.get()));
+    }
+  };
+  find_scripts(dynamic_cast<Element *>(root_.get()));
+
+  for (auto *script : scripts) {
+    auto attributes = script->attributes();
+    if (attributes.count("src")) {
+      std::string script_url_string = attributes.at("src");
+      try {
+        Url resolved_script_url = url_.resolve(script_url_string);
+
+        if (!is_allowed(resolved_script_url, "script-src")) {
+          std::cout << "[SOP/CSP] Blocked script loading from: "
+                    << script_url_string << " (CSP Violation)" << std::endl;
+          continue;
+        }
+
+        std::cout << "[Tab] Loading external script: " << script_url_string
+                  << std::endl;
+        std::string script_content =
+            network_engine_->request(resolved_script_url, "", url_).body;
+        if (!script_content.empty()) {
+          javascript_context_->run(script_url_string, script_content);
+        }
+      } catch (const std::exception &) {
+        // Skip malformed script URLs
+      }
+    } else {
+      std::string inline_content;
+      for (auto &child_lexeme : script->children()) {
+        if (child_lexeme->type() == LexemeType::Text) {
+          inline_content += child_lexeme->text();
         }
       }
-    };
-    find_scripts(dynamic_cast<Element *>(root_.get()));
-
-    for (auto *script : scripts) {
-      auto attributes = script->attributes();
-      if (attributes.count("src")) {
-        std::string script_url_string = attributes.at("src");
-        try {
-          Url resolved_script_url = url_.resolve(script_url_string);
-
-          if (!is_allowed(resolved_script_url, "script-src")) {
-            std::cout << "[SOP/CSP] Blocked script loading from: "
-                      << script_url_string << " (CSP Violation)" << std::endl;
-            continue;
-          }
-
-          std::cout << "[Tab] Loading external script: " << script_url_string
-                    << std::endl;
-          std::string script_content =
-              network_engine_->request(resolved_script_url, "", url_).body;
-          if (!script_content.empty()) {
-            javascript_context_->run(script_url_string, script_content);
-          }
-        } catch (const std::exception &) {
-          // Skip malformed script URLs
-        }
-      } else {
-        std::string inline_content;
-        for (auto &child_lexeme : script->children()) {
-          if (child_lexeme->type() == LexemeType::Text) {
-            inline_content += child_lexeme->text();
-          }
-        }
-        if (!inline_content.empty()) {
-          javascript_context_->run("inline", inline_content);
-        }
+      if (!inline_content.empty()) {
+        javascript_context_->run("inline", inline_content);
       }
     }
   }
