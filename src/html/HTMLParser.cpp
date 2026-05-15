@@ -209,7 +209,7 @@ void HTMLParser::add_text(const std::string &text) {
     return;
   }
 
-  parent->appendChild(std::make_unique<Text>(text, parent));
+  parent->append_child(std::make_unique<Text>(text, parent));
 }
 
 // Handle one tag string and update the unfinished stack and tree.
@@ -235,8 +235,8 @@ void HTMLParser::add_tag(const std::string &tag_text) {
     unfinished_.pop_back();
 
     Element *parent = unfinished_.back().get();
-    node->setParent(parent);
-    parent->appendChild(std::move(node));
+    node->set_parent(parent);
+    parent->append_child(std::move(node));
     return;
   }
 
@@ -246,7 +246,7 @@ void HTMLParser::add_tag(const std::string &tag_text) {
     if (!parent) {
       return;
     }
-    parent->appendChild(
+    parent->append_child(
         std::make_unique<Element>(tag, std::move(attributes), parent));
     return;
   }
@@ -301,8 +301,8 @@ std::unique_ptr<Element> HTMLParser::finish() {
     unfinished_.pop_back();
 
     Element *parent = unfinished_.back().get();
-    node->setParent(parent);
-    parent->appendChild(std::move(node));
+    node->set_parent(parent);
+    parent->append_child(std::move(node));
   }
 
   if (unfinished_.empty()) {

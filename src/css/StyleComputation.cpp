@@ -21,12 +21,12 @@ void computeStyle(Element *node, const std::vector<CSSRule> &rules) {
     if (node->parent()) {
       auto parent_style = node->parent()->style();
       if (parent_style.find(property) != parent_style.end()) {
-        node->addStyle(property, parent_style[property]);
+        node->add_style(property, parent_style[property]);
       } else {
-        node->addStyle(property, default_value);
+        node->add_style(property, default_value);
       }
     } else {
-      node->addStyle(property, default_value);
+      node->add_style(property, default_value);
     }
   }
 
@@ -34,7 +34,7 @@ void computeStyle(Element *node, const std::vector<CSSRule> &rules) {
   for (const auto &rule : rules) {
     if (rule.selector && rule.selector->matches(node)) {
       for (const auto &[property, value] : rule.declarations) {
-        node->addStyle(property, value);
+        node->add_style(property, value);
       }
     }
   }
@@ -54,7 +54,7 @@ void computeStyle(Element *node, const std::vector<CSSRule> &rules) {
       auto inlineRules = inlineParser.parse();
       if (!inlineRules.empty()) {
         for (const auto &[property, value] : inlineRules[0].declarations) {
-          node->addStyle(property, value);
+          node->add_style(property, value);
         }
       }
     } catch (...) {
@@ -87,7 +87,7 @@ void computeStyle(Element *node, const std::vector<CSSRule> &rules) {
         }
 
         std::string computed_size = std::to_string(pct * parent_px) + "px";
-        node->addStyle("font-size", computed_size);
+        node->add_style("font-size", computed_size);
       } catch (...) {
         // Ignore conversion errors
       }

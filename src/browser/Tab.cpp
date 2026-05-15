@@ -338,7 +338,7 @@ void Tab::click(int x, int y) {
           } else if (el->tag() == "input") {
             focus_ = const_cast<Element *>(el);
             focus_->set_focused(true);
-            focus_->setAttribute("value", ""); // Clear on click (Ch8)
+            focus_->set_attribute("value", ""); // Clear on click (Ch8)
             // Refresh display list to show caret
             display_list_.clear();
             paint_tree(*document_, display_list_);
@@ -389,7 +389,7 @@ void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
     value += text;
   }
 
-  el->setAttribute("value", value);
+  el->set_attribute("value", value);
 
   // Re-layout and re-paint to update text width/caret position
   // In a full browser, we might only re-layout the changed element.

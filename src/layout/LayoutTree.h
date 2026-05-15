@@ -79,7 +79,7 @@ inline void debug_print_layout_tree(const LayoutObject &node, int indent = 0) {
   if (const LayoutObject *cnode = &node) {
     if (const Lexeme *dom_node = cnode->node()) {
       if (dom_node->type() == LexemeType::Element) {
-        std::cout << "(Element " << dom_node->element() << ") "; // Hack
+        std::cout << "(Element " << dom_node->tag() << ") "; // Hack
       } else {
         std::cout << "(Text '" << dom_node->text() << "')";
       }
