@@ -61,6 +61,12 @@ HTMLParser::HTMLParser(std::string body) : body_(std::move(body)) {}
 // text and tag chunks, then build a tree of Element/Text nodes.
 // Example: "<p>Hi</p>" -> Element("html") -> Element("body") -> Element("p") +
 // Text("Hi")
+/**
+ * Story: The main entry point for the HTML parsing process.
+ * It iterates through the input string, identifying tags and text blocks,
+ * and builds the DOM tree incrementally. Special care is taken for script
+ * and style tags which are treated as raw text blocks until their closure.
+ */
 std::unique_ptr<Element> HTMLParser::parse() {
   std::string text;
   bool in_tag = false;
@@ -68,8 +74,8 @@ std::unique_ptr<Element> HTMLParser::parse() {
   for (size_t i = 0; i < body_.size(); ++i) {
     char c = body_[i];
 
-    // Special handling for script/style tags: consume everything until the
-    // closing tag.
+    // Story: script and style tags contain raw data that should not be parsed
+    // as HTML until the matching closing tag is encountered.
     if (!unfinished_.empty() && (unfinished_.back()->tag() == "script" ||
                                  unfinished_.back()->tag() == "style")) {
       std::string close_tag = "</" + unfinished_.back()->tag() + ">";
@@ -116,10 +122,11 @@ std::unique_ptr<Element> HTMLParser::parse() {
   return finish();
 }
 
-// Take the raw text inside a tag and split it into the tag name
-// and a map of attributes.
-// Example: 'a href="https://example.com"' -> ("a", {"href":
-// "https://example.com"})
+/**
+ * Story: Splits a tag string into its name and attributes.
+ * e.g., <div class="container" id="main"> becomes ("div", {"class":
+ * "container", "id": "main"}).
+ */
 std::pair<std::string, Element::AttributeMap>
 HTMLParser::get_attributes(const std::string &text) const {
   if (text.empty()) {
@@ -188,8 +195,10 @@ HTMLParser::get_attributes(const std::string &text) const {
   return {tag, attributes};
 }
 
-// Add a Text node under the most recent unfinished Element.
-// Ignores pure whitespace. Example body text between tags becomes Text nodes.
+/**
+ * Story: Adds a new Text node to the DOM tree.
+ * Pure whitespace text nodes are discarded to keep the tree clean.
+ */
 void HTMLParser::add_text(const std::string &text) {
   bool all_space = true;
   for (unsigned char c : text) {
@@ -212,8 +221,10 @@ void HTMLParser::add_text(const std::string &text) {
   parent->append_child(std::make_unique<Text>(text, parent));
 }
 
-// Handle one tag string and update the unfinished stack and tree.
-// Supports open tags, close tags like </p>, and self-closing tags like <br>.
+/**
+ * Story: Handles an HTML tag (open, close, or self-closing).
+ * This manages the 'unfinished' stack which tracks the current parent element.
+ */
 void HTMLParser::add_tag(const std::string &tag_text) {
   auto [tag, attributes] = get_attributes(tag_text);
   if (tag.empty()) {
@@ -255,9 +266,11 @@ void HTMLParser::add_tag(const std::string &tag_text) {
       std::make_unique<Element>(tag, std::move(attributes), parent));
 }
 
-// Insert missing structural tags like <html>, <head>, and <body>
-// based on what is currently open and what tag we are about to handle.
-// Example: seeing "<p>" first will implicitly create "<html><body>" around it.
+/**
+ * Story: Automatically inserts structural tags like <html> and <body>.
+ * This ensures every document has a valid, standard root structure even if
+ * the source HTML is just a fragment like "<p>Hello</p>".
+ */
 void HTMLParser::implicit_tags(const std::optional<std::string> &tag) {
   while (true) {
     std::vector<std::string_view> open_tags;
