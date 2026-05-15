@@ -74,7 +74,4 @@ private:
   std::map<std::string, std::vector<std::string>> csp_directives_;
 
   void render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const;
-
-  // Constants
-  const int SCROLL_STEP = 100;
 };

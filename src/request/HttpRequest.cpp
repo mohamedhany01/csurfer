@@ -1,5 +1,6 @@
 #include "HttpRequest.h"
 #include "CookieJar.h"
+#include "config/Config.h"
 #include "url/Url.h"
 
 #include <algorithm>
@@ -91,7 +92,7 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
   }
 
   std::string response;
-  char buffer[4096];
+  char buffer[config::HTTP_BUFFER_SIZE];
 
   while (true) {
     int bytes = ssl ? SSL_read(ssl, buffer, sizeof(buffer))
