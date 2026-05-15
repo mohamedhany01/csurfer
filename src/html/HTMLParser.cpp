@@ -1,5 +1,5 @@
 #include "HTMLParser.h"
-#include "lexer/Text.h"
+#include "dom/Text.h"
 #include "utils/StringUtils.h"
 
 #include <algorithm>

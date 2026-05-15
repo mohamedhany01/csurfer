@@ -1,6 +1,7 @@
 #include "JSContext.h"
 #include "browser/Tab.h"
-#include "lexer/Element.h"
+#include "dom/Element.h"
+#include "dom/TreeWalker.h"
 
 #include <fstream>
 #include <iostream>
@@ -20,23 +21,41 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
   duk_put_global_string(duktape_context_, "log");
 
   // Register 'querySelectorAll' function
-  duk_push_c_function(duktape_context_, native_querySelectorAll, 1 /* nargs */);
+  duk_push_c_function(duktape_context_, native_query_selector_all,
+                      1 /* nargs */);
   duk_put_global_string(duktape_context_, "querySelectorAll");
 
   // Register 'getAttribute' function
-  duk_push_c_function(duktape_context_, native_getAttribute, 2 /* nargs */);
+  duk_push_c_function(duktape_context_, native_get_attribute, 2 /* nargs */);
   duk_put_global_string(duktape_context_, "getAttribute");
 
   // Register 'innerHTML_set' function
-  duk_push_c_function(duktape_context_, native_innerHTML_set, 2 /* nargs */);
+  duk_push_c_function(duktape_context_, native_inner_html_set, 2 /* nargs */);
   duk_put_global_string(duktape_context_, "innerHTML_set");
 
   // Register 'XMLHttpRequest_send' function
-  duk_push_c_function(duktape_context_, native_XMLHttpRequest_send,
+  duk_push_c_function(duktape_context_, native_xml_http_request_send,
                       3 /* nargs */);
   duk_put_global_string(duktape_context_, "XMLHttpRequest_send");
 
   // Register native cookie handlers
+  duk_push_c_function(duktape_context_, native_cookie_get, 0);
+  duk_put_global_string(duktape_context_, "native_cookie_get"); // FIXED: This was a typo in original or is it? Wait.
+  // Actually, the original was: duk_put_global_string(duktape_context_, "native_cookie_get");
+  // Let me re-read. Line 41: duk_put_global_string(duktape_context_, "native_cookie_get");
+  // Okay, I'll keep the original logic but fix naming if needed.
+  // Wait, I should not change the JS-visible names unless planned. 
+  // The plan only said "Fix naming: native_querySelectorAll -> native_query_selector_all".
+  // It didn't say change the global JS string names.
+  
+  // Re-reading original lines 40-43:
+  // duk_push_c_function(duktape_context_, native_cookie_get, 0);
+  // duk_put_global_string(duktape_context_, "native_cookie_get");
+  // duk_push_c_function(duktape_context_, native_cookie_set, 1);
+  // duk_put_global_string(duktape_context_, "native_cookie_set");
+
+  // I'll keep those JS names.
+
   duk_push_c_function(duktape_context_, native_cookie_get, 0);
   duk_put_global_string(duktape_context_, "native_cookie_get");
   duk_push_c_function(duktape_context_, native_cookie_set, 1);
@@ -53,6 +72,14 @@ JSContext::JSContext(Tab *tab) : tab_(tab) {
 
 JSContext::~JSContext() { duk_destroy_heap(duktape_context_); }
 
+JSContext *JSContext::get_context(duk_context *ctx) {
+  duk_push_global_stash(ctx);
+  duk_get_prop_string(ctx, -1, "js_context");
+  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
+  duk_pop_2(ctx);
+  return self;
+}
+
 void JSContext::run(const std::string &script_name, const std::string &code) {
   if (duk_peval_string(duktape_context_, code.c_str()) != 0) {
     std::cerr << "[JS] Error in " << script_name << ": "
@@ -61,8 +88,7 @@ void JSContext::run(const std::string &script_name, const std::string &code) {
   duk_pop(duktape_context_);
 }
 
-bool JSContext::dispatch_event(const std::string &event_type,
-                               Element *element) {
+bool JSContext::dispatch_event(const std::string &event_type, Element *element) {
   duk_get_global_string(duktape_context_, "dispatchEvent");
   duk_push_string(duktape_context_, event_type.c_str());
   duk_push_int(duktape_context_, get_handle(element));
@@ -102,48 +128,16 @@ duk_ret_t JSContext::native_print(duk_context *ctx) {
   return 0;
 }
 
-duk_ret_t JSContext::native_querySelectorAll(duk_context *ctx) {
-  duk_push_global_stash(ctx);
-  duk_get_prop_string(ctx, -1, "js_context");
-  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
-  duk_pop_2(ctx);
+duk_ret_t JSContext::native_query_selector_all(duk_context *ctx) {
+  JSContext *self = get_context(ctx);
+  if (!self || !self->tab_ || !self->tab_->root()) {
+    duk_push_array(ctx);
+    return 1;
+  }
 
   const char *selector_string = duk_to_string(ctx, 0);
-  std::string selector(selector_string);
-  std::vector<Element *> results;
-
-  std::vector<Element *> queue;
-  if (self->tab_ && self->tab_->root()) {
-    queue.push_back(dynamic_cast<Element *>(self->tab_->root()));
-  }
-
-  while (!queue.empty()) {
-    Element *element = queue.back();
-    queue.pop_back();
-    if (!element)
-      continue;
-
-    bool is_match = false;
-    if (selector.starts_with("#")) {
-      auto it = element->attributes().find("id");
-      if (it != element->attributes().end() &&
-          it->second == selector.substr(1)) {
-        is_match = true;
-      }
-    } else if (element->tag() == selector) {
-      is_match = true;
-    }
-
-    if (is_match) {
-      results.push_back(element);
-    }
-
-    for (auto &child : element->children()) {
-      if (child->type() == LexemeType::Element) {
-        queue.push_back(static_cast<Element *>(child.get()));
-      }
-    }
-  }
+  std::vector<Element *> results = dom::TreeWalker::find_elements(
+      dynamic_cast<Element *>(self->tab_->root()), selector_string);
 
   duk_push_array(ctx);
   for (size_t i = 0; i < results.size(); ++i) {
@@ -153,12 +147,8 @@ duk_ret_t JSContext::native_querySelectorAll(duk_context *ctx) {
   return 1;
 }
 
-duk_ret_t JSContext::native_getAttribute(duk_context *ctx) {
-  duk_push_global_stash(ctx);
-  duk_get_prop_string(ctx, -1, "js_context");
-  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
-  duk_pop_2(ctx);
-
+duk_ret_t JSContext::native_get_attribute(duk_context *ctx) {
+  JSContext *self = get_context(ctx);
   int handle = duk_to_int(ctx, 0);
   const char *attribute_name = duk_to_string(ctx, 1);
 
@@ -171,15 +161,10 @@ duk_ret_t JSContext::native_getAttribute(duk_context *ctx) {
   return 1;
 }
 
-duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
-  duk_push_global_stash(ctx);
-  duk_get_prop_string(ctx, -1, "js_context");
-  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
-  duk_pop_2(ctx);
-
+duk_ret_t JSContext::native_inner_html_set(duk_context *ctx) {
+  JSContext *self = get_context(ctx);
   int handle = duk_to_int(ctx, 0);
   const char *html_content = duk_to_string(ctx, 1);
-  (void)handle;
   (void)html_content;
 
   Element *element = self->get_element(handle);
@@ -189,12 +174,8 @@ duk_ret_t JSContext::native_innerHTML_set(duk_context *ctx) {
   return 0;
 }
 
-duk_ret_t JSContext::native_XMLHttpRequest_send(duk_context *ctx) {
-  duk_push_global_stash(ctx);
-  duk_get_prop_string(ctx, -1, "js_context");
-  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
-  duk_pop_2(ctx);
-
+duk_ret_t JSContext::native_xml_http_request_send(duk_context *ctx) {
+  JSContext *self = get_context(ctx);
   if (!self || !self->tab_)
     return 0;
 
@@ -224,11 +205,7 @@ duk_ret_t JSContext::native_XMLHttpRequest_send(duk_context *ctx) {
 }
 
 duk_ret_t JSContext::native_cookie_get(duk_context *ctx) {
-  duk_push_global_stash(ctx);
-  duk_get_prop_string(ctx, -1, "js_context");
-  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
-  duk_pop_2(ctx);
-
+  JSContext *self = get_context(ctx);
   if (!self || !self->tab_)
     return 0;
 
@@ -239,11 +216,7 @@ duk_ret_t JSContext::native_cookie_get(duk_context *ctx) {
 }
 
 duk_ret_t JSContext::native_cookie_set(duk_context *ctx) {
-  duk_push_global_stash(ctx);
-  duk_get_prop_string(ctx, -1, "js_context");
-  JSContext *self = static_cast<JSContext *>(duk_get_pointer(ctx, -1));
-  duk_pop_2(ctx);
-
+  JSContext *self = get_context(ctx);
   if (!self || !self->tab_)
     return 0;
 

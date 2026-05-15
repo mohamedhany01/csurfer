@@ -1,6 +1,6 @@
 #pragma once
 #include "layout/BlockLayout.h"
-#include "lexer/Element.h"
+#include "dom/Element.h"
 
 /**
  * Story: The root of the layout tree, representing the entire document view.

@@ -7,7 +7,7 @@
 #include "html/HTMLParser.h"
 #include "js/JSContext.h"
 #include "layout/LayoutTree.h"
-#include "lexer/Text.h"
+#include "dom/Text.h"
 #include "utils/Parser.h"
 #include "utils/StringUtils.h"
 #include <algorithm>

@@ -1,5 +1,5 @@
 #pragma once
-#include "lexer/Element.h"
+#include "dom/Element.h"
 
 #include <memory>
 #include <optional>

@@ -1,5 +1,5 @@
 #include "CSSSelector.h"
-#include "lexer/Element.h"
+#include "dom/Element.h"
 
 TagSelector::TagSelector(std::string tag_name) : tag_(std::move(tag_name)) {}
 

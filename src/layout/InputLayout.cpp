@@ -1,6 +1,6 @@
 #include "layout/InputLayout.h"
 #include "layout/DisplayItem.h"
-#include "lexer/Element.h"
+#include "dom/Element.h"
 
 InputLayout::InputLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
                          LayoutObject *previous_sibling,

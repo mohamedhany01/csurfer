@@ -3,7 +3,7 @@
 #include "layout/InputLayout.h"
 #include "layout/LineLayout.h"
 #include "layout/TextLayout.h"
-#include "lexer/Text.h"
+#include "dom/Text.h"
 #include "utils/Parser.h"
 #include <algorithm>
 #include <cmath>

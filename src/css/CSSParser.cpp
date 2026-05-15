@@ -70,6 +70,11 @@ char CSSParser::ignore_until(const std::vector<char> &stop_characters) {
   return '\0';
 }
 
+/**
+ * Story: The core loop for parsing a single CSS rule block ({ ... }).
+ * If an error occurs during property parsing, we attempt to recover by
+ * skipping to the next semicolon or the closing brace.
+ */
 std::unordered_map<std::string, std::string> CSSParser::consume_body() {
   std::unordered_map<std::string, std::string> declarations;
   while (position_ < text_.length() && text_[position_] != '}') {
@@ -80,6 +85,8 @@ std::unordered_map<std::string, std::string> CSSParser::consume_body() {
       consume_literal(';');
       consume_whitespace();
     } catch (const std::exception &e) {
+      std::cerr << "[CSS Parser] Recovery: skipping malformed declaration: "
+                << e.what() << std::endl;
       char stop_char = ignore_until({';', '}'});
       if (stop_char == ';') {
         consume_literal(';');
@@ -110,6 +117,11 @@ std::shared_ptr<CSSSelector> CSSParser::consume_selector() {
   return selector;
 }
 
+/**
+ * Story: Parses an entire CSS stylesheet into a list of rules.
+ * Errors in a single rule are caught here, allowing the parser to skip to
+ * the next block and continue, rather than failing the whole file.
+ */
 std::vector<CSSRule> CSSParser::parse() {
   std::vector<CSSRule> rules;
   while (position_ < text_.length()) {
@@ -126,6 +138,8 @@ std::vector<CSSRule> CSSParser::parse() {
 
       rules.push_back({current_selector, declarations});
     } catch (const std::exception &e) {
+      std::cerr << "[CSS Parser] Recovery: skipping malformed rule block: "
+                << e.what() << std::endl;
       char stop_char = ignore_until({'}', '{'});
       if (stop_char == '}') {
         consume_literal('}');

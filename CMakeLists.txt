@@ -128,9 +128,9 @@ target_link_libraries(skia INTERFACE
 # Core Library
 # ------------------------------------------------------------------------------
 add_library(csurfer_lib STATIC
-    src/lexer/Lexeme.cpp
-    src/lexer/Text.cpp
-    src/lexer/Element.cpp
+    src/dom/Lexeme.cpp
+    src/dom/Text.cpp
+    src/dom/Element.cpp
     src/html/HTMLParser.cpp
     src/layout/InputLayout.cpp
     src/layout/BlockLayout.cpp
@@ -250,3 +250,7 @@ endif()
 add_executable(test_color unit-tests/gfx/test_color.cpp)
 target_link_libraries(test_color PRIVATE csurfer_lib GTest::gtest_main)
 add_test(NAME ColorTests COMMAND test_color)
+
+add_executable(test_http_request unit-tests/request/test_http_request.cpp)
+target_link_libraries(test_http_request PRIVATE csurfer_lib GTest::gtest_main)
+add_test(NAME HttpRequestTests COMMAND test_http_request)

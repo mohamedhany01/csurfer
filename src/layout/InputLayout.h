@@ -3,7 +3,7 @@
 #include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
-#include "lexer/Lexeme.h"
+#include "dom/Lexeme.h"
 #include <memory>
 #include <string>
 

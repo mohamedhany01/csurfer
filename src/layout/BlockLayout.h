@@ -2,8 +2,8 @@
 #include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
-#include "lexer/Element.h"
-#include "lexer/Lexeme.h"
+#include "dom/Element.h"
+#include "dom/Lexeme.h"
 #include <unordered_map>
 #include <vector>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CSSRule.h"
-#include "lexer/Element.h"
+#include "dom/Element.h"
 #include <vector>
 
 namespace CSS {

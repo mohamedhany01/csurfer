@@ -3,7 +3,7 @@
 #include "js/JSContext.h"
 #include "layout/DisplayItem.h"
 #include "layout/DocumentLayout.h"
-#include "lexer/Element.h"
+#include "dom/Element.h"
 #include "request/IRequest.h"
 #include "url/Url.h"
 #include <SDL2/SDL.h>
