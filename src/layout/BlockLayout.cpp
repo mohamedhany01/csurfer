@@ -20,14 +20,24 @@ static const std::unordered_set<std::string> BLOCK_ELEMENTS = {
     "div",    "table",      "form",    "fieldset", "legend",     "details",
     "summary"};
 
-BlockLayout::BlockLayout(const Lexeme *node, LayoutObject *parent,
-                         BlockLayout *previous, gfx::FontManager &font_manager)
-    : node_(node), parent_(parent), previous_(previous),
-      font_manager_(font_manager), cursor_x_(0) {}
+BlockLayout::BlockLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
+                         BlockLayout *previous_sibling,
+                         gfx::FontManager &font_manager)
+    : node_(dom_node), parent_layout_(parent_layout),
+      previous_sibling_(previous_sibling), font_manager_(font_manager),
+      current_cursor_x_(0) {}
+
+BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
+                         LayoutObject *parent_layout,
+                         BlockLayout *previous_sibling,
+                         gfx::FontManager &font_manager)
+    : node_(nullptr), parent_layout_(parent_layout),
+      previous_sibling_(previous_sibling), font_manager_(font_manager),
+      anonymous_children_(std::move(anonymous_children)), current_cursor_x_(0) {
+}
 
 /**
- * Very simple linear-gradient parser.
- * Expected format: linear-gradient(to right, red, blue)
+ * Story: A simple parser for CSS linear gradients.
  */
 static bool parse_linear_gradient(const std::string &value,
                                   std::string &direction, gfx::Color &color1,
@@ -35,22 +45,22 @@ static bool parse_linear_gradient(const std::string &value,
   if (value.find("linear-gradient(") != 0)
     return false;
 
-  size_t start = 16; // length of "linear-gradient("
-  size_t end = value.find_last_of(')');
-  if (end == std::string::npos || end <= start)
+  size_t start_index = 16; // length of "linear-gradient("
+  size_t end_index = value.find_last_of(')');
+  if (end_index == std::string::npos || end_index <= start_index)
     return false;
 
-  std::string content = value.substr(start, end - start);
+  std::string content = value.substr(start_index, end_index - start_index);
   std::stringstream ss(content);
   std::string part;
   std::vector<std::string> parts;
 
   while (std::getline(ss, part, ',')) {
     // Trim whitespace
-    size_t f = part.find_first_not_of(" \t");
-    size_t l = part.find_last_not_of(" \t");
-    if (f != std::string::npos) {
-      parts.push_back(part.substr(f, l - f + 1));
+    size_t first = part.find_first_not_of(" \t");
+    size_t last = part.find_last_not_of(" \t");
+    if (first != std::string::npos) {
+      parts.push_back(part.substr(first, last - first + 1));
     }
   }
 
@@ -72,16 +82,9 @@ static bool parse_linear_gradient(const std::string &value,
   return true;
 }
 
-BlockLayout::BlockLayout(std::vector<const Lexeme *> anonymous_children,
-                         LayoutObject *parent, BlockLayout *previous,
-                         gfx::FontManager &font_manager)
-    : node_(nullptr), parent_(parent), previous_(previous),
-      font_manager_(font_manager),
-      anonymous_children_(std::move(anonymous_children)), cursor_x_(0) {}
-
 float BlockLayout::get_opacity() const {
-  if (const auto *el = dynamic_cast<const Element *>(node_)) {
-    auto styles = el->style();
+  if (const auto *element = dynamic_cast<const Element *>(node_)) {
+    auto styles = element->style();
     if (styles.find("opacity") != styles.end()) {
       try {
         return std::stof(styles.at("opacity"));
@@ -94,8 +97,8 @@ float BlockLayout::get_opacity() const {
 }
 
 std::string BlockLayout::get_blend_mode() const {
-  if (const auto *el = dynamic_cast<const Element *>(node_)) {
-    auto styles = el->style();
+  if (const auto *element = dynamic_cast<const Element *>(node_)) {
+    auto styles = element->style();
     if (styles.find("mix-blend-mode") != styles.end()) {
       return styles.at("mix-blend-mode");
     }
@@ -104,8 +107,8 @@ std::string BlockLayout::get_blend_mode() const {
 }
 
 bool BlockLayout::is_overflow_clip() const {
-  if (const auto *el = dynamic_cast<const Element *>(node_)) {
-    auto styles = el->style();
+  if (const auto *element = dynamic_cast<const Element *>(node_)) {
+    auto styles = element->style();
     if (styles.find("overflow") != styles.end() &&
         styles.at("overflow") == "clip") {
       return true;
@@ -115,15 +118,15 @@ bool BlockLayout::is_overflow_clip() const {
 }
 
 float BlockLayout::get_border_radius() const {
-  if (const auto *el = dynamic_cast<const Element *>(node_)) {
-    auto styles = el->style();
+  if (const auto *element = dynamic_cast<const Element *>(node_)) {
+    auto styles = element->style();
     if (styles.find("border-radius") != styles.end()) {
-      std::string rad_str = styles.at("border-radius");
-      if (rad_str.find("px") != std::string::npos) {
-        rad_str = rad_str.substr(0, rad_str.find("px"));
+      std::string radius_string = styles.at("border-radius");
+      if (radius_string.find("px") != std::string::npos) {
+        radius_string = radius_string.substr(0, radius_string.find("px"));
       }
       try {
-        return std::stof(rad_str);
+        return std::stof(radius_string);
       } catch (...) {
         return 0.0f;
       }
@@ -137,13 +140,13 @@ static bool is_block_node(const Lexeme *node) {
     return false;
   if (node->type() == LexemeType::Text)
     return false;
-  if (const auto *el = dynamic_cast<const Element *>(node)) {
-    return BLOCK_ELEMENTS.contains(el->tag());
+  if (const auto *element = dynamic_cast<const Element *>(node)) {
+    return BLOCK_ELEMENTS.contains(element->tag());
   }
   return false;
 }
 
-BlockLayout::LayoutMode BlockLayout::layout_mode() const {
+BlockLayout::LayoutMode BlockLayout::determine_layout_mode() const {
   if (!node_) {
     if (!anonymous_children_.empty())
       return LayoutMode::Inline;
@@ -154,15 +157,15 @@ BlockLayout::LayoutMode BlockLayout::layout_mode() const {
     return LayoutMode::Inline;
   }
 
-  const auto *el = dynamic_cast<const Element *>(node_);
-  if (!el)
+  const auto *element = dynamic_cast<const Element *>(node_);
+  if (!element)
     return LayoutMode::Block;
 
   bool has_block_child = false;
-  for (const auto &child : el->children()) {
+  for (const auto &child : element->children()) {
     if (child && child->type() == LexemeType::Element) {
-      const auto *child_el = dynamic_cast<const Element *>(child.get());
-      if (child_el && BLOCK_ELEMENTS.contains(child_el->tag())) {
+      const auto *child_element = dynamic_cast<const Element *>(child.get());
+      if (child_element && BLOCK_ELEMENTS.contains(child_element->tag())) {
         has_block_child = true;
         break;
       }
@@ -172,7 +175,8 @@ BlockLayout::LayoutMode BlockLayout::layout_mode() const {
   if (has_block_child)
     return LayoutMode::Block;
 
-  if (!el->children().empty() || el->tag() == "input" || el->tag() == "button")
+  if (!element->children().empty() || element->tag() == "input" ||
+      element->tag() == "button")
     return LayoutMode::Inline;
 
   return LayoutMode::Block;
@@ -181,37 +185,41 @@ BlockLayout::LayoutMode BlockLayout::layout_mode() const {
 void BlockLayout::layout() {
   children_.clear();
 
-  bounds.origin.x = parent_ ? parent_->bounds.origin.x : 0;
-  bounds.width = parent_ ? parent_->bounds.width : 0;
+  utils::Rect new_bounds;
+  new_bounds.origin.x = parent_layout_ ? parent_layout_->bounds().origin.x : 0;
+  new_bounds.width = parent_layout_ ? parent_layout_->bounds().width : 0;
 
-  if (previous_) {
-    bounds.origin.y = previous_->bounds.origin.y + previous_->bounds.height;
+  if (previous_sibling_) {
+    new_bounds.origin.y = previous_sibling_->bounds().origin.y +
+                          previous_sibling_->bounds().height;
   } else {
-    bounds.origin.y = parent_ ? parent_->bounds.origin.y : 0;
+    new_bounds.origin.y =
+        parent_layout_ ? parent_layout_->bounds().origin.y : 0;
   }
+  set_bounds(new_bounds);
 
-  const auto mode = layout_mode();
+  const auto mode = determine_layout_mode();
   if (mode == LayoutMode::Block) {
-    const auto *el = dynamic_cast<const Element *>(node_);
-    if (el) {
-      BlockLayout *prev = nullptr;
+    const auto *element = dynamic_cast<const Element *>(node_);
+    if (element) {
+      BlockLayout *previous_child = nullptr;
       std::vector<const Lexeme *> inline_run;
 
       auto flush_inline_run = [&]() {
         if (!inline_run.empty()) {
-          auto next = std::make_unique<BlockLayout>(inline_run, this, prev,
-                                                    font_manager_);
-          prev = next.get();
-          children_.push_back(std::move(next));
+          auto anonymous_block = std::make_unique<BlockLayout>(
+              inline_run, this, previous_child, font_manager_);
+          previous_child = anonymous_block.get();
+          add_child(std::move(anonymous_block));
           inline_run.clear();
         }
       };
 
-      for (const auto &child : el->children()) {
+      for (const auto &child : element->children()) {
         const Lexeme *child_node = child.get();
         if (child_node->type() == LexemeType::Element) {
-          const auto *child_el = dynamic_cast<const Element *>(child_node);
-          std::string tag = child_el->tag();
+          const auto *child_element = dynamic_cast<const Element *>(child_node);
+          std::string tag = child_element->tag();
           if (tag == "head" || tag == "script" || tag == "style" ||
               tag == "meta" || tag == "link") {
             continue;
@@ -220,10 +228,10 @@ void BlockLayout::layout() {
 
         if (is_block_node(child_node)) {
           flush_inline_run();
-          auto next = std::make_unique<BlockLayout>(child_node, this, prev,
-                                                    font_manager_);
-          prev = next.get();
-          children_.push_back(std::move(next));
+          auto block_child = std::make_unique<BlockLayout>(
+              child_node, this, previous_child, font_manager_);
+          previous_child = block_child.get();
+          add_child(std::move(block_child));
         } else {
           inline_run.push_back(child_node);
         }
@@ -231,14 +239,14 @@ void BlockLayout::layout() {
       flush_inline_run();
     }
   } else {
-    cursor_x_ = 0;
-    new_line();
+    current_cursor_x_ = 0;
+    start_new_line();
     if (!anonymous_children_.empty()) {
-      for (const auto *n : anonymous_children_) {
-        recurse(n);
+      for (const auto *node : anonymous_children_) {
+        recurse_node(node);
       }
     } else {
-      recurse(node_);
+      recurse_node(node_);
     }
   }
 
@@ -246,268 +254,271 @@ void BlockLayout::layout() {
     child->layout();
   }
 
-  if (mode == LayoutMode::Block) {
-    int total = 0;
-    for (const auto &child : children_) {
-      total += child->bounds.height;
-    }
-    bounds.height = total;
-  } else {
-    int total = 0;
-    for (const auto &child : children_) {
-      total += child->bounds.height;
-    }
-    bounds.height = total;
+  int total_height = 0;
+  for (const auto &child : children_) {
+    total_height += child->bounds().height;
   }
+  new_bounds = bounds();
+  new_bounds.height = total_height;
+  set_bounds(new_bounds);
 }
 
-void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
-  const auto *el = dynamic_cast<const Element *>(node_);
-  if (el) {
-    auto styles = el->style();
+void BlockLayout::paint(
+    std::vector<std::unique_ptr<DrawCommand>> &display_list) const {
+  const auto *element = dynamic_cast<const Element *>(node_);
+  if (element) {
+    auto styles = element->style();
 
-    // Support for Rounded Corners (Chapter 11, Section 4)
-    float radius = 0.0f;
+    float border_radius = 0.0f;
     if (styles.find("border-radius") != styles.end()) {
-      std::string rad_str = styles.at("border-radius");
-      // Basic px-stripping (e.g. "10px" -> "10")
-      if (rad_str.find("px") != std::string::npos) {
-        rad_str = rad_str.substr(0, rad_str.find("px"));
+      std::string radius_string = styles.at("border-radius");
+      if (radius_string.find("px") != std::string::npos) {
+        radius_string = radius_string.substr(0, radius_string.find("px"));
       }
       try {
-        radius = std::stof(rad_str);
+        border_radius = std::stof(radius_string);
       } catch (...) {
-        radius = 0.0f; // Parsing error fallback
+        border_radius = 0.0f;
       }
     }
 
     if (styles.find("box-shadow") != styles.end()) {
-      std::string shadow_str = styles.at("box-shadow");
-      std::stringstream ss(shadow_str);
+      std::string shadow_string = styles.at("box-shadow");
+      std::stringstream ss(shadow_string);
       std::string dx_str, dy_str, blur_str, color_str;
       if (ss >> dx_str >> dy_str >> blur_str >> color_str) {
         try {
           int dx = std::stoi(dx_str);
           int dy = std::stoi(dy_str);
           int blur = std::stoi(blur_str);
-          gfx::Color color = gfx::Color::from_name(color_str);
-          out.push_back(std::make_unique<DrawBoxShadow>(
-              utils::Rect{{bounds.origin.x, bounds.origin.y},
-                          (int)bounds.width,
-                          (int)bounds.height},
-              (float)blur, dx, dy, color));
+          gfx::Color shadow_color = gfx::Color::from_name(color_str);
+          display_list.push_back(std::make_unique<DrawBoxShadow>(
+              utils::Rect{{bounds_.origin.x, bounds_.origin.y},
+                          (int)bounds_.width,
+                          (int)bounds_.height},
+              (float)blur, dx, dy, shadow_color));
         } catch (...) {
         }
       }
     }
 
     if (styles.find("background-color") != styles.end()) {
-      std::string bgcolor = styles.at("background-color");
-      if (bgcolor != "transparent" && !bgcolor.empty()) {
-        gfx::Color color = gfx::Color::from_name(bgcolor);
+      std::string background_color_name = styles.at("background-color");
+      if (background_color_name != "transparent" &&
+          !background_color_name.empty()) {
+        gfx::Color color = gfx::Color::from_name(background_color_name);
 
-        if (radius > 0.0f) {
-          out.push_back(std::make_unique<DrawRoundedRect>(
-              utils::Rect{{bounds.origin.x, bounds.origin.y},
-                          (int)bounds.width,
-                          (int)bounds.height},
-              radius, color));
+        if (border_radius > 0.0f) {
+          display_list.push_back(std::make_unique<DrawRoundedRect>(
+              utils::Rect{{bounds_.origin.x, bounds_.origin.y},
+                          (int)bounds_.width,
+                          (int)bounds_.height},
+              border_radius, color));
         } else {
-          out.push_back(std::make_unique<DrawRect>(
-              bounds.origin.x, bounds.origin.y, bounds.origin.x + bounds.width,
-              bounds.origin.y + bounds.height, color));
+          display_list.push_back(std::make_unique<DrawRect>(
+              bounds_.origin.x, bounds_.origin.y,
+              bounds_.origin.x + bounds_.width,
+              bounds_.origin.y + bounds_.height, color));
         }
       }
     }
 
     if (styles.find("background") != styles.end()) {
-      std::string bg = styles.at("background");
-      std::string dir;
-      gfx::Color c1, c2;
-      if (parse_linear_gradient(bg, dir, c1, c2)) {
-        out.push_back(std::make_unique<DrawLinearGradient>(
-            utils::Rect{{bounds.origin.x, bounds.origin.y},
-                        (int)bounds.width,
-                        (int)bounds.height},
-            c1, c2, dir));
+      std::string background_value = styles.at("background");
+      std::string gradient_direction;
+      gfx::Color color_start, color_end;
+      if (parse_linear_gradient(background_value, gradient_direction,
+                                color_start, color_end)) {
+        display_list.push_back(std::make_unique<DrawLinearGradient>(
+            utils::Rect{{bounds_.origin.x, bounds_.origin.y},
+                        (int)bounds_.width,
+                        (int)bounds_.height},
+            color_start, color_end, gradient_direction));
       }
     }
   }
 }
 
-void BlockLayout::recurse(const Lexeme *node) { layoutNode(node); }
+void BlockLayout::recurse_node(const Lexeme *node) { layout_node(node); }
 
-void BlockLayout::layoutNode(const Lexeme *node) {
+void BlockLayout::layout_node(const Lexeme *node) {
   if (!node)
     return;
 
   if (node->type() == LexemeType::Text) {
-    const Element *parent_el = nullptr;
-    if (const auto *t = dynamic_cast<const Text *>(node)) {
-      parent_el = dynamic_cast<const Element *>(t->parent());
+    const Element *parent_element = nullptr;
+    if (const auto *text_node = dynamic_cast<const Text *>(node)) {
+      parent_element = dynamic_cast<const Element *>(text_node->parent());
     }
-    layoutText(node, node->text(), parent_el);
+    layout_text(node, node->text(), parent_element);
     return;
   }
 
   if (node->type() == LexemeType::Element) {
-    const auto *el = dynamic_cast<const Element *>(node);
-    if (el) {
-      if (el->tag() == "br") {
-        new_line();
-      } else if (el->tag() == "input" || el->tag() == "button") {
-        input(el);
+    const auto *element = dynamic_cast<const Element *>(node);
+    if (element) {
+      if (element->tag() == "br") {
+        start_new_line();
+      } else if (element->tag() == "input" || element->tag() == "button") {
+        layout_input(element);
         return;
       }
     }
-    layoutElement(el);
+    layout_element(element);
   }
 }
 
-void BlockLayout::layoutElement(const Element *element) {
-  if (!element)
+void BlockLayout::layout_element(const Element *element_node) {
+  if (!element_node)
     return;
 
-  for (const auto &child : element->children()) {
-    layoutNode(child.get());
+  for (const auto &child : element_node->children()) {
+    layout_node(child.get());
   }
 }
 
-void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
-                             const Element *parent_element) {
-  auto words = utils::split_into_words(text);
-  for (const auto &w : words) {
-    if (w == "\n") {
+void BlockLayout::layout_text(const Lexeme *text_node,
+                              const std::string &content,
+                              const Element *parent_element) {
+  auto words = utils::split_into_words(content);
+  for (const auto &word_text : words) {
+    if (word_text == "\n") {
       continue;
     }
-    word(text_node, w, parent_element);
+    layout_word(text_node, word_text, parent_element);
   }
 }
 
-void BlockLayout::word(const Lexeme *node, const std::string &word_text,
-                       const Element *parent_element) {
-  std::shared_ptr<gfx::Font> font = currentFont(parent_element);
+void BlockLayout::layout_word(const Lexeme *origin_node,
+                              const std::string &word_text,
+                              const Element *parent_element) {
+  std::shared_ptr<gfx::Font> font = get_current_font(parent_element);
   if (!font)
     return;
 
-  int w = 0;
-  int h = 0;
-  font->measure_text(word_text, w, h);
+  int word_width = 0;
+  int word_height = 0;
+  font->measure_text(word_text, word_width, word_height);
 
-  if (cursor_x_ + w > bounds.width) {
-    new_line();
+  if (current_cursor_x_ + word_width > bounds_.width) {
+    start_new_line();
   }
 
-  gfx::Color current_color = gfx::Color::Black();
+  gfx::Color current_text_color = gfx::Color::Black();
   if (parent_element) {
     auto styles = parent_element->style();
     if (styles.find("color") != styles.end()) {
-      current_color = gfx::Color::from_name(styles.at("color"));
+      current_text_color = gfx::Color::from_name(styles.at("color"));
     }
   }
 
-  // Add the text layout to the current line
   if (!children_.empty()) {
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      auto text_layout =
-          std::make_unique<TextLayout>(node, word_text, font, current_color);
-      int space_w = 0;
-      int space_h = 0;
-      font->measure_text(" ", space_w, space_h);
+      auto text_layout = std::make_unique<TextLayout>(origin_node, word_text,
+                                                      font, current_text_color);
+      int space_width = 0;
+      int space_height = 0;
+      font->measure_text(" ", space_width, space_height);
 
-      text_layout->bounds.origin.x = this->bounds.origin.x + cursor_x_;
-      current_line->children_.push_back(std::move(text_layout));
-      cursor_x_ += w + space_w;
+      utils::Rect text_bounds = text_layout->bounds();
+      text_bounds.origin.x = this->bounds_.origin.x + current_cursor_x_;
+      text_layout->set_bounds(text_bounds);
+
+      current_line->children().push_back(std::move(text_layout));
+      current_cursor_x_ += word_width + space_width;
     }
   }
 }
 
-void BlockLayout::new_line() {
-  cursor_x_ = 0;
-  LayoutObject *prev_line = nullptr;
+void BlockLayout::start_new_line() {
+  current_cursor_x_ = 0;
+  LayoutObject *previous_line = nullptr;
   if (!children_.empty()) {
-    prev_line = children_.back().get();
+    previous_line = children_.back().get();
   }
 
-  children_.push_back(std::make_unique<LineLayout>(node_, this, prev_line));
+  add_child(std::make_unique<LineLayout>(node_, this, previous_line));
 }
 
-void BlockLayout::input(const Lexeme *node) {
-  const auto *el = dynamic_cast<const Element *>(node);
-  if (!el)
+void BlockLayout::layout_input(const Lexeme *input_node) {
+  const auto *element = dynamic_cast<const Element *>(input_node);
+  if (!element)
     return;
 
-  int w = 200; // Match DEFAULT_INPUT_WIDTH in InputLayout
-  if (cursor_x_ + w > bounds.width) {
-    new_line();
+  int input_width = 200; // Match DEFAULT_INPUT_WIDTH in InputLayout
+  if (current_cursor_x_ + input_width > bounds_.width) {
+    start_new_line();
   }
 
   if (!children_.empty()) {
     LineLayout *current_line =
         dynamic_cast<LineLayout *>(children_.back().get());
     if (current_line) {
-      std::shared_ptr<gfx::Font> font = currentFont(el);
+      std::shared_ptr<gfx::Font> font = get_current_font(element);
 
-      gfx::Color color = gfx::Color::Black();
-      auto styles = el->style();
+      gfx::Color text_color = gfx::Color::Black();
+      auto styles = element->style();
       if (styles.count("color")) {
-        color = gfx::Color::from_name(styles.at("color"));
+        text_color = gfx::Color::from_name(styles.at("color"));
       }
 
-      LayoutObject *prev_obj = nullptr;
-      if (!current_line->children_.empty()) {
-        prev_obj = current_line->children_.back().get();
+      LayoutObject *previous_object = nullptr;
+      if (!current_line->children().empty()) {
+        previous_object = current_line->children().back().get();
       }
 
-      auto input_layout = std::make_unique<InputLayout>(node, current_line,
-                                                        prev_obj, font, color);
-      current_line->children_.push_back(std::move(input_layout));
+      auto input_layout = std::make_unique<InputLayout>(
+          input_node, current_line, previous_object, font, text_color);
+      current_line->children().push_back(std::move(input_layout));
 
-      int space_w = 0;
-      int space_h = 0;
+      int space_width = 0;
+      int space_height = 0;
       if (font) {
-        font->measure_text(" ", space_w, space_h);
+        font->measure_text(" ", space_width, space_height);
       }
-      cursor_x_ += w + space_w;
+      current_cursor_x_ += input_width + space_width;
     }
   }
 }
 
 #include "config/Config.h"
 
-std::shared_ptr<gfx::Font> BlockLayout::currentFont(const Element *element) {
-  int f_size = config::DEFAULT_FONT_SIZE;
-  bool f_bold = false;
-  bool f_italic = false;
+std::shared_ptr<gfx::Font>
+BlockLayout::get_current_font(const Element *element_node) {
+  int font_size = config::DEFAULT_FONT_SIZE;
+  bool is_bold = false;
+  bool is_italic = false;
 
-  if (element) {
-    auto styles = element->style();
+  if (element_node) {
+    auto styles = element_node->style();
     if (styles.find("font-size") != styles.end()) {
-      std::string fs = styles.at("font-size");
-      if (fs.length() > 2 && fs.substr(fs.length() - 2) == "px") {
+      std::string font_size_string = styles.at("font-size");
+      if (font_size_string.length() > 2 &&
+          font_size_string.substr(font_size_string.length() - 2) == "px") {
         try {
-          f_size = std::stoi(fs.substr(0, fs.length() - 2));
+          font_size = std::stoi(
+              font_size_string.substr(0, font_size_string.length() - 2));
         } catch (...) {
         }
       }
     }
     if (styles.find("font-weight") != styles.end() &&
         styles.at("font-weight") == "bold") {
-      f_bold = true;
+      is_bold = true;
     }
     if (styles.find("font-style") != styles.end() &&
         styles.at("font-style") == "italic") {
-      f_italic = true;
+      is_italic = true;
     }
   }
 
-  FontKey key{f_size, f_bold, f_italic};
-  if (font_cache_.contains(key))
-    return font_cache_[key];
+  FontKey font_key{font_size, is_bold, is_italic};
+  if (font_cache_.contains(font_key))
+    return font_cache_[font_key];
 
-  auto font = font_manager_.get_font("Ubuntu", f_size, f_bold, f_italic);
-  font_cache_[key] = font;
+  auto font = font_manager_.get_font("Ubuntu", font_size, is_bold, is_italic);
+  font_cache_[font_key] = font;
   return font;
 }

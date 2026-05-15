@@ -8,7 +8,7 @@
 #include <vector>
 
 /**
- * Font cache key for matching style states.
+ * Story: A cache key for matching font styles (size, weight, style).
  */
 struct FontKey {
   int size;
@@ -21,33 +21,32 @@ struct FontKey {
 };
 
 struct FontKeyHash {
-  std::size_t operator()(const FontKey &k) const {
-    return std::hash<int>()(k.size) ^ (std::hash<bool>()(k.bold) << 1) ^
-           (std::hash<bool>()(k.italic) << 2);
+  std::size_t operator()(const FontKey &key) const {
+    return std::hash<int>()(key.size) ^ (std::hash<bool>()(key.bold) << 1) ^
+           (std::hash<bool>()(key.italic) << 2);
   }
 };
 
 /**
- * A single block in the layout tree.
+ * Story: The primary layout engine for block and inline elements.
  *
- * A BlockLayout either:
- *   * stacks child blocks vertically (block mode), or
- *   * lays out inline text into lines (inline mode).
- *
- * Stage 1.2: Decoupled from SDL_ttf by using generic font handles.
+ * Use-case: A BlockLayout box handles two fundamental CSS layout modes:
+ * 1. Block Mode: Children are other block boxes stacked vertically.
+ * 2. Inline Mode: Children are text or inline elements wrapped into lines.
  */
 class BlockLayout final : public LayoutObject {
 public:
-  BlockLayout(const Lexeme *node, LayoutObject *parent, BlockLayout *previous,
-              gfx::FontManager &font_manager);
+  BlockLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
+              BlockLayout *previous_sibling, gfx::FontManager &font_manager);
 
-  // For anonymous block boxes that hold runs of inline elements
+  // For anonymous block boxes created to wrap sequences of inline elements
   BlockLayout(std::vector<const Lexeme *> anonymous_children,
-              LayoutObject *parent, BlockLayout *previous,
+              LayoutObject *parent_layout, BlockLayout *previous_sibling,
               gfx::FontManager &font_manager);
 
   void layout() override;
-  void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
+  void
+  paint(std::vector<std::unique_ptr<DrawCommand>> &display_list) const override;
 
   const Lexeme *node() const override { return node_; }
   float get_opacity() const override;
@@ -57,33 +56,32 @@ public:
 
 private:
   const Lexeme *node_;
-  LayoutObject *parent_;
-  BlockLayout *previous_;
+  LayoutObject *parent_layout_;
+  BlockLayout *previous_sibling_;
   gfx::FontManager &font_manager_;
 
   std::vector<const Lexeme *> anonymous_children_;
 
-  int cursor_x_;
+  int current_cursor_x_ = 0;
 
-  // Font cache using shared_ptr to gfx::Font
   std::unordered_map<FontKey, std::shared_ptr<gfx::Font>, FontKeyHash>
       font_cache_;
 
   enum class LayoutMode { Inline, Block };
-  LayoutMode layout_mode() const;
+  LayoutMode determine_layout_mode() const;
 
-  void recurse(const Lexeme *node);
-  void layoutNode(const Lexeme *node);
-  void layoutElement(const Element *element);
-  void layoutText(const Lexeme *text_node, const std::string &text,
-                  const Element *parent_element);
+  void recurse_node(const Lexeme *current_node);
+  void layout_node(const Lexeme *current_node);
+  void layout_element(const Element *element_node);
+  void layout_text(const Lexeme *text_node, const std::string &content,
+                   const Element *parent_element);
 
-  void word(const Lexeme *node, const std::string &word,
-            const Element *parent_element);
+  void layout_word(const Lexeme *origin_node, const std::string &word_text,
+                   const Element *parent_element);
 
-  void new_line();
+  void start_new_line();
 
-  void input(const Lexeme *node);
+  void layout_input(const Lexeme *input_node);
 
-  std::shared_ptr<gfx::Font> currentFont(const Element *element);
+  std::shared_ptr<gfx::Font> get_current_font(const Element *element_node);
 };

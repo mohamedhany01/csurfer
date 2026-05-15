@@ -1,112 +1,111 @@
 #include "layout/DisplayItem.h"
 #include "gfx/GraphicsContext.h"
 
-DrawText::DrawText(int x1, int y1, std::string text,
-                   std::shared_ptr<gfx::Font> font, gfx::Color color)
-    : text_(std::move(text)), font_(std::move(font)), color_(color) {
-  left = x1;
-  top = y1;
-  right = x1;
-  // Note: bottom is usually calculated from font metrics, but for now we
-  // initialize it to top. The actual bounding box is updated during layout.
-  bottom = y1;
+DrawText::DrawText(int x_pos, int y_pos, std::string content,
+                   std::shared_ptr<gfx::Font> font_handle,
+                   gfx::Color text_color)
+    : x_(x_pos), y_(y_pos), content_(std::move(content)),
+      font_(std::move(font_handle)), color_(text_color) {
+  left = x_pos;
+  top = y_pos;
+  right = x_pos;
+  bottom = y_pos;
 }
 
-/**
- * Stage 1.2: DrawText now uses the generic GraphicsContext.
- * It passes the opaque font handle.
- */
-void DrawText::execute(int scroll, int y_offset,
-                       gfx::GraphicsContext &ctx) const {
-  ctx.draw_text(left, top - scroll + y_offset, text_, color_, font_);
+void DrawText::execute(int scroll_offset, int y_screen_offset,
+                       gfx::GraphicsContext &graphics_context) const {
+  graphics_context.draw_text(x_, y_ - scroll_offset + y_screen_offset, content_,
+                             color_, font_);
 }
 
-DrawRect::DrawRect(int x1, int y1, int x2, int y2, gfx::Color color)
-    : color_(color) {
-  left = x1;
-  top = y1;
-  right = x2;
-  bottom = y2;
+DrawRect::DrawRect(int start_x, int start_y, int end_x, int end_y,
+                   gfx::Color fill_color)
+    : x1_(start_x), y1_(start_y), x2_(end_x), y2_(end_y), color_(fill_color) {
+  left = start_x;
+  top = start_y;
+  right = end_x;
+  bottom = end_y;
 }
 
-/**
- * Stage 1.2: DrawRect now uses ctx.draw_rect with gfx::Color.
- */
-void DrawRect::execute(int scroll, int y_offset,
-                       gfx::GraphicsContext &ctx) const {
-  ctx.draw_rect({{left, top - scroll + y_offset}, right - left, bottom - top},
-                color_);
+void DrawRect::execute(int scroll_offset, int y_screen_offset,
+                       gfx::GraphicsContext &graphics_context) const {
+  graphics_context.draw_rect(
+      {{x1_, y1_ - scroll_offset + y_screen_offset}, x2_ - x1_, y2_ - y1_},
+      color_);
 }
 
-void DrawRoundedRect::execute(int scroll, int y_offset,
-                              gfx::GraphicsContext &ctx) const {
-  ctx.draw_rounded_rect({{rect_.origin.x, rect_.origin.y - scroll + y_offset},
-                         rect_.width,
-                         rect_.height},
-                        radius_, color_);
+void DrawRoundedRect::execute(int scroll_offset, int y_screen_offset,
+                              gfx::GraphicsContext &graphics_context) const {
+  graphics_context.draw_rounded_rect(
+      {{bounds_.origin.x, bounds_.origin.y - scroll_offset + y_screen_offset},
+       bounds_.width,
+       bounds_.height},
+      radius_, color_);
 }
 
-DrawLine::DrawLine(int x1, int y1, int x2, int y2, gfx::Color color,
-                   int thickness)
-    : color_(color), thickness_(thickness) {
-  left = x1;
-  top = y1;
-  right = x2;
-  bottom = y2;
+DrawLine::DrawLine(int start_x, int start_y, int end_x, int end_y,
+                   gfx::Color line_color, int line_thickness)
+    : x1_(start_x), y1_(start_y), x2_(end_x), y2_(end_y), color_(line_color),
+      thickness_(line_thickness) {
+  left = start_x;
+  top = start_y;
+  right = end_x;
+  bottom = end_y;
 }
 
-/**
- * Stage 1.2: DrawLine now uses ctx.draw_line with gfx::Color.
- */
-void DrawLine::execute(int scroll, int y_offset,
-                       gfx::GraphicsContext &ctx) const {
-  ctx.draw_line(left, top - scroll + y_offset, right,
-                bottom - scroll + y_offset, color_, thickness_);
+void DrawLine::execute(int scroll_offset, int y_screen_offset,
+                       gfx::GraphicsContext &graphics_context) const {
+  graphics_context.draw_line(x1_, y1_ - scroll_offset + y_screen_offset, x2_,
+                             y2_ - scroll_offset + y_screen_offset, color_,
+                             thickness_);
 }
 
-void DrawSaveLayer::execute(int /*scroll*/, int /*y_offset*/,
-                            gfx::GraphicsContext &ctx) const {
-  ctx.save_layer(opacity_, blend_mode_);
+void DrawSaveLayer::execute(int /*scroll_offset*/, int /*y_screen_offset*/,
+                            gfx::GraphicsContext &graphics_context) const {
+  graphics_context.save_layer(opacity_, blend_mode_);
 }
 
-void DrawRestore::execute(int /*scroll*/, int /*y_offset*/,
-                          gfx::GraphicsContext &ctx) const {
-  ctx.restore();
+void DrawRestore::execute(int /*scroll_offset*/, int /*y_screen_offset*/,
+                          gfx::GraphicsContext &graphics_context) const {
+  graphics_context.restore();
 }
 
-DrawBoxShadow::DrawBoxShadow(const utils::Rect &rect, float radius, int dx,
-                             int dy, gfx::Color color)
-    : rect_(rect), radius_(radius), dx_(dx), dy_(dy), color_(color) {
-  left = rect.origin.x + std::min(0, dx) - (int)radius;
-  top = rect.origin.y + std::min(0, dy) - (int)radius;
-  right = rect.origin.x + rect.width + std::max(0, dx) + (int)radius;
-  bottom = rect.origin.y + rect.height + std::max(0, dy) + (int)radius;
+DrawBoxShadow::DrawBoxShadow(const utils::Rect &bounds, float blur_radius,
+                             int dx, int dy, gfx::Color shadow_color)
+    : bounds_(bounds), radius_(blur_radius), dx_(dx), dy_(dy),
+      color_(shadow_color) {
+  left = bounds.origin.x + std::min(0, dx) - (int)blur_radius;
+  top = bounds.origin.y + std::min(0, dy) - (int)blur_radius;
+  right = bounds.origin.x + bounds.width + std::max(0, dx) + (int)blur_radius;
+  bottom = bounds.origin.y + bounds.height + std::max(0, dy) + (int)blur_radius;
 }
 
-void DrawBoxShadow::execute(int scroll, int y_offset,
-                            gfx::GraphicsContext &ctx) const {
-  ctx.draw_box_shadow({{rect_.origin.x, rect_.origin.y - scroll + y_offset},
-                       rect_.width,
-                       rect_.height},
-                      radius_, dx_, dy_, color_);
+void DrawBoxShadow::execute(int scroll_offset, int y_screen_offset,
+                            gfx::GraphicsContext &graphics_context) const {
+  graphics_context.draw_box_shadow(
+      {{bounds_.origin.x, bounds_.origin.y - scroll_offset + y_screen_offset},
+       bounds_.width,
+       bounds_.height},
+      radius_, dx_, dy_, color_);
 }
 
-DrawLinearGradient::DrawLinearGradient(const utils::Rect &rect,
-                                       gfx::Color color1, gfx::Color color2,
-                                       std::string direction)
-    : rect_(rect), color1_(color1), color2_(color2),
-      direction_(std::move(direction)) {
-  left = rect.origin.x;
-  top = rect.origin.y;
-  right = rect.origin.x + rect.width;
-  bottom = rect.origin.y + rect.height;
+DrawLinearGradient::DrawLinearGradient(const utils::Rect &bounds,
+                                       gfx::Color start_color,
+                                       gfx::Color end_color,
+                                       std::string gradient_direction)
+    : bounds_(bounds), color1_(start_color), color2_(end_color),
+      direction_(std::move(gradient_direction)) {
+  left = bounds.origin.x;
+  top = bounds.origin.y;
+  right = bounds.origin.x + bounds.width;
+  bottom = bounds.origin.y + bounds.height;
 }
 
-void DrawLinearGradient::execute(int scroll, int y_offset,
-                                 gfx::GraphicsContext &ctx) const {
-  ctx.draw_linear_gradient(
-      {{rect_.origin.x, rect_.origin.y - scroll + y_offset},
-       rect_.width,
-       rect_.height},
+void DrawLinearGradient::execute(int scroll_offset, int y_screen_offset,
+                                 gfx::GraphicsContext &graphics_context) const {
+  graphics_context.draw_linear_gradient(
+      {{bounds_.origin.x, bounds_.origin.y - scroll_offset + y_screen_offset},
+       bounds_.width,
+       bounds_.height},
       color1_, color2_, direction_);
 }

@@ -234,7 +234,7 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
     return;
 
   int viewport_height = config::WINDOW_HEIGHT - y_offset;
-  int doc_height = (int)document_->bounds.height + 60; // Increased padding
+  int doc_height = (int)document_->bounds().height + 60; // Increased padding
 
   if (doc_height <= viewport_height)
     return; // No need to scroll
@@ -267,7 +267,7 @@ void Tab::handle_mousedown(int x, int y) {
 
   int ui_height = config::UI_HEIGHT;
   int v_height = config::WINDOW_HEIGHT - ui_height;
-  int d_height = (int)document_->bounds.height + 100;
+  int d_height = (int)document_->bounds().height + 100;
 
   if (d_height > v_height && x >= window_width_ - config::SCROLLBAR_WIDTH) {
     is_dragging_scrollbar_ = true;
@@ -285,7 +285,7 @@ void Tab::handle_mousemove(int x, int y) {
 
   int ui_height = config::UI_HEIGHT;
   int v_height = config::WINDOW_HEIGHT - ui_height;
-  int d_height = (int)document_->bounds.height + 100;
+  int d_height = (int)document_->bounds().height + 100;
 
   double scroll_ratio = (double)y / v_height;
   int max_scroll = std::max(0, d_height - v_height);
@@ -307,7 +307,7 @@ void Tab::click(int x, int y) {
 
   for (auto it = all.rbegin(); it != all.rend(); ++it) {
     const LayoutObject *obj = *it;
-    if (obj->bounds.contains({x, total_y})) {
+    if (obj->bounds().contains({x, total_y})) {
       clicked_node = obj->node();
       if (clicked_node)
         break;
@@ -446,7 +446,7 @@ void Tab::scrolldown() {
   if (!document_)
     return;
   // Total height = content height + bottom padding
-  int total_height = (int)document_->bounds.height + 60;
+  int total_height = (int)document_->bounds().height + 60;
   int max_scroll =
       std::max(0, total_height - (config::WINDOW_HEIGHT - config::UI_HEIGHT));
   scroll_ = std::min(scroll_ + config::SCROLL_STEP, max_scroll);

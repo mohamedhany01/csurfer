@@ -10,102 +10,108 @@ class GraphicsContext;
 }
 
 /**
- * A single drawing command in the final display list.
+ * Story: A single drawing command in the final display list.
  *
- * Coordinates are in page space (not yet scrolled). The execute method takes
- * the current scroll offset and a GraphicsContext to actually draw.
+ * Use-case: Coordinates are in page space (not yet scrolled). The execute
+ * method takes the current scroll offset and a GraphicsContext to draw.
  */
 class DrawCommand {
 public:
   virtual ~DrawCommand() = default;
 
+  /**
+   * Story: Draws this command using the given scroll offset and context.
+   * y_offset: Shifts content below the browser's UI bar.
+   */
+  virtual void execute(int scroll_offset, int y_screen_offset,
+                       gfx::GraphicsContext &graphics_context) const = 0;
+
+  // Clipping/Invalidation hints (can be used for optimization)
   int top = 0;
   int left = 0;
   int bottom = 0;
   int right = 0;
-
-  /**
-   * Draw this command using the given scroll offset and graphics context.
-   * y_offset is used to shift content below the CSurfer UI.
-   */
-  virtual void execute(int scroll, int y_offset,
-                       gfx::GraphicsContext &ctx) const = 0;
 };
 
 /**
- * Draw a single piece of text at a fixed page position.
- *
- * Stage 1.2: Removed SDL-specific TTF_Font and SDL_Color.
+ * Story: Draws a single piece of text.
  */
 class DrawText final : public DrawCommand {
 public:
-  DrawText(int x1, int y1, std::string text, std::shared_ptr<gfx::Font> font,
-           gfx::Color color = gfx::Color::Black());
+  DrawText(int x_pos, int y_pos, std::string content,
+           std::shared_ptr<gfx::Font> font_handle,
+           gfx::Color text_color = gfx::Color::Black());
 
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  std::string text_;
+  int x_, y_;
+  std::string content_;
   std::shared_ptr<gfx::Font> font_;
   gfx::Color color_;
 };
 
 /**
- * Draw a filled rectangle, used for things like code block backgrounds.
+ * Story: Draws a solid filled rectangle.
  */
 class DrawRect final : public DrawCommand {
 public:
-  DrawRect(int x1, int y1, int x2, int y2, gfx::Color color);
+  DrawRect(int x1, int y1, int x2, int y2, gfx::Color fill_color);
 
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
+  int x1_, y1_, x2_, y2_;
   gfx::Color color_ = gfx::Color::Black();
 };
 
 /**
- * Draw a line between two points. Useful for borders and carets.
+ * Story: Draws a filled rectangle with rounded corners.
  */
 class DrawRoundedRect final : public DrawCommand {
 public:
-  DrawRoundedRect(const utils::Rect &rect, float radius,
-                  const gfx::Color &color)
-      : rect_(rect), radius_(radius), color_(color) {}
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  DrawRoundedRect(const utils::Rect &bounds, float corner_radius,
+                  const gfx::Color &fill_color)
+      : bounds_(bounds), radius_(corner_radius), color_(fill_color) {}
+
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  utils::Rect rect_;
+  utils::Rect bounds_;
   float radius_;
   gfx::Color color_;
 };
 
+/**
+ * Story: Draws a straight line.
+ */
 class DrawLine final : public DrawCommand {
 public:
-  DrawLine(int x1, int y1, int x2, int y2, gfx::Color color, int thickness = 1);
+  DrawLine(int x1, int y1, int x2, int y2, gfx::Color line_color,
+           int thickness = 1);
 
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
+  int x1_, y1_, x2_, y2_;
   gfx::Color color_;
   int thickness_;
 };
 
 /**
- * Pushes a new transparent layer onto the graphics context.
- * All subsequent drawing operations will be composited into this layer
- * until DrawRestore is executed.
+ * Story: Pushes a new graphics layer for effects like opacity.
  */
 class DrawSaveLayer final : public DrawCommand {
 public:
-  explicit DrawSaveLayer(float opacity, std::string blend_mode = "")
-      : opacity_(opacity), blend_mode_(std::move(blend_mode)) {}
+  explicit DrawSaveLayer(float opacity_value, std::string blending_mode = "")
+      : opacity_(opacity_value), blend_mode_(std::move(blending_mode)) {}
 
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
   float opacity_;
@@ -113,46 +119,45 @@ private:
 };
 
 /**
- * Restores the graphics context, compositing the previously saved layer
- * to the screen with its specified opacity.
+ * Story: Restores the graphics state and composites the previous layer.
  */
 class DrawRestore final : public DrawCommand {
 public:
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 };
 
 /**
- * Draws a drop shadow for a rectangle.
+ * Story: Draws a drop shadow for a box.
  */
 class DrawBoxShadow final : public DrawCommand {
 public:
-  DrawBoxShadow(const utils::Rect &rect, float radius, int dx, int dy,
-                gfx::Color color);
+  DrawBoxShadow(const utils::Rect &bounds, float blur_radius, int dx, int dy,
+                gfx::Color shadow_color);
 
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  utils::Rect rect_;
+  utils::Rect bounds_;
   float radius_;
   int dx_, dy_;
   gfx::Color color_;
 };
 
 /**
- * Draws a linear gradient for a rectangle.
+ * Story: Draws a linear color gradient.
  */
 class DrawLinearGradient final : public DrawCommand {
 public:
-  DrawLinearGradient(const utils::Rect &rect, gfx::Color color1,
-                     gfx::Color color2, std::string direction);
+  DrawLinearGradient(const utils::Rect &bounds, gfx::Color start_color,
+                     gfx::Color end_color, std::string gradient_direction);
 
-  void execute(int scroll, int y_offset,
-               gfx::GraphicsContext &ctx) const override;
+  void execute(int scroll_offset, int y_screen_offset,
+               gfx::GraphicsContext &graphics_context) const override;
 
 private:
-  utils::Rect rect_;
+  utils::Rect bounds_;
   gfx::Color color1_, color2_;
   std::string direction_;
 };
