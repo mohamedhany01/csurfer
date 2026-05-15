@@ -230,4 +230,11 @@ if (GTest_ADDED)
     )
     target_link_libraries(test_string_utils PRIVATE GTest::gtest_main csurfer_lib)
     add_test(NAME StringUtilsTests COMMAND test_string_utils)
+
+    # Parser Tests
+    add_executable(test_parser
+        unit-tests/utils/test_parser.cpp
+    )
+    target_link_libraries(test_parser PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME ParserTests COMMAND test_parser)
 endif()

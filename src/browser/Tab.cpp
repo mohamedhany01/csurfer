@@ -410,7 +410,8 @@ void Tab::submit_form(const Element *form) {
             el->attributes().count("value") ? el->attributes().at("value") : "";
         if (!payload.empty())
           payload += "&";
-        payload += utils::urlEncode(name) + "=" + utils::urlEncode(value);
+        payload += utils::url_percent_encode(name) + "=" +
+                   utils::url_percent_encode(value);
       }
       for (const auto &child : el->children()) {
         queue.push_back(child.get());

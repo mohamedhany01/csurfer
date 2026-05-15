@@ -13,14 +13,23 @@ namespace utils {
 
 /**
  * Story: Converts all characters in a string to lowercase.
- * Essential for case-insensitive comparisons (e.g., HTML tags, CSS properties).
+ * This is necessary for case-insensitive comparisons in HTML and CSS,
+ * as the web standards often treat tag names and properties as
+ * case-insensitive, while C++ string comparisons are strictly case-sensitive.
+ *
+ * Use-case: Normalizing "DIV" or "Div" to "div" before searching for
+ * it in our layout rules.
  */
 std::string to_lower(std::string_view str);
 
 /**
- * Story: Removes leading and trailing whitespace.
- * Crucial for parsing HTTP headers and CSS values where extra spaces are
- * common.
+ * Story: Removes leading and trailing whitespace characters (spaces, tabs,
+ * newlines, carriage returns). This is vital for parsing HTTP headers and CSS
+ * values where extra padding is common and would otherwise cause string
+ * comparison failures.
+ *
+ * Use-case: Stripping "  text/html  " to "text/html" during HTTP response
+ * parsing.
  */
 std::string trim(std::string_view str);
 

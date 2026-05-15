@@ -1,87 +1,89 @@
 #include "Parser.h"
+#include <format>
 
 namespace utils {
 
-int utf8CharLen(unsigned char c) {
-  if ((c & 0x80) == 0x00)
+int utf8_character_length(unsigned char first_byte) {
+  if ((first_byte & 0x80) == 0x00)
     return 1;
-  if ((c & 0xE0) == 0xC0)
+  if ((first_byte & 0xE0) == 0xC0)
     return 2;
-  if ((c & 0xF0) == 0xE0)
+  if ((first_byte & 0xF0) == 0xE0)
     return 3;
-  if ((c & 0xF8) == 0xF0)
+  if ((first_byte & 0xF8) == 0xF0)
     return 4;
   return 1;
 }
 
-bool isWhitespace(const std::string &s) { return s == " " || s == "\t"; }
-
-bool isCJK(const std::string &ch) {
-  unsigned char c = ch[0];
-  return (c & 0xF0) == 0xE0; // most CJK chars are 3 bytes
+bool is_whitespace_only(const std::string &text) {
+  return text == " " || text == "\t";
 }
 
-std::vector<std::string> splitWords(const std::string &text) {
+bool is_chinese_japanese_korean(const std::string &character_string) {
+  unsigned char first_byte = static_cast<unsigned char>(character_string[0]);
+  return (first_byte & 0xF0) == 0xE0; // most CJK chars are 3 bytes
+}
+
+std::vector<std::string> split_into_words(const std::string &text) {
   std::vector<std::string> words;
-  std::string current;
+  std::string current_word;
 
-  for (size_t i = 0; i < text.size();) {
-    unsigned char c = text[i];
+  for (size_t index = 0; index < text.size();) {
+    unsigned char first_byte = static_cast<unsigned char>(text[index]);
 
-    if (c == '\n') {
-      if (!current.empty()) {
-        words.push_back(current);
-        current.clear();
+    if (first_byte == '\n') {
+      if (!current_word.empty()) {
+        words.push_back(current_word);
+        current_word.clear();
       }
       words.emplace_back("\n");
-      i++;
+      index++;
       continue;
     }
 
-    int len = utf8CharLen(c);
-    std::string ch = text.substr(i, len);
+    int length = utf8_character_length(first_byte);
+    std::string character_string = text.substr(index, length);
 
-    if (isWhitespace(ch)) {
-      if (!current.empty()) {
-        words.push_back(current);
-        current.clear();
+    if (is_whitespace_only(character_string)) {
+      if (!current_word.empty()) {
+        words.push_back(current_word);
+        current_word.clear();
       }
-      i += len;
+      index += length;
       continue;
     }
 
-    if (isCJK(ch)) {
-      if (!current.empty()) {
-        words.push_back(current);
-        current.clear();
+    if (is_chinese_japanese_korean(character_string)) {
+      if (!current_word.empty()) {
+        words.push_back(current_word);
+        current_word.clear();
       }
-      words.push_back(ch);
-      i += len;
+      words.push_back(character_string);
+      index += length;
       continue;
     }
 
-    current += ch;
-    i += len;
+    current_word += character_string;
+    index += length;
   }
 
-  if (!current.empty())
-    words.push_back(current);
+  if (!current_word.empty())
+    words.push_back(current_word);
 
   return words;
 }
 
-std::string urlEncode(const std::string &s) {
-  std::string res;
-  for (unsigned char c : s) {
-    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-      res += c;
+std::string url_percent_encode(const std::string &text) {
+  std::string result;
+  for (unsigned char character : text) {
+    if (isalnum(character) || character == '-' || character == '_' ||
+        character == '.' || character == '~') {
+      result += static_cast<char>(character);
     } else {
-      char buf[4];
-      snprintf(buf, sizeof(buf), "%%%02X", (unsigned int)c);
-      res += buf;
+      result += std::format("%{:02X}", static_cast<unsigned int>(character));
     }
   }
-  return res;
+  return result;
 }
 
 } // namespace utils

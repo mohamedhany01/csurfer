@@ -49,6 +49,9 @@ Refactor from modules with zero dependents inward. Never refactor core while lea
 - **Deterministic**: Same inputs → same outputs whenever possible.
 - **No hidden side effects.** Document any unavoidable ones.
 - **Prefer immutability** for shared/thread-sensitive state.
+- **Modern C++**: Use modern C++23 features. Remove deprecated or non-safe C-style functions (e.g., prefer `std::format` or `std::stringstream` over `snprintf`).
+- **Simplify Logic**: Always simplify the logic of a utility/helper. Prefer small, focused methods over monolithic ones.
+- **Built-in First**: If a standard library method exists for our logic, use it instead of writing custom code.
 
 ## 6. Naming Conventions
 
@@ -61,7 +64,12 @@ Refactor from modules with zero dependents inward. Never refactor core while lea
 | Constants/Macros | `UPPER_SNAKE_CASE` | `SCROLL_STEP` |
 | Namespaces | `snake_case` | `gfx` |
 
-When touching a file, fix any camelCase violations (e.g., `setAttribute` → `set_attribute`, `mainLoop` → `main_loop`, `urlEncode` → `url_encode`).
+### Explicit Naming Rules
+
+- **No Abbreviations**: Never use abbreviations in class names, function names, or variable names (e.g., `is_chinese_japanese_korean` instead of `isCJK`, `character` instead of `ch`, `index` instead of `i`).
+- **Local Readability**: Variable names inside functions must be full words to ensure readability (e.g., `buffer` instead of `buf`).
+- **Story Requirement**: Every helper, utility, and function must have a "Story" comment block above its declaration explaining its purpose, use-case, and why it's necessary.
+- **Exceptions for Abbreviations**: If an abbreviation is a widely recognized technical standard (e.g., `UTF8`, `URL`, `HTML`), it may be used, but a Story must accompany its first appearance.
 
 ## 7. Duplication
 

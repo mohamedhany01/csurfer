@@ -363,7 +363,7 @@ void BlockLayout::layoutElement(const Element *element) {
 
 void BlockLayout::layoutText(const Lexeme *text_node, const std::string &text,
                              const Element *parent_element) {
-  auto words = utils::splitWords(text);
+  auto words = utils::split_into_words(text);
   for (const auto &w : words) {
     if (w == "\n") {
       continue;
