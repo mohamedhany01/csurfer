@@ -18,13 +18,13 @@
 // Berkeley sockets wrapper
 HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
                                   const Url &referrer) {
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
+  int socket_handle = socket(AF_INET, SOCK_STREAM, 0);
+  if (socket_handle < 0)
     return {};
 
   hostent *server = gethostbyname(url.host().c_str());
   if (!server) {
-    close(sock);
+    close(socket_handle);
     return {};
   }
 
@@ -33,8 +33,8 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
   addr.sin_port = htons(std::stoi(url.port()));
   std::memcpy(&addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
-  if (connect(sock, (sockaddr *)&addr, sizeof(addr)) < 0) {
-    close(sock);
+  if (connect(socket_handle, (sockaddr *)&addr, sizeof(addr)) < 0) {
+    close(socket_handle);
     return {};
   }
 
@@ -47,60 +47,61 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
 
     ctx = SSL_CTX_new(TLS_client_method());
     ssl = SSL_new(ctx);
-    SSL_set_fd(ssl, sock);
+    SSL_set_fd(ssl, socket_handle);
     SSL_set_tlsext_host_name(ssl, url.host().c_str());
 
     if (SSL_connect(ssl) <= 0) {
       SSL_free(ssl);
       SSL_CTX_free(ctx);
-      close(sock);
+      close(socket_handle);
       return {};
     }
   }
 
   // Choose HTTP method based on payload presence.
   // If payload exists, use POST and include Content-Length.
-  std::string method = payload.empty() ? "GET" : "POST";
-  std::string req = method + " " + url.path() + " HTTP/1.0\r\n" +
-                    "Host: " + url.host() + "\r\n";
+  std::string http_method = payload.empty() ? "GET" : "POST";
+  std::string request_string = http_method + " " + url.path() +
+                               " HTTP/1.0\r\n" + "Host: " + url.host() + "\r\n";
 
   if (cookie_jar_) {
-    std::string cookies = cookie_jar_->get_cookies(url, referrer, method);
+    std::string cookies = cookie_jar_->get_cookies(url, referrer, http_method);
     if (!cookies.empty()) {
-      req += "Cookie: " + cookies + "\r\n";
+      request_string += "Cookie: " + cookies + "\r\n";
     }
   }
 
   if (!referrer.host().empty()) {
-    req += "Referer: " + referrer.origin() + "\r\n";
+    request_string += "Referer: " + referrer.origin() + "\r\n";
   }
 
   if (!payload.empty()) {
-    req += "Content-Type: application/x-www-form-urlencoded\r\n";
-    req += "Content-Length: " + std::to_string(payload.size()) + "\r\n";
+    request_string += "Content-Type: application/x-www-form-urlencoded\r\n";
+    request_string +=
+        "Content-Length: " + std::to_string(payload.size()) + "\r\n";
   }
 
-  req += "\r\n";
+  request_string += "\r\n";
 
   if (!payload.empty()) {
-    req += payload;
+    request_string += payload;
   }
 
   if (ssl) {
-    SSL_write(ssl, req.c_str(), req.size());
+    SSL_write(ssl, request_string.c_str(), request_string.size());
   } else {
-    send(sock, req.c_str(), req.size(), 0);
+    send(socket_handle, request_string.c_str(), request_string.size(), 0);
   }
 
-  std::string response;
+  std::string response_text;
   char buffer[config::HTTP_BUFFER_SIZE];
 
   while (true) {
-    int bytes = ssl ? SSL_read(ssl, buffer, sizeof(buffer))
-                    : read(sock, buffer, sizeof(buffer));
-    if (bytes <= 0)
+    int bytes_received = ssl ? SSL_read(ssl, buffer, sizeof(buffer))
+                             : read(socket_handle, buffer, sizeof(buffer));
+    if (bytes_received <= 0)
       break;
-    response.append(buffer, bytes);
+    response_text.append(buffer, bytes_received);
   }
 
   if (ssl) {
@@ -109,17 +110,17 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
     SSL_CTX_free(ctx);
   }
 
-  close(sock);
+  close(socket_handle);
 
   HttpResponse res;
-  auto pos = response.find("\r\n\r\n");
+  auto pos = response_text.find("\r\n\r\n");
   if (pos == std::string::npos) {
-    res.body = response;
+    res.body = response_text;
     return res;
   }
 
-  std::string header_part = response.substr(0, pos);
-  res.body = response.substr(pos + 4);
+  std::string header_part = response_text.substr(0, pos);
+  res.body = response_text.substr(pos + 4);
 
   std::istringstream stream(header_part);
   std::string line;

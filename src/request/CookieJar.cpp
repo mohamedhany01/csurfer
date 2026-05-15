@@ -62,16 +62,16 @@ void CookieJar::store_cookie(const Url &url,
 
 std::string CookieJar::get_cookies(const Url &target_url,
                                    const Url &referrer_url,
-                                   const std::string &method) const {
-  std::string host = target_url.host();
-  if (cookies_.count(host) == 0)
+                                   const std::string &http_method) const {
+  std::string target_host = target_url.host();
+  if (cookies_.count(target_host) == 0)
     return "";
 
-  std::string cookie_string;
-  const auto &domain_cookies = cookies_.at(host);
+  std::string cookie_header_value;
+  const auto &domain_cookies = cookies_.at(target_host);
 
   for (const auto &cookie : domain_cookies) {
-    bool allow = true;
+    bool is_allowed = true;
 
     // SameSite=Lax enforcement
     if (cookie.same_site == "lax") {
@@ -79,24 +79,24 @@ std::string CookieJar::get_cookies(const Url &target_url,
       // prevention)
       if (!referrer_url.origin().empty() &&
           referrer_url.origin() != target_url.origin()) {
-        if (method != "GET") {
-          allow = false;
+        if (http_method != "GET") {
+          is_allowed = false;
         }
       }
     } else if (cookie.same_site == "strict") {
       if (referrer_url.origin() != target_url.origin()) {
-        allow = false;
+        is_allowed = false;
       }
     }
 
-    if (allow) {
-      if (!cookie_string.empty())
-        cookie_string += "; ";
-      cookie_string += cookie.name + "=" + cookie.value;
+    if (is_allowed) {
+      if (!cookie_header_value.empty())
+        cookie_header_value += "; ";
+      cookie_header_value += cookie.name + "=" + cookie.value;
     }
   }
 
-  return cookie_string;
+  return cookie_header_value;
 }
 
 void CookieJar::save_to_disk() const {
