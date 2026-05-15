@@ -1,6 +1,6 @@
 #include "layout/InputLayout.h"
-#include "layout/DisplayItem.h"
 #include "dom/Element.h"
+#include "layout/DisplayItem.h"
 
 InputLayout::InputLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
                          LayoutObject *previous_sibling,
@@ -27,7 +27,7 @@ void InputLayout::layout() {
   }
 
   // Height is determined by the font line skip
-  new_bounds.height = font_ ? font_->get_height() : 16;
+  new_bounds.height = font_ ? font_->get_height() : config::DEFAULT_FONT_SIZE;
   set_bounds(new_bounds);
 }
 
@@ -92,7 +92,8 @@ void InputLayout::paint(
   // 3. Draw the text
   if (!display_text.empty()) {
     display_list.push_back(std::make_unique<DrawText>(
-        bounds_.origin.x + 4, bounds_.origin.y, display_text, font_, color_));
+        bounds_.origin.x + config::DEFAULT_INPUT_PADDING, bounds_.origin.y,
+        display_text, font_, color_));
   }
 
   // 4. Draw Caret if focused
@@ -102,7 +103,7 @@ void InputLayout::paint(
     if (font_) {
       font_->measure_text(display_text, text_width, height);
     }
-    int caret_x = bounds_.origin.x + 4 + text_width;
+    int caret_x = bounds_.origin.x + config::DEFAULT_INPUT_PADDING + text_width;
     display_list.push_back(std::make_unique<DrawLine>(
         caret_x, bounds_.origin.y + 2, caret_x,
         bounds_.origin.y + bounds_.height - 2, gfx::Color::Black(), 2));

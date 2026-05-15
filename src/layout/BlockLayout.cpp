@@ -1,9 +1,9 @@
 #include "layout/BlockLayout.h"
 
+#include "dom/Text.h"
 #include "layout/InputLayout.h"
 #include "layout/LineLayout.h"
 #include "layout/TextLayout.h"
-#include "dom/Text.h"
 #include "utils/Parser.h"
 #include <algorithm>
 #include <cmath>
@@ -182,9 +182,15 @@ BlockLayout::LayoutMode BlockLayout::determine_layout_mode() const {
   return LayoutMode::Block;
 }
 
+/**
+ * Story: The core layout algorithm for block-level elements.
+ * This determines the bounds of the element and positions its children
+ * based on whether they are block or inline.
+ */
 void BlockLayout::layout() {
   children_.clear();
 
+  // Story: Initialize bounds relative to the parent or previous sibling.
   utils::Rect new_bounds;
   new_bounds.origin.x = parent_layout_ ? parent_layout_->bounds().origin.x : 0;
   new_bounds.width = parent_layout_ ? parent_layout_->bounds().width : 0;
@@ -200,60 +206,17 @@ void BlockLayout::layout() {
 
   const auto mode = determine_layout_mode();
   if (mode == LayoutMode::Block) {
-    const auto *element = dynamic_cast<const Element *>(node_);
-    if (element) {
-      BlockLayout *previous_child = nullptr;
-      std::vector<const Lexeme *> inline_run;
-
-      auto flush_inline_run = [&]() {
-        if (!inline_run.empty()) {
-          auto anonymous_block = std::make_unique<BlockLayout>(
-              inline_run, this, previous_child, font_manager_);
-          previous_child = anonymous_block.get();
-          add_child(std::move(anonymous_block));
-          inline_run.clear();
-        }
-      };
-
-      for (const auto &child : element->children()) {
-        const Lexeme *child_node = child.get();
-        if (child_node->type() == LexemeType::Element) {
-          const auto *child_element = dynamic_cast<const Element *>(child_node);
-          std::string tag = child_element->tag();
-          if (tag == "head" || tag == "script" || tag == "style" ||
-              tag == "meta" || tag == "link") {
-            continue;
-          }
-        }
-
-        if (is_block_node(child_node)) {
-          flush_inline_run();
-          auto block_child = std::make_unique<BlockLayout>(
-              child_node, this, previous_child, font_manager_);
-          previous_child = block_child.get();
-          add_child(std::move(block_child));
-        } else {
-          inline_run.push_back(child_node);
-        }
-      }
-      flush_inline_run();
-    }
+    layout_block_children();
   } else {
-    current_cursor_x_ = 0;
-    start_new_line();
-    if (!anonymous_children_.empty()) {
-      for (const auto *node : anonymous_children_) {
-        recurse_node(node);
-      }
-    } else {
-      recurse_node(node_);
-    }
+    layout_inline_children();
   }
 
+  // Story: Recursively layout all children.
   for (auto &child : children_) {
     child->layout();
   }
 
+  // Story: Finalize own height based on the total height of children.
   int total_height = 0;
   for (const auto &child : children_) {
     total_height += child->bounds().height;
@@ -261,6 +224,70 @@ void BlockLayout::layout() {
   new_bounds = bounds();
   new_bounds.height = total_height;
   set_bounds(new_bounds);
+}
+
+/**
+ * Story: Handles elements with 'Block' layout mode.
+ * It groups consecutive inline elements into 'Anonymous Block' containers
+ * to maintain the block formatting context.
+ */
+void BlockLayout::layout_block_children() {
+  const auto *element = dynamic_cast<const Element *>(node_);
+  if (!element)
+    return;
+
+  BlockLayout *previous_child = nullptr;
+  std::vector<const Lexeme *> inline_run;
+
+  auto flush_inline_run = [&]() {
+    if (!inline_run.empty()) {
+      auto anonymous_block = std::make_unique<BlockLayout>(
+          inline_run, this, previous_child, font_manager_);
+      previous_child = anonymous_block.get();
+      add_child(std::move(anonymous_block));
+      inline_run.clear();
+    }
+  };
+
+  for (const auto &child : element->children()) {
+    const Lexeme *child_node = child.get();
+    if (child_node->type() == LexemeType::Element) {
+      const auto *child_element = dynamic_cast<const Element *>(child_node);
+      std::string tag = child_element->tag();
+      if (tag == "head" || tag == "script" || tag == "style" || tag == "meta" ||
+          tag == "link") {
+        continue;
+      }
+    }
+
+    if (is_block_node(child_node)) {
+      flush_inline_run();
+      auto block_child = std::make_unique<BlockLayout>(
+          child_node, this, previous_child, font_manager_);
+      previous_child = block_child.get();
+      add_child(std::move(block_child));
+    } else {
+      inline_run.push_back(child_node);
+    }
+  }
+  flush_inline_run();
+}
+
+/**
+ * Story: Handles elements with 'Inline' layout mode.
+ * It uses a cursor-based approach to flow inline elements (text, inputs)
+ * into LineLayout containers, performing line-wrapping when necessary.
+ */
+void BlockLayout::layout_inline_children() {
+  current_cursor_x_ = 0;
+  start_new_line();
+  if (!anonymous_children_.empty()) {
+    for (const auto *node : anonymous_children_) {
+      recurse_node(node);
+    }
+  } else {
+    recurse_node(node_);
+  }
 }
 
 void BlockLayout::paint(
@@ -389,6 +416,10 @@ void BlockLayout::layout_text(const Lexeme *text_node,
   }
 }
 
+/**
+ * Story: Measures and positions a single word within a line.
+ * If the word exceeds the line width, a new line is started.
+ */
 void BlockLayout::layout_word(const Lexeme *origin_node,
                               const std::string &word_text,
                               const Element *parent_element) {
@@ -432,6 +463,10 @@ void BlockLayout::layout_word(const Lexeme *origin_node,
   }
 }
 
+/**
+ * Story: Appends a new LineLayout container to the block's children.
+ * This is called whenever an inline run exceeds its width or a <br> is hit.
+ */
 void BlockLayout::start_new_line() {
   current_cursor_x_ = 0;
   LayoutObject *previous_line = nullptr;
@@ -442,12 +477,15 @@ void BlockLayout::start_new_line() {
   add_child(std::make_unique<LineLayout>(node_, this, previous_line));
 }
 
+/**
+ * Story: Positions an interactive element (input/button) within a line.
+ */
 void BlockLayout::layout_input(const Lexeme *input_node) {
   const auto *element = dynamic_cast<const Element *>(input_node);
   if (!element)
     return;
 
-  int input_width = 200; // Match DEFAULT_INPUT_WIDTH in InputLayout
+  int input_width = config::DEFAULT_INPUT_WIDTH;
   if (current_cursor_x_ + input_width > bounds_.width) {
     start_new_line();
   }

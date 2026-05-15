@@ -30,7 +30,7 @@ void LineLayout::layout() {
     // Story: Empty lines (e.g., isolated <br>) need a default height to
     // produce vertical spacing.
     new_bounds = bounds();
-    new_bounds.height = 20; // Default line height
+    new_bounds.height = config::DEFAULT_LINE_HEIGHT;
     set_bounds(new_bounds);
     return;
   }
@@ -48,7 +48,8 @@ void LineLayout::layout() {
   }
 
   new_bounds = bounds();
-  new_bounds.height = static_cast<int>(max_child_height * 1.25);
+  new_bounds.height =
+      static_cast<int>(max_child_height * config::LINE_HEIGHT_MULTIPLIER);
   set_bounds(new_bounds);
 }
 

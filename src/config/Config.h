@@ -10,10 +10,10 @@
  */
 namespace config {
 
-  /**
-   * Story: Paths for local persistent storage.
-   */
-  inline constexpr std::string_view COOKIE_FILE_NAME = ".csurfer_cookies";
+/**
+ * Story: Paths for local persistent storage.
+ */
+inline constexpr std::string_view COOKIE_FILE_NAME = ".csurfer_cookies";
 
 /**
  * Story: These define the initial "canvas" for the browser. They are used
@@ -56,6 +56,9 @@ inline constexpr int SCROLLBAR_DOCUMENT_PADDING = 100;
  */
 inline constexpr int DEFAULT_FONT_SIZE = 16;
 inline constexpr int DEFAULT_INPUT_WIDTH = 200;
+inline constexpr int DEFAULT_INPUT_PADDING = 4;
+inline constexpr int DEFAULT_LINE_HEIGHT = 20;
+inline constexpr float LINE_HEIGHT_MULTIPLIER = 1.25f;
 
 /**
  * Story: UI layout specific dimensions.
