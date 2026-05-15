@@ -1,5 +1,6 @@
 #include "HTMLParser.h"
 #include "lexer/Text.h"
+#include "utils/StringUtils.h"
 
 #include <algorithm>
 #include <cctype>
@@ -7,15 +8,6 @@
 #include <string_view>
 
 namespace {
-
-// Convert a string to lowercase, character by character.
-// Example: "Div" -> "div"
-std::string to_lower(std::string s) {
-  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-    return static_cast<char>(std::tolower(c));
-  });
-  return s;
-}
 
 // Check if string s starts with the given prefix.
 // Example: starts_with("!doctype", "!") == true
@@ -82,7 +74,7 @@ std::unique_ptr<Element> HTMLParser::parse() {
                                  unfinished_.back()->tag() == "style")) {
       std::string close_tag = "</" + unfinished_.back()->tag() + ">";
       if (i + close_tag.size() <= body_.size()) {
-        std::string sub = to_lower(body_.substr(i, close_tag.size()));
+        std::string sub = utils::to_lower(body_.substr(i, close_tag.size()));
         if (sub == close_tag) {
           if (!text.empty()) {
             add_text(text);
@@ -139,7 +131,7 @@ HTMLParser::get_attributes(const std::string &text) const {
          !std::isspace(static_cast<unsigned char>(text[i]))) {
     i++;
   }
-  std::string tag = to_lower(text.substr(0, i));
+  std::string tag = utils::to_lower(text.substr(0, i));
 
   Element::AttributeMap attributes;
 
@@ -156,7 +148,7 @@ HTMLParser::get_attributes(const std::string &text) const {
            !std::isspace(static_cast<unsigned char>(text[i]))) {
       i++;
     }
-    std::string key = to_lower(text.substr(name_start, i - name_start));
+    std::string key = utils::to_lower(text.substr(name_start, i - name_start));
 
     while (i < text.size() &&
            std::isspace(static_cast<unsigned char>(text[i]))) {

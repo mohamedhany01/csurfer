@@ -2,6 +2,7 @@
 #include "CookieJar.h"
 #include "config/Config.h"
 #include "url/Url.h"
+#include "utils/StringUtils.h"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -129,25 +130,8 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
   while (std::getline(stream, line) && line != "\r") {
     auto colon = line.find(':');
     if (colon != std::string::npos) {
-      std::string key = line.substr(0, colon);
-      std::string value = line.substr(colon + 1);
-
-      // Trim whitespace and carriage return
-      auto trim = [](std::string &s) {
-        s.erase(0, s.find_first_not_of(" \t"));
-        auto end = s.find_last_not_of(" \r\t");
-        if (end != std::string::npos)
-          s.erase(end + 1);
-        else
-          s.clear();
-      };
-
-      trim(key);
-      trim(value);
-
-      // Normalize key to lowercase
-      std::transform(key.begin(), key.end(), key.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
+      std::string key = utils::to_lower(utils::trim(line.substr(0, colon)));
+      std::string value = utils::trim(line.substr(colon + 1));
       res.headers[key] = value;
     }
   }

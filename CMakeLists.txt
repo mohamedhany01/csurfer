@@ -142,6 +142,7 @@ add_library(csurfer_lib STATIC
     src/request/HttpRequest.cpp
     src/request/CookieJar.cpp
     src/utils/Parser.cpp
+    src/utils/StringUtils.cpp
     src/browser/Browser.cpp
     src/browser/Tab.cpp
     src/browser/CSurferUI.cpp
@@ -222,4 +223,11 @@ if (GTest_ADDED)
     )
     target_link_libraries(test_url PRIVATE GTest::gtest_main csurfer_lib)
     add_test(NAME UrlTests COMMAND test_url)
+
+    # String Utils Tests
+    add_executable(test_string_utils
+        unit-tests/utils/test_string_utils.cpp
+    )
+    target_link_libraries(test_string_utils PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME StringUtilsTests COMMAND test_string_utils)
 endif()
