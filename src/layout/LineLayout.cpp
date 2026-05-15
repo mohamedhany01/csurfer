@@ -10,13 +10,13 @@ void LineLayout::layout() {
   if (!parent_)
     return;
 
-  width = parent_->width;
-  x = parent_->x;
+  bounds.width = parent_->bounds.width;
+  bounds.origin.x = parent_->bounds.origin.x;
 
   if (previous_) {
-    y = previous_->y + previous_->height;
+    bounds.origin.y = previous_->bounds.origin.y + previous_->bounds.height;
   } else {
-    y = parent_->y;
+    bounds.origin.y = parent_->bounds.origin.y;
   }
 
   for (auto &child : children_) {
@@ -27,7 +27,7 @@ void LineLayout::layout() {
     // If a line is empty (like an isolated <br>), give it a default height
     // so it actually produces vertical spacing. 16px font * 1.25 line-height =
     // 20
-    height = 20;
+    bounds.height = 20;
     return;
   }
 
@@ -44,16 +44,16 @@ void LineLayout::layout() {
     // As a simplification for now, since TextLayout height is just the bounding
     // box from TTF_SizeUTF8 (which includes ascent and descent), we'll do
     // simple stacking.
-    max_ascent = std::max(max_ascent, child->height);
+    max_ascent = std::max(max_ascent, child->bounds.height);
   }
 
   for (auto &child : children_) {
     // Top-align text within the line for now, to keep it simple without full
     // TTF metrics
-    child->y = y;
+    child->bounds.origin.y = bounds.origin.y;
   }
 
-  height = static_cast<int>(max_ascent * 1.25);
+  bounds.height = static_cast<int>(max_ascent * 1.25);
 }
 
 void LineLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {

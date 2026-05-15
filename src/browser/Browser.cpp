@@ -143,10 +143,11 @@ void Browser::handleEvents() {
       running = false;
 
     if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-      if (e.button.y < ui_.height()) {
-        ui_.click(e.button.x, e.button.y);
+      utils::Point point = {e.button.x, e.button.y};
+      if (point.y < ui_.height()) {
+        ui_.click(point);
       } else if (active_tab()) {
-        active_tab()->handle_mousedown(e.button.x, e.button.y - ui_.height());
+        active_tab()->handle_mousedown(point.x, point.y - ui_.height());
       }
     }
 
@@ -198,11 +199,11 @@ void Browser::handleEvents() {
   }
 }
 
-void Browser::click(int x, int y) {
-  if (y < ui_.height()) {
-    ui_.click(x, y);
+void Browser::click(utils::Point point) {
+  if (point.y < ui_.height()) {
+    ui_.click(point);
   } else if (active_tab()) {
-    active_tab()->click(x, y - ui_.height());
+    active_tab()->click(point.x, point.y - ui_.height());
   }
 }
 

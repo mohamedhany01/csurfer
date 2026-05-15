@@ -7,21 +7,23 @@ CSurferUI::CSurferUI(Browser *browser) : browser_(browser) {
   // Initialize bounding boxes (coordinates relative to window 0,0)
 
   // Back button (<)
-  back_button_rect_ = {config::UI_PADDING,
-                       config::TAB_HEIGHT + config::UI_PADDING / 2, 40,
-                       config::ADDR_HEIGHT - config::UI_PADDING};
+  back_button_rect_ = {
+      {config::UI_PADDING, config::TAB_HEIGHT + config::UI_PADDING / 2},
+      40,
+      config::ADDR_HEIGHT - config::UI_PADDING};
 
   // Address bar (Input field)
-  address_bar_rect_ = {back_button_rect_.x + back_button_rect_.width +
-                           config::UI_PADDING,
-                       config::TAB_HEIGHT + config::UI_PADDING / 2,
+  address_bar_rect_ = {{back_button_rect_.origin.x + back_button_rect_.width +
+                            config::UI_PADDING,
+                        config::TAB_HEIGHT + config::UI_PADDING / 2},
                        600, // Width
                        config::ADDR_HEIGHT - config::UI_PADDING};
 
   // New Tab (+) button placeholder (Far right)
-  new_tab_rect_ = {config::WINDOW_WIDTH - config::UI_PADDING - 40,
-                   config::UI_PADDING / 2, 40,
-                   config::TAB_HEIGHT - config::UI_PADDING};
+  new_tab_rect_ = {
+      {config::WINDOW_WIDTH - config::UI_PADDING - 40, config::UI_PADDING / 2},
+      40,
+      config::TAB_HEIGHT - config::UI_PADDING};
 }
 
 void CSurferUI::render(SDL_Renderer *renderer) const {
@@ -75,8 +77,8 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
 
   // 3. Draw New Tab (+) button
   SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-  SDL_Rect nt = {new_tab_rect_.x, new_tab_rect_.y, new_tab_rect_.width,
-                 new_tab_rect_.height};
+  SDL_Rect nt = {new_tab_rect_.origin.x, new_tab_rect_.origin.y,
+                 new_tab_rect_.width, new_tab_rect_.height};
   SDL_RenderFillRect(renderer, &nt);
   SDL_Surface *ns = TTF_RenderText_Blended(font, "+", black);
   if (ns) {
@@ -95,7 +97,7 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
 
   // 5. Draw Back Button
   SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-  SDL_Rect bb = {back_button_rect_.x, back_button_rect_.y,
+  SDL_Rect bb = {back_button_rect_.origin.x, back_button_rect_.origin.y,
                  back_button_rect_.width, back_button_rect_.height};
   SDL_RenderFillRect(renderer, &bb);
   SDL_Surface *bs = TTF_RenderText_Blended(font, "<", black);
@@ -109,7 +111,7 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
 
   // 6. Draw Address Bar
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-  SDL_Rect ab = {address_bar_rect_.x, address_bar_rect_.y,
+  SDL_Rect ab = {address_bar_rect_.origin.x, address_bar_rect_.origin.y,
                  address_bar_rect_.width, address_bar_rect_.height};
   SDL_RenderFillRect(renderer, &ab);
 
@@ -150,17 +152,18 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
                      config::UI_HEIGHT - 1);
 }
 
-void CSurferUI::click(int x, int y) {
+void CSurferUI::click(utils::Point point) {
   address_bar_focused_ = false;
 
   // Check Tabs
   for (size_t i = 0; i < browser_->tab_count(); ++i) {
-    Rect tr = {config::UI_PADDING + (int)i * (config::TAB_WIDTH + 5),
-               config::UI_PADDING / 2, config::TAB_WIDTH,
-               config::TAB_HEIGHT - config::UI_PADDING};
-    if (tr.contains(x, y)) {
+    utils::Rect tr = {{config::UI_PADDING + (int)i * (config::TAB_WIDTH + 5),
+                       config::UI_PADDING / 2},
+                      config::TAB_WIDTH,
+                      config::TAB_HEIGHT - config::UI_PADDING};
+    if (tr.contains(point)) {
       // Check if 'x' button was portion of the tab clicked
-      if (x > tr.x + config::TAB_WIDTH - 25) {
+      if (point.x > tr.origin.x + config::TAB_WIDTH - 25) {
         browser_->close_tab(i);
       } else {
         browser_->switch_to_tab(i);
@@ -169,12 +172,12 @@ void CSurferUI::click(int x, int y) {
     }
   }
 
-  if (back_button_rect_.contains(x, y)) {
+  if (back_button_rect_.contains(point)) {
     browser_->go_back();
-  } else if (address_bar_rect_.contains(x, y)) {
+  } else if (address_bar_rect_.contains(point)) {
     address_bar_focused_ = true;
     address_bar_text_ = "";
-  } else if (new_tab_rect_.contains(x, y)) {
+  } else if (new_tab_rect_.contains(point)) {
     browser_->new_tab(Url("about:welcome"));
   }
 }

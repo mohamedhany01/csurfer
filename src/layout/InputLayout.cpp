@@ -9,7 +9,7 @@ InputLayout::InputLayout(const Lexeme *node, LayoutObject *parent,
       color_(color) {}
 
 void InputLayout::layout() {
-  width = DEFAULT_INPUT_WIDTH;
+  bounds.width = DEFAULT_INPUT_WIDTH;
 
   // Position relative to previous element in the same line
   if (previous_) {
@@ -18,13 +18,14 @@ void InputLayout::layout() {
     if (font_) {
       font_->measure_text(" ", space_w, h);
     }
-    x = previous_->x + previous_->width + space_w;
+    bounds.origin.x =
+        previous_->bounds.origin.x + previous_->bounds.width + space_w;
   } else {
-    x = parent_ ? parent_->x : 0;
+    bounds.origin.x = parent_ ? parent_->bounds.origin.x : 0;
   }
 
   // Height is determined by the font line skip
-  height = font_ ? font_->get_height() : 16;
+  bounds.height = font_ ? font_->get_height() : 16;
 }
 
 void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
@@ -47,18 +48,25 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
   }
 
   // Draw background
-  out.push_back(
-      std::make_unique<DrawRect>(x, y, x + width, y + height, bg_color));
+  out.push_back(std::make_unique<DrawRect>(
+      bounds.origin.x, bounds.origin.y, bounds.origin.x + bounds.width,
+      bounds.origin.y + bounds.height, bg_color));
 
   // Draw simple border (4 lines)
-  out.push_back(
-      std::make_unique<DrawLine>(x, y, x + width, y, border_color, 1));
-  out.push_back(std::make_unique<DrawLine>(x, y + height, x + width, y + height,
-                                           border_color, 1));
-  out.push_back(
-      std::make_unique<DrawLine>(x, y, x, y + height, border_color, 1));
-  out.push_back(std::make_unique<DrawLine>(x + width, y, x + width, y + height,
-                                           border_color, 1));
+  out.push_back(std::make_unique<DrawLine>(bounds.origin.x, bounds.origin.y,
+                                           bounds.origin.x + bounds.width,
+                                           bounds.origin.y, border_color, 1));
+  out.push_back(std::make_unique<DrawLine>(
+      bounds.origin.x, bounds.origin.y + bounds.height,
+      bounds.origin.x + bounds.width, bounds.origin.y + bounds.height,
+      border_color, 1));
+  out.push_back(std::make_unique<DrawLine>(
+      bounds.origin.x, bounds.origin.y, bounds.origin.x,
+      bounds.origin.y + bounds.height, border_color, 1));
+  out.push_back(std::make_unique<DrawLine>(
+      bounds.origin.x + bounds.width, bounds.origin.y,
+      bounds.origin.x + bounds.width, bounds.origin.y + bounds.height,
+      border_color, 1));
 
   // 2. Determine display text
   std::string text;
@@ -79,7 +87,8 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
 
   // 3. Draw the text
   if (!text.empty()) {
-    out.push_back(std::make_unique<DrawText>(x + 4, y, text, font_, color_));
+    out.push_back(std::make_unique<DrawText>(
+        bounds.origin.x + 4, bounds.origin.y, text, font_, color_));
   }
 
   // 4. Draw Caret if focused
@@ -89,9 +98,10 @@ void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
     if (font_) {
       font_->measure_text(text, text_w, h);
     }
-    int caret_x = x + 4 + text_w;
+    int caret_x = bounds.origin.x + 4 + text_w;
     out.push_back(std::make_unique<DrawLine>(
-        caret_x, y + 2, caret_x, y + height - 2, gfx::Color::Black(), 2));
+        caret_x, bounds.origin.y + 2, caret_x,
+        bounds.origin.y + bounds.height - 2, gfx::Color::Black(), 2));
   }
 }
 

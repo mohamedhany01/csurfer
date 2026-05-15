@@ -1,7 +1,7 @@
 #pragma once
 #include "gfx/Color.h"
 #include "gfx/Font.h"
-#include "layout/Rect.h"
+#include "utils/Geometry.h"
 #include <memory>
 #include <string>
 
@@ -70,13 +70,14 @@ private:
  */
 class DrawRoundedRect final : public DrawCommand {
 public:
-  DrawRoundedRect(const Rect &rect, float radius, const gfx::Color &color)
+  DrawRoundedRect(const utils::Rect &rect, float radius,
+                  const gfx::Color &color)
       : rect_(rect), radius_(radius), color_(color) {}
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
-  Rect rect_;
+  utils::Rect rect_;
   float radius_;
   gfx::Color color_;
 };
@@ -126,14 +127,14 @@ public:
  */
 class DrawBoxShadow final : public DrawCommand {
 public:
-  DrawBoxShadow(const Rect &rect, float radius, int dx, int dy,
+  DrawBoxShadow(const utils::Rect &rect, float radius, int dx, int dy,
                 gfx::Color color);
 
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
-  Rect rect_;
+  utils::Rect rect_;
   float radius_;
   int dx_, dy_;
   gfx::Color color_;
@@ -144,14 +145,14 @@ private:
  */
 class DrawLinearGradient final : public DrawCommand {
 public:
-  DrawLinearGradient(const Rect &rect, gfx::Color color1, gfx::Color color2,
-                     std::string direction);
+  DrawLinearGradient(const utils::Rect &rect, gfx::Color color1,
+                     gfx::Color color2, std::string direction);
 
   void execute(int scroll, int y_offset,
                gfx::GraphicsContext &ctx) const override;
 
 private:
-  Rect rect_;
+  utils::Rect rect_;
   gfx::Color color1_, color2_;
   std::string direction_;
 };

@@ -11,12 +11,12 @@ void DocumentLayout::layout() {
   children_.clear();
 
   // The document has padding on all sides so text does not touch window edges.
-  width = viewport_width_ - 2 * config::H_STEP;
-  x = config::H_STEP;
-  y = config::V_STEP;
+  bounds.width = viewport_width_ - 2 * config::H_STEP;
+  bounds.origin.x = config::H_STEP;
+  bounds.origin.y = config::V_STEP;
 
   if (!node_) {
-    height = 0;
+    bounds.height = 0;
     return;
   }
 
@@ -25,7 +25,7 @@ void DocumentLayout::layout() {
   children_.push_back(std::move(child));
 
   children_.front()->layout();
-  height = children_.front()->height;
+  bounds.height = children_.front()->bounds.height;
 }
 
 void DocumentLayout::paint(

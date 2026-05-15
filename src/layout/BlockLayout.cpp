@@ -179,13 +179,13 @@ BlockLayout::LayoutMode BlockLayout::layout_mode() const {
 void BlockLayout::layout() {
   children_.clear();
 
-  x = parent_ ? parent_->x : 0;
-  width = parent_ ? parent_->width : 0;
+  bounds.origin.x = parent_ ? parent_->bounds.origin.x : 0;
+  bounds.width = parent_ ? parent_->bounds.width : 0;
 
   if (previous_) {
-    y = previous_->y + previous_->height;
+    bounds.origin.y = previous_->bounds.origin.y + previous_->bounds.height;
   } else {
-    y = parent_ ? parent_->y : 0;
+    bounds.origin.y = parent_ ? parent_->bounds.origin.y : 0;
   }
 
   const auto mode = layout_mode();
@@ -247,15 +247,15 @@ void BlockLayout::layout() {
   if (mode == LayoutMode::Block) {
     int total = 0;
     for (const auto &child : children_) {
-      total += child->height;
+      total += child->bounds.height;
     }
-    height = total;
+    bounds.height = total;
   } else {
     int total = 0;
     for (const auto &child : children_) {
-      total += child->height;
+      total += child->bounds.height;
     }
-    height = total;
+    bounds.height = total;
   }
 }
 
@@ -290,7 +290,10 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
           int blur = std::stoi(blur_str);
           gfx::Color color = gfx::Color::FromName(color_str.c_str());
           out.push_back(std::make_unique<DrawBoxShadow>(
-              Rect{x, y, (int)width, (int)height}, (float)blur, dx, dy, color));
+              utils::Rect{{bounds.origin.x, bounds.origin.y},
+                          (int)bounds.width,
+                          (int)bounds.height},
+              (float)blur, dx, dy, color));
         } catch (...) {
         }
       }
@@ -303,10 +306,14 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
 
         if (radius > 0.0f) {
           out.push_back(std::make_unique<DrawRoundedRect>(
-              Rect{x, y, (int)width, (int)height}, radius, color));
+              utils::Rect{{bounds.origin.x, bounds.origin.y},
+                          (int)bounds.width,
+                          (int)bounds.height},
+              radius, color));
         } else {
-          out.push_back(
-              std::make_unique<DrawRect>(x, y, x + width, y + height, color));
+          out.push_back(std::make_unique<DrawRect>(
+              bounds.origin.x, bounds.origin.y, bounds.origin.x + bounds.width,
+              bounds.origin.y + bounds.height, color));
         }
       }
     }
@@ -317,7 +324,10 @@ void BlockLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
       gfx::Color c1, c2;
       if (parse_linear_gradient(bg, dir, c1, c2)) {
         out.push_back(std::make_unique<DrawLinearGradient>(
-            Rect{x, y, (int)width, (int)height}, c1, c2, dir));
+            utils::Rect{{bounds.origin.x, bounds.origin.y},
+                        (int)bounds.width,
+                        (int)bounds.height},
+            c1, c2, dir));
       }
     }
   }
@@ -382,7 +392,7 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
   int h = 0;
   font->measure_text(word_text, w, h);
 
-  if (cursor_x_ + w > width) {
+  if (cursor_x_ + w > bounds.width) {
     new_line();
   }
 
@@ -405,7 +415,7 @@ void BlockLayout::word(const Lexeme *node, const std::string &word_text,
       int space_h = 0;
       font->measure_text(" ", space_w, space_h);
 
-      text_layout->x = this->x + cursor_x_;
+      text_layout->bounds.origin.x = this->bounds.origin.x + cursor_x_;
       current_line->children_.push_back(std::move(text_layout));
       cursor_x_ += w + space_w;
     }
@@ -428,7 +438,7 @@ void BlockLayout::input(const Lexeme *node) {
     return;
 
   int w = 200; // Match DEFAULT_INPUT_WIDTH in InputLayout
-  if (cursor_x_ + w > width) {
+  if (cursor_x_ + w > bounds.width) {
     new_line();
   }
 

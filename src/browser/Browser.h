@@ -2,6 +2,7 @@
 #include "Tab.h"
 #include "config/Config.h"
 #include "request/CookieJar.h"
+#include "utils/Geometry.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <memory>
@@ -22,7 +23,7 @@ public:
   void load(const Url &url);
 
   // Interaction (delegated to tab)
-  void click(int x, int y);
+  void click(utils::Point point);
   void go_back();
 
   // Tab Management

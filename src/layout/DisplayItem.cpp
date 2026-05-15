@@ -34,15 +34,16 @@ DrawRect::DrawRect(int x1, int y1, int x2, int y2, gfx::Color color)
  */
 void DrawRect::execute(int scroll, int y_offset,
                        gfx::GraphicsContext &ctx) const {
-  ctx.draw_rect({left, top - scroll + y_offset, right - left, bottom - top},
+  ctx.draw_rect({{left, top - scroll + y_offset}, right - left, bottom - top},
                 color_);
 }
 
 void DrawRoundedRect::execute(int scroll, int y_offset,
                               gfx::GraphicsContext &ctx) const {
-  ctx.draw_rounded_rect(
-      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
-      radius_, color_);
+  ctx.draw_rounded_rect({{rect_.origin.x, rect_.origin.y - scroll + y_offset},
+                         rect_.width,
+                         rect_.height},
+                        radius_, color_);
 }
 
 DrawLine::DrawLine(int x1, int y1, int x2, int y2, gfx::Color color,
@@ -73,35 +74,39 @@ void DrawRestore::execute(int /*scroll*/, int /*y_offset*/,
   ctx.restore();
 }
 
-DrawBoxShadow::DrawBoxShadow(const Rect &rect, float radius, int dx, int dy,
-                             gfx::Color color)
+DrawBoxShadow::DrawBoxShadow(const utils::Rect &rect, float radius, int dx,
+                             int dy, gfx::Color color)
     : rect_(rect), radius_(radius), dx_(dx), dy_(dy), color_(color) {
-  left = rect.x + std::min(0, dx) - (int)radius;
-  top = rect.y + std::min(0, dy) - (int)radius;
-  right = rect.x + rect.width + std::max(0, dx) + (int)radius;
-  bottom = rect.y + rect.height + std::max(0, dy) + (int)radius;
+  left = rect.origin.x + std::min(0, dx) - (int)radius;
+  top = rect.origin.y + std::min(0, dy) - (int)radius;
+  right = rect.origin.x + rect.width + std::max(0, dx) + (int)radius;
+  bottom = rect.origin.y + rect.height + std::max(0, dy) + (int)radius;
 }
 
 void DrawBoxShadow::execute(int scroll, int y_offset,
                             gfx::GraphicsContext &ctx) const {
-  ctx.draw_box_shadow(
-      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
-      radius_, dx_, dy_, color_);
+  ctx.draw_box_shadow({{rect_.origin.x, rect_.origin.y - scroll + y_offset},
+                       rect_.width,
+                       rect_.height},
+                      radius_, dx_, dy_, color_);
 }
 
-DrawLinearGradient::DrawLinearGradient(const Rect &rect, gfx::Color color1,
-                                       gfx::Color color2, std::string direction)
+DrawLinearGradient::DrawLinearGradient(const utils::Rect &rect,
+                                       gfx::Color color1, gfx::Color color2,
+                                       std::string direction)
     : rect_(rect), color1_(color1), color2_(color2),
       direction_(std::move(direction)) {
-  left = rect.x;
-  top = rect.y;
-  right = rect.x + rect.width;
-  bottom = rect.y + rect.height;
+  left = rect.origin.x;
+  top = rect.origin.y;
+  right = rect.origin.x + rect.width;
+  bottom = rect.origin.y + rect.height;
 }
 
 void DrawLinearGradient::execute(int scroll, int y_offset,
                                  gfx::GraphicsContext &ctx) const {
   ctx.draw_linear_gradient(
-      {rect_.x, rect_.y - scroll + y_offset, rect_.width, rect_.height},
+      {{rect_.origin.x, rect_.origin.y - scroll + y_offset},
+       rect_.width,
+       rect_.height},
       color1_, color2_, direction_);
 }

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "utils/Geometry.h"
 #include <memory>
 #include <vector>
 
@@ -7,7 +7,7 @@ class DrawCommand;
 
 // Base class for all nodes in the layout tree.
 //
-// Each node has a rectangle (x, y, width, height) in page coordinates.
+// Each node has a rectangle (bounds) in page coordinates.
 // Layout runs in two phases:
 //   1. layout() computes sizes and positions.
 //   2. paint() writes DrawCommand objects into the display list.
@@ -15,10 +15,7 @@ class LayoutObject {
 public:
   virtual ~LayoutObject() = default;
 
-  int x = 0;
-  int y = 0;
-  int width = 0;
-  int height = 0;
+  utils::Rect bounds = {{0, 0}, 0, 0};
 
   // Compute this node's box and recursively lay out children.
   virtual void layout() = 0;

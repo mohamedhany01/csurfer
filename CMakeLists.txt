@@ -237,4 +237,11 @@ if (GTest_ADDED)
     )
     target_link_libraries(test_parser PRIVATE GTest::gtest_main csurfer_lib)
     add_test(NAME ParserTests COMMAND test_parser)
+
+    # Geometry Tests
+    add_executable(test_geometry
+        unit-tests/utils/test_geometry.cpp
+    )
+    target_link_libraries(test_geometry PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME GeometryTests COMMAND test_geometry)
 endif()

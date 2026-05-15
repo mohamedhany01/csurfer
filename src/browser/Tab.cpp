@@ -224,7 +224,7 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
     return;
 
   int viewport_height = config::WINDOW_HEIGHT - y_offset;
-  int doc_height = (int)document_->height + 60; // Increased padding
+  int doc_height = (int)document_->bounds.height + 60; // Increased padding
 
   if (doc_height <= viewport_height)
     return; // No need to scroll
@@ -234,7 +234,7 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
   int bar_x = window_width_ - bar_width;
 
   // Track (Background)
-  ctx.draw_rect({bar_x, y_offset, bar_width, viewport_height},
+  ctx.draw_rect({{bar_x, y_offset}, bar_width, viewport_height},
                 gfx::Color::FromRGB(240, 240, 240));
 
   // Thumb (Draggable part)
@@ -247,7 +247,7 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
   int thumb_y =
       y_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
 
-  ctx.draw_rect({bar_x + 2, thumb_y, bar_width - 4, thumb_height},
+  ctx.draw_rect({{bar_x + 2, thumb_y}, bar_width - 4, thumb_height},
                 gfx::Color::FromRGB(160, 160, 160));
 }
 
@@ -257,7 +257,7 @@ void Tab::handle_mousedown(int x, int y) {
 
   int ui_height = config::UI_HEIGHT;
   int v_height = config::WINDOW_HEIGHT - ui_height;
-  int d_height = (int)document_->height + 100;
+  int d_height = (int)document_->bounds.height + 100;
 
   if (d_height > v_height && x >= window_width_ - config::SCROLLBAR_WIDTH) {
     is_dragging_scrollbar_ = true;
@@ -275,7 +275,7 @@ void Tab::handle_mousemove(int x, int y) {
 
   int ui_height = config::UI_HEIGHT;
   int v_height = config::WINDOW_HEIGHT - ui_height;
-  int d_height = (int)document_->height + 100;
+  int d_height = (int)document_->bounds.height + 100;
 
   double scroll_ratio = (double)y / v_height;
   int max_scroll = std::max(0, d_height - v_height);
@@ -297,8 +297,7 @@ void Tab::click(int x, int y) {
 
   for (auto it = all.rbegin(); it != all.rend(); ++it) {
     const LayoutObject *obj = *it;
-    if (x >= obj->x && x < obj->x + obj->width && total_y >= obj->y &&
-        total_y < obj->y + obj->height) {
+    if (obj->bounds.contains({x, total_y})) {
       clicked_node = obj->node();
       if (clicked_node)
         break;
@@ -429,7 +428,7 @@ void Tab::scrolldown() {
   if (!document_)
     return;
   // Total height = content height + bottom padding
-  int total_height = (int)document_->height + 60;
+  int total_height = (int)document_->bounds.height + 60;
   int max_scroll =
       std::max(0, total_height - (config::WINDOW_HEIGHT - config::UI_HEIGHT));
   scroll_ = std::min(scroll_ + config::SCROLL_STEP, max_scroll);

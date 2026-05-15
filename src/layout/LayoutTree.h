@@ -42,9 +42,7 @@ paint_tree(const LayoutObject &layout_object,
     display_list.push_back(
         std::make_unique<DrawSaveLayer>(1.0f, "destination-in"));
     display_list.push_back(std::make_unique<DrawRoundedRect>(
-        Rect{layout_object.x, layout_object.y, layout_object.width,
-             layout_object.height},
-        border_radius, gfx::Color::White()));
+        layout_object.bounds, border_radius, gfx::Color::White()));
     display_list.push_back(std::make_unique<DrawRestore>());
   }
 
@@ -75,8 +73,9 @@ tree_to_list(const LayoutObject &root) {
 
 #include <iostream>
 inline void debug_print_layout_tree(const LayoutObject &node, int indent = 0) {
-  std::cout << std::string(indent, ' ') << "Node: bounds (" << node.x << ","
-            << node.y << "," << node.width << "," << node.height << ") ";
+  std::cout << std::string(indent, ' ') << "Node: bounds ("
+            << node.bounds.origin.x << "," << node.bounds.origin.y << ","
+            << node.bounds.width << "," << node.bounds.height << ") ";
   if (const LayoutObject *cnode = &node) {
     if (const Lexeme *dom_node = cnode->node()) {
       if (dom_node->type() == LexemeType::Element) {
