@@ -37,12 +37,17 @@ public:
 private:
   // Native Bridge Callbacks
   static duk_ret_t native_print(duk_context *ctx);
-  static duk_ret_t native_querySelectorAll(duk_context *ctx);
-  static duk_ret_t native_getAttribute(duk_context *ctx);
-  static duk_ret_t native_innerHTML_set(duk_context *ctx);
-  static duk_ret_t native_XMLHttpRequest_send(duk_context *ctx);
+  static duk_ret_t native_query_selector_all(duk_context *ctx);
+  static duk_ret_t native_get_attribute(duk_context *ctx);
+  static duk_ret_t native_inner_html_set(duk_context *ctx);
+  static duk_ret_t native_xml_http_request_send(duk_context *ctx);
   static duk_ret_t native_cookie_get(duk_context *ctx);
   static duk_ret_t native_cookie_set(duk_context *ctx);
+
+  /**
+   * Story: Helper to retrieve the JSContext instance from the Duktape stash.
+   */
+  static JSContext *get_context(duk_context *ctx);
 
   Tab *tab_;
   duk_context *duktape_context_;
