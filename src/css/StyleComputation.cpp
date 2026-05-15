@@ -4,6 +4,8 @@
 #include "utils/StringUtils.h"
 #include <sstream>
 
+#include <iostream>
+
 namespace CSS {
 
 /**
@@ -18,12 +20,18 @@ static const std::unordered_map<std::string, std::string> INHERITED_PROPERTIES =
         {"color", "black"},
 };
 
+/**
+ * Story: Recursively computes the style for an element and its descendants.
+ * This implements the CSS cascade and inheritance logic.
+ */
 void compute_style(Element *current_element,
                    const std::vector<CSSRule> &all_rules) {
   if (!current_element)
     return;
 
   // 1. Inheritance Logic
+  // Story: Before applying specific rules, we inherit properties from the
+  // parent to ensure text styles flow down the tree correctly.
   for (const auto &[property, default_value] : INHERITED_PROPERTIES) {
     if (current_element->parent()) {
       auto parent_style = current_element->parent()->style();
@@ -38,6 +46,7 @@ void compute_style(Element *current_element,
   }
 
   // 2. Cascading Rules (Applying matched selectors)
+  // Story: Apply rules from the stylesheet that match the current element.
   for (const auto &rule : all_rules) {
     if (rule.selector && rule.selector->matches(current_element)) {
       for (const auto &[property, value] : rule.declarations) {
@@ -47,6 +56,7 @@ void compute_style(Element *current_element,
   }
 
   // 3. Inline Style Override (Highest priority before !important)
+  // Story: Inline styles (e.g. <div style="...">) override stylesheet rules.
   auto attributes = current_element->attributes();
   if (attributes.count("style")) {
     try {
@@ -59,12 +69,14 @@ void compute_style(Element *current_element,
           current_element->add_style(property, value);
         }
       }
-    } catch (...) {
-      // Silently skip malformed inline styles
+    } catch (const std::exception &e) {
+      std::cerr << "[CSS] Error parsing inline style: " << e.what()
+                << std::endl;
     }
   }
 
   // 4. Resolve Relative Values (e.g., Percentage font-size)
+  // Story: Percentage values are resolved relative to the parent's size.
   auto computed_styles = current_element->style();
   if (computed_styles.count("font-size")) {
     std::string size_value = computed_styles.at("font-size");
@@ -91,13 +103,16 @@ void compute_style(Element *current_element,
         std::string final_size =
             std::to_string(percentage * parent_pixels) + "px";
         current_element->add_style("font-size", final_size);
-      } catch (...) {
-        // Fallback to inherited size on conversion failure
+      } catch (const std::exception &e) {
+        std::cerr << "[CSS] Error resolving relative font-size: " << e.what()
+                  << std::endl;
       }
     }
   }
 
   // 5. Recursive descent to children
+  // Story: Styles must be computed top-down so that children can inherit
+  // resolved values from their parents.
   for (const auto &child_node : current_element->children()) {
     if (auto *child_element = dynamic_cast<Element *>(child_node.get())) {
       compute_style(child_element, all_rules);
