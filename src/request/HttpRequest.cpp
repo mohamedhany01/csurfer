@@ -15,6 +15,46 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+namespace {
+
+/**
+ * Story: Ensures the socket is closed when the guard goes out of scope.
+ */
+class SocketGuard {
+public:
+  explicit SocketGuard(int fd) : fd_(fd) {}
+  ~SocketGuard() {
+    if (fd_ >= 0)
+      close(fd_);
+  }
+  int get() const { return fd_; }
+
+private:
+  int fd_;
+};
+
+/**
+ * Story: Manages the lifecycle of OpenSSL contexts and handles.
+ */
+class SslGuard {
+public:
+  SslGuard(SSL_CTX *ctx, SSL *ssl) : ctx_(ctx), ssl_(ssl) {}
+  ~SslGuard() {
+    if (ssl_) {
+      SSL_shutdown(ssl_);
+      SSL_free(ssl_);
+    }
+    if (ctx_)
+      SSL_CTX_free(ctx_);
+  }
+
+private:
+  SSL_CTX *ctx_;
+  SSL *ssl_;
+};
+
+} // namespace
+
 // Berkeley sockets wrapper
 HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
                                   const Url &referrer) {
@@ -22,9 +62,10 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
   if (socket_handle < 0)
     return {};
 
+  SocketGuard socket_guard(socket_handle);
+
   hostent *server = gethostbyname(url.host().c_str());
   if (!server) {
-    close(socket_handle);
     return {};
   }
 
@@ -34,12 +75,12 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
   std::memcpy(&addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
   if (connect(socket_handle, (sockaddr *)&addr, sizeof(addr)) < 0) {
-    close(socket_handle);
     return {};
   }
 
   SSL_CTX *ctx = nullptr;
   SSL *ssl = nullptr;
+  std::unique_ptr<SslGuard> ssl_guard;
 
   if (url.scheme() == "https") {
     SSL_library_init();
@@ -53,9 +94,9 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
     if (SSL_connect(ssl) <= 0) {
       SSL_free(ssl);
       SSL_CTX_free(ctx);
-      close(socket_handle);
       return {};
     }
+    ssl_guard = std::make_unique<SslGuard>(ctx, ssl);
   }
 
   // Choose HTTP method based on payload presence.
@@ -104,14 +145,14 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
     response_text.append(buffer, bytes_received);
   }
 
-  if (ssl) {
-    SSL_shutdown(ssl);
-    SSL_free(ssl);
-    SSL_CTX_free(ctx);
+  auto res = parse_response(response_text);
+  if (cookie_jar_ && res.headers.count("set-cookie")) {
+    cookie_jar_->store_cookie(url, res.headers.at("set-cookie"));
   }
+  return res;
+}
 
-  close(socket_handle);
-
+HttpResponse HttpRequest::parse_response(const std::string &response_text) {
   HttpResponse res;
   auto pos = response_text.find("\r\n\r\n");
   if (pos == std::string::npos) {
@@ -128,17 +169,13 @@ HttpResponse HttpRequest::request(const Url &url, const std::string &payload,
     // Skip status line (e.g., HTTP/1.0 200 OK)
   }
 
-  while (std::getline(stream, line) && line != "\r") {
+  while (std::getline(stream, line) && line != "\r" && !line.empty()) {
     auto colon = line.find(':');
     if (colon != std::string::npos) {
       std::string key = utils::to_lower(utils::trim(line.substr(0, colon)));
       std::string value = utils::trim(line.substr(colon + 1));
       res.headers[key] = value;
     }
-  }
-
-  if (cookie_jar_ && res.headers.count("set-cookie")) {
-    cookie_jar_->store_cookie(url, res.headers.at("set-cookie"));
   }
 
   return res;

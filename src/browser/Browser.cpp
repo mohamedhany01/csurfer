@@ -4,11 +4,10 @@
 #include "request/HttpRequest.h"
 #include <iostream>
 
-Browser::Browser() : Browser(std::make_shared<HttpRequest>()) {}
+Browser::Browser() : Browser(std::make_shared<HttpRequest>(&cookie_jar_)) {}
 
 Browser::Browser(std::shared_ptr<IRequest> network_engine)
     : network_engine_(std::move(network_engine)), ui_(this) {
-  network_engine_->set_cookie_jar(&cookie_jar_);
   init_sdl();
   init_ttf();
   load_ui_font();

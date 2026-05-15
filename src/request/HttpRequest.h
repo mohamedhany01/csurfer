@@ -12,12 +12,21 @@ class CookieJar;
  */
 class HttpRequest : public IRequest {
 public:
+  explicit HttpRequest(CookieJar *cookie_jar = nullptr)
+      : cookie_jar_(cookie_jar) {}
+
   /**
    * Story: Executes an HTTP request. Supports both GET (empty payload)
    * and POST (with payload).
    */
   HttpResponse request(const Url &url, const std::string &payload = "",
                        const Url &referrer = {}) override;
+
+  /**
+   * Story: Parses a raw HTTP response string into a structured HttpResponse.
+   * Extracted for unit testing and cleaner logic.
+   */
+  static HttpResponse parse_response(const std::string &response_text);
 
   /**
    * Story: Connects a cookie jar to manage stateful sessions.
