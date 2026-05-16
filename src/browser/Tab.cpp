@@ -9,6 +9,7 @@
 #include "layout/LayoutTree.h"
 #include "lexer/Text.h"
 #include "utils/Parser.h"
+#include "utils/StringUtils.h"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
@@ -25,9 +26,7 @@ void Tab::parse_csp(const std::string &header_value) {
   std::stringstream ss(header_value);
   std::string directive;
   while (std::getline(ss, directive, ';')) {
-    // Trim whitespace
-    directive.erase(0, directive.find_first_not_of(" "));
-    directive.erase(directive.find_last_not_of(" ") + 1);
+    directive = utils::trim(directive);
     if (directive.empty())
       continue;
 

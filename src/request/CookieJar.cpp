@@ -1,5 +1,6 @@
 #include "CookieJar.h"
 #include "url/Url.h"
+#include "utils/StringUtils.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -7,12 +8,6 @@
 
 namespace {
 const std::string COOKIE_FILE = ".csurfer_cookies";
-
-std::string to_lower(std::string s) {
-  std::transform(s.begin(), s.end(), s.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  return s;
-}
 } // namespace
 
 CookieJar::CookieJar() { load_from_disk(); }
@@ -26,9 +21,7 @@ void CookieJar::store_cookie(const Url &url,
 
   bool first = true;
   while (std::getline(ss, part, ';')) {
-    // Trim
-    part.erase(0, part.find_first_not_of(" "));
-    part.erase(part.find_last_not_of(" ") + 1);
+    part = utils::trim(part);
 
     auto eq = part.find('=');
     if (first) {
@@ -40,14 +33,14 @@ void CookieJar::store_cookie(const Url &url,
     } else {
       std::string key = (eq == std::string::npos) ? part : part.substr(0, eq);
       std::string val = (eq == std::string::npos) ? "" : part.substr(eq + 1);
-      key = to_lower(key);
+      key = utils::to_lower(key);
 
       if (key == "domain")
         cookie.domain = val;
       else if (key == "path")
         cookie.path = val;
       else if (key == "samesite")
-        cookie.same_site = to_lower(val);
+        cookie.same_site = utils::to_lower(val);
     }
   }
 
