@@ -1,5 +1,6 @@
 #pragma once
 
+#include "browser/TabNavigator.h"
 #include "browser/TabSecurityPolicy.h"
 #include "dom/Element.h"
 #include "js/IJSHost.h"
@@ -51,21 +52,19 @@ public:
   void render(gfx::GraphicsContext &ctx, int y_screen_offset) const;
 
   // Accessors (IJSHost implementation)
-  const Url &url() const override { return url_; }
+  const Url &url() const override { return navigator_.url(); }
   Element *root() const override { return root_.get(); }
   std::shared_ptr<IRequest> network_engine() const override {
-    return network_engine_;
+    return navigator_.network_engine();
   }
 
   const std::string title() const;
 
 private:
-  std::shared_ptr<IRequest> network_engine_;
   int window_width_;
   gfx::FontManager &font_manager_;
 
-  Url url_;
-  std::vector<Url> history_;
+  TabNavigator navigator_;
   int current_scroll_ = 0;
   bool is_dragging_scrollbar_ = false;
 

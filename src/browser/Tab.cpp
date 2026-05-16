@@ -16,58 +16,14 @@
 
 Tab::Tab(std::shared_ptr<IRequest> network_engine, int window_width,
          gfx::FontManager &font_manager)
-    : network_engine_(std::move(network_engine)), window_width_(window_width),
-      font_manager_(font_manager), url_("http://localhost/") {}
+    : window_width_(window_width), font_manager_(font_manager),
+      navigator_(std::move(network_engine)) {}
 
 Tab::~Tab() = default;
 
 void Tab::load(const Url &url, const std::string &payload) {
   focused_element_ = nullptr;
-  if (history_.empty() || history_.back().href() != url.href()) {
-    history_.push_back(url);
-  }
-
-  Url referrer = url_;
-  url_ = url;
-  CS_LOG_INFO("Navigating to: {}", url_.href());
-
-  std::string body;
-  if (url_.href() == "about:welcome") {
-    // Story: Hardcoded welcome page for new users
-    body = "<html><head><title>Welcome</title></head><body>"
-           "<div style=\"text-align:center; padding:50px;\">"
-           "<h1>Welcome in CSurfer</h1>"
-           "<p>Your lightweight, SOLID-powered browser.</p>"
-           "<hr><p>Visit the project on GitHub:</p>"
-           "<a href=\"https://github.com/mohamedhany01/csurfer\">"
-           "mohamedhany01/csurfer</a><br><br>"
-           "<p>Local Test Pages:</p>"
-           "<a href=\"http://localhost:8000/\">http://localhost:8000/</a>"
-           "<br><br><p><i>Enjoy surfing the solid way!</i></p>"
-           "</div></body></html>";
-  } else {
-    try {
-      auto response = network_engine_->request(url_, payload, referrer);
-      body = response.body;
-
-      if (response.headers.count("content-security-policy")) {
-        security_policy_.parse_csp(
-            response.headers.at("content-security-policy"), url_);
-      } else {
-        security_policy_.clear();
-      }
-    } catch (const std::exception &error) {
-      process_document(std::string("Network Error: ") + error.what());
-      return;
-    }
-  }
-
-  if (body.empty()) {
-    body = "<html><body><h1>Error Loading Page</h1>"
-           "<p>We couldn't reach <b>" +
-           url_.href() + "</b>. Check the URL and try again.</p></body></html>";
-  }
-
+  std::string body = navigator_.load(url, payload, security_policy_);
   process_document(body);
 }
 
@@ -93,13 +49,13 @@ void Tab::process_document(const std::string &content_or_message) {
   HTMLParser parser(body);
   root_ = parser.parse();
 
-  StyleEngine style_engine(network_engine_);
+  StyleEngine style_engine(navigator_.network_engine());
   style_engine.apply(
-      dynamic_cast<Element *>(root_.get()), url_,
+      dynamic_cast<Element *>(root_.get()), navigator_.url(),
       [this](const Url &u, const std::string &d) {
         return security_policy_.is_allowed(u, d);
       },
-      url_);
+      navigator_.url());
 
   document_layout_ = std::make_unique<DocumentLayout>(
       root_.get(), font_manager_, window_width_);
@@ -141,7 +97,7 @@ void Tab::process_scripts() {
     if (attributes.count("src")) {
       std::string script_url_string = attributes.at("src");
       try {
-        Url resolved_script_url = url_.resolve(script_url_string);
+        Url resolved_script_url = navigator_.url().resolve(script_url_string);
 
         if (!security_policy_.is_allowed(resolved_script_url, "script-src")) {
           std::cout << "[SOP/CSP] Blocked script loading from: "
@@ -152,7 +108,9 @@ void Tab::process_scripts() {
         std::cout << "[Tab] Loading external script: " << script_url_string
                   << std::endl;
         std::string script_content =
-            network_engine_->request(resolved_script_url, "", url_).body;
+            navigator_.network_engine()
+                ->request(resolved_script_url, "", navigator_.url())
+                .body;
         if (!script_content.empty()) {
           javascript_context_->run(script_url_string, script_content);
         }
@@ -176,13 +134,13 @@ void Tab::process_scripts() {
 void Tab::rebuild_layout() {
   if (!root_)
     return;
-  StyleEngine style_engine(network_engine_);
+  StyleEngine style_engine(navigator_.network_engine());
   style_engine.apply(
-      dynamic_cast<Element *>(root_.get()), url_,
+      dynamic_cast<Element *>(root_.get()), navigator_.url(),
       [this](const Url &u, const std::string &d) {
         return security_policy_.is_allowed(u, d);
       },
-      url_);
+      navigator_.url());
   document_layout_ = std::make_unique<DocumentLayout>(
       root_.get(), font_manager_, window_width_);
   document_layout_->layout();
@@ -305,7 +263,7 @@ void Tab::click(int x, int y) {
           }
           if (element->tag() == "a" && element->attributes().contains("href")) {
             try {
-              load(url_.resolve(element->attributes().at("href")));
+              load(navigator_.url().resolve(element->attributes().at("href")));
             } catch (const utils::UrlError &error) {
               process_document(error.what());
             }
@@ -411,7 +369,7 @@ void Tab::submit_form(const Element *form_element) {
   CS_LOG_INFO("Submitting form to: {} with payload: {}", action_url_string,
               payload_string);
   try {
-    load(url_.resolve(action_url_string), payload_string);
+    load(navigator_.url().resolve(action_url_string), payload_string);
   } catch (const utils::UrlError &error) {
     process_document(error.what());
   }
@@ -432,18 +390,15 @@ void Tab::scroll_up() {
 }
 
 void Tab::go_back() {
-  if (history_.size() > 1) {
-    history_.pop_back();
-    Url previous_url = history_.back();
-    history_.pop_back();
-    CS_LOG_INFO("Going back to: {}", previous_url.href());
-    load(previous_url);
+  if (auto previous_url = navigator_.go_back()) {
+    CS_LOG_INFO("Going back to: {}", previous_url->href());
+    load(*previous_url);
   }
 }
 
 const std::string Tab::title() const {
   if (!root_)
-    return url_.host();
+    return navigator_.url().host();
 
   // Story: Search for the <title> tag in the DOM tree
   std::vector<const Lexeme *> queue = {root_.get()};
@@ -465,5 +420,5 @@ const std::string Tab::title() const {
     }
   }
 
-  return url_.host();
+  return navigator_.url().host();
 }
