@@ -93,6 +93,13 @@ if (duktape_ADDED)
     # Duktape needs certain flags on some systems, but default should work for now.
 endif()
 
+# GoogleTest
+CPMAddPackage(
+    NAME GTest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG v1.14.0
+)
+
 include(ExternalProject)
 
 set(SKIA_DIR "${PROJECT_SOURCE_DIR}/external/skia")
@@ -118,10 +125,9 @@ target_link_libraries(skia INTERFACE
 )
 
 # ------------------------------------------------------------------------------
-# Main executable
+# Core Library
 # ------------------------------------------------------------------------------
-add_executable(csurfer
-    src/main.cpp
+add_library(csurfer_lib STATIC
     src/lexer/Lexeme.cpp
     src/lexer/Text.cpp
     src/lexer/Element.cpp
@@ -148,12 +154,11 @@ add_executable(csurfer
     src/gfx/SkiaFont.cpp
 )
 
-# Add include directories for src/
-target_include_directories(csurfer PRIVATE
+target_include_directories(csurfer_lib PUBLIC
     ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(csurfer PRIVATE
+target_link_libraries(csurfer_lib PUBLIC
     project_warnings
     skia
     SDL2::SDL2
@@ -165,11 +170,22 @@ target_link_libraries(csurfer PRIVATE
 )
 
 # ------------------------------------------------------------------------------
+# Main executable
+# ------------------------------------------------------------------------------
+add_executable(csurfer
+    src/main.cpp
+)
+
+target_link_libraries(csurfer PRIVATE
+    csurfer_lib
+)
+
+# ------------------------------------------------------------------------------
 # Assets configuration(compile-time)
 # ------------------------------------------------------------------------------
 
 # Assuming your assets folder is at project-root/assets
-target_compile_definitions(csurfer PRIVATE
+target_compile_definitions(csurfer_lib PUBLIC
     ASSETS_DIR="${PROJECT_SOURCE_DIR}/assets"
 )
 
@@ -185,4 +201,25 @@ if (ENABLE_LOGGING)
 else()
     target_compile_definitions(csurfer PRIVATE ENABLE_LOGGING=0)
     message(STATUS "Logging disabled")
+endif()
+
+# ------------------------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------------------------
+if (GTest_ADDED)
+    enable_testing()
+    
+    # Config Tests
+    add_executable(test_config
+        unit-tests/config/test_config.cpp
+    )
+    target_link_libraries(test_config PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME ConfigTests COMMAND test_config)
+
+    # URL Tests
+    add_executable(test_url
+        unit-tests/url/test_url.cpp
+    )
+    target_link_libraries(test_url PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME UrlTests COMMAND test_url)
 endif()
