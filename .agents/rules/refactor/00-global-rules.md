@@ -117,6 +117,8 @@ Examples:
 - Remove dead code continuously.
 - Remove obsolete dependencies continuously.
 - No magic numbers
+- Prefer built-in standard library methods over custom logic when available (leverage modern C++).
+- Replace deprecated or unsafe methods with modern, safe equivalents.
 
 ---
 
