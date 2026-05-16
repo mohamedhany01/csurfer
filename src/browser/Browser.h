@@ -3,6 +3,7 @@
 #include "CSurferUI.h"
 #include "IBrowserCommands.h"
 #include "Tab.h"
+#include "browser/SDLInitializer.h"
 #include "config/Config.h"
 #include "request/CookieJar.h"
 #include "utils/Geometry.h"
@@ -56,6 +57,7 @@ public:
   TTF_Font *ui_font() const override { return ui_font_; }
 
 private:
+  SDLInitializer sdl_initializer_;
   std::shared_ptr<IRequest> network_engine_;
 
   // SDL2 Shell State
@@ -67,8 +69,6 @@ private:
   TTF_Font *ui_font_ = nullptr;
 
   // SDL2 Lifecycle helpers
-  void init_sdl();
-  void init_ttf();
   void load_ui_font();
   void create_window();
   void create_renderer();

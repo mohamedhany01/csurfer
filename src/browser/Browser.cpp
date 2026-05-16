@@ -8,32 +8,15 @@ Browser::Browser() : Browser(std::make_shared<HttpRequest>(&cookie_jar_)) {}
 
 Browser::Browser(std::shared_ptr<IRequest> network_engine)
     : network_engine_(std::move(network_engine)), ui_(this) {
-  init_sdl();
-  init_ttf();
   load_ui_font();
   create_window();
   create_renderer();
+  SDL_StartTextInput();
   skia_ctx_ = std::make_unique<gfx::SkiaContext>(width_, height_);
   font_manager_ = std::make_unique<gfx::SkiaFontManager>();
 }
 
 Browser::~Browser() { shutdown(); }
-
-void Browser::init_sdl() {
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    CS_LOG_ERROR("SDL_Init Error: {}", SDL_GetError());
-    is_running_ = false;
-  }
-  SDL_StartTextInput(); // Story: Enable text input for the address bar and
-                        // forms
-}
-
-void Browser::init_ttf() {
-  if (TTF_Init() != 0) {
-    CS_LOG_ERROR("TTF_Init Error: {}", TTF_GetError());
-    is_running_ = false;
-  }
-}
 
 void Browser::load_ui_font() {
   std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
@@ -72,8 +55,6 @@ void Browser::shutdown() {
     SDL_DestroyWindow(window_);
   if (ui_font_)
     TTF_CloseFont(ui_font_);
-  TTF_Quit();
-  SDL_Quit();
 }
 
 void Browser::load(const std::string &raw_url) {
