@@ -61,9 +61,8 @@ void Tab::process_document(const std::string &content_or_message) {
       root_.get(), font_manager_, window_width_);
   document_layout_->layout();
 
-  display_list_.clear();
-  paint_tree(*document_layout_, display_list_);
-  current_scroll_ = 0;
+  renderer_.rebuild_display_list(*document_layout_);
+  renderer_.set_scroll(0);
   javascript_context_ = std::make_unique<JSContext>(this);
 
   process_scripts();
@@ -144,50 +143,15 @@ void Tab::rebuild_layout() {
   document_layout_ = std::make_unique<DocumentLayout>(
       root_.get(), font_manager_, window_width_);
   document_layout_->layout();
-  display_list_.clear();
-  paint_tree(*document_layout_, display_list_);
+  renderer_.rebuild_display_list(*document_layout_);
 }
 
 void Tab::render(gfx::GraphicsContext &ctx, int y_screen_offset) const {
   if (!document_layout_)
     return;
-  for (const auto &command : display_list_) {
-    command->execute(current_scroll_, y_screen_offset, ctx);
-  }
-  render_scrollbar(ctx, y_screen_offset);
-}
-
-void Tab::render_scrollbar(gfx::GraphicsContext &ctx,
-                           int y_screen_offset) const {
-  if (!document_layout_)
-    return;
-
-  int viewport_height = config::WINDOW_HEIGHT - y_screen_offset;
   int document_height = (int)document_layout_->bounds().height + 60;
-
-  if (document_height <= viewport_height)
-    return; // Story: No need to scroll if content fits in viewport
-
-  int bar_width = config::SCROLLBAR_WIDTH;
-  int bar_x = window_width_ - bar_width;
-
-  // Story: Draw the Scrollbar Track
-  ctx.draw_rect({{bar_x, y_screen_offset}, bar_width, viewport_height},
-                gfx::Color::from_rgb(240, 240, 240));
-
-  // Story: Draw the Scrollbar Thumb
-  double thumb_ratio = (double)viewport_height / document_height;
-  int thumb_height = (int)(viewport_height * thumb_ratio);
-  if (thumb_height < 20)
-    thumb_height = 20; // Minimum size
-
-  double scroll_ratio =
-      (double)current_scroll_ / (document_height - viewport_height);
-  int thumb_y =
-      y_screen_offset + (int)(scroll_ratio * (viewport_height - thumb_height));
-
-  ctx.draw_rect({{bar_x + 2, thumb_y}, bar_width - 4, thumb_height},
-                gfx::Color::from_rgb(160, 160, 160));
+  renderer_.render(ctx, y_screen_offset, config::WINDOW_HEIGHT, document_height,
+                   window_width_);
 }
 
 void Tab::handle_mousedown(int x, int y) {
@@ -200,7 +164,7 @@ void Tab::handle_mousedown(int x, int y) {
 
   if (document_height > viewport_height &&
       x >= window_width_ - config::SCROLLBAR_WIDTH) {
-    is_dragging_scrollbar_ = true;
+    renderer_.set_dragging_scrollbar(true);
     handle_mousemove(x, y);
     return;
   }
@@ -209,7 +173,7 @@ void Tab::handle_mousedown(int x, int y) {
 }
 
 void Tab::handle_mousemove(int x, int y) {
-  if (!is_dragging_scrollbar_ || !document_layout_)
+  if (!renderer_.is_dragging_scrollbar() || !document_layout_)
     return;
 
   int ui_height = config::UI_HEIGHT;
@@ -218,20 +182,20 @@ void Tab::handle_mousemove(int x, int y) {
 
   double scroll_ratio = (double)y / viewport_height;
   int max_scroll = std::max(0, document_height - viewport_height);
-  current_scroll_ = std::min(
-      max_scroll,
-      std::max(0, (int)(scroll_ratio * document_height - viewport_height / 2)));
+  renderer_.set_scroll(
+      std::min(max_scroll, std::max(0, (int)(scroll_ratio * document_height -
+                                             viewport_height / 2))));
 }
 
 void Tab::handle_mouseup(int /*x*/, int /*y*/) {
-  is_dragging_scrollbar_ = false;
+  renderer_.set_dragging_scrollbar(false);
 }
 
 void Tab::click(int x, int y) {
   if (!document_layout_)
     return;
 
-  auto total_y = y + current_scroll_;
+  auto total_y = y + renderer_.current_scroll();
 
   auto all_nodes = tree_to_list(*document_layout_);
   const Lexeme *clicked_node = nullptr;
@@ -273,8 +237,7 @@ void Tab::click(int x, int y) {
             focused_element_->set_focused(true);
             focused_element_->set_attribute("value", "");
 
-            display_list_.clear();
-            paint_tree(*document_layout_, display_list_);
+            renderer_.rebuild_display_list(*document_layout_);
             return;
           } else if (element->tag() == "button") {
             const Element *form_search = element;
@@ -294,8 +257,7 @@ void Tab::click(int x, int y) {
     }
   }
 
-  display_list_.clear();
-  paint_tree(*document_layout_, display_list_);
+  renderer_.rebuild_display_list(*document_layout_);
 }
 
 void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
@@ -326,8 +288,7 @@ void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
   element->set_attribute("value", value_string);
 
   document_layout_->layout();
-  display_list_.clear();
-  paint_tree(*document_layout_, display_list_);
+  renderer_.rebuild_display_list(*document_layout_);
 }
 
 void Tab::submit_form(const Element *form_element) {
@@ -378,16 +339,11 @@ void Tab::submit_form(const Element *form_element) {
 void Tab::scroll_down() {
   if (!document_layout_)
     return;
-  int total_content_height = (int)document_layout_->bounds().height + 60;
-  int max_scroll_offset = std::max(
-      0, total_content_height - (config::WINDOW_HEIGHT - config::UI_HEIGHT));
-  current_scroll_ =
-      std::min(current_scroll_ + config::SCROLL_STEP, max_scroll_offset);
+  int document_height = (int)document_layout_->bounds().height + 60;
+  renderer_.scroll_down(document_height, config::WINDOW_HEIGHT);
 }
 
-void Tab::scroll_up() {
-  current_scroll_ = std::max(0, current_scroll_ - config::SCROLL_STEP);
-}
+void Tab::scroll_up() { renderer_.scroll_up(); }
 
 void Tab::go_back() {
   if (auto previous_url = navigator_.go_back()) {

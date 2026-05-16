@@ -1,6 +1,7 @@
 #pragma once
 
 #include "browser/TabNavigator.h"
+#include "browser/TabRenderer.h"
 #include "browser/TabSecurityPolicy.h"
 #include "dom/Element.h"
 #include "js/IJSHost.h"
@@ -65,18 +66,13 @@ private:
   gfx::FontManager &font_manager_;
 
   TabNavigator navigator_;
-  int current_scroll_ = 0;
-  bool is_dragging_scrollbar_ = false;
-
+  TabRenderer renderer_;
   std::unique_ptr<Element> root_;
   std::unique_ptr<DocumentLayout> document_layout_;
   std::unique_ptr<JSContext> javascript_context_;
-  std::vector<std::unique_ptr<DrawCommand>> display_list_;
 
   Element *focused_element_ = nullptr;
 
   TabSecurityPolicy security_policy_;
-
-  void render_scrollbar(gfx::GraphicsContext &ctx, int y_screen_offset) const;
   void process_scripts();
 };
