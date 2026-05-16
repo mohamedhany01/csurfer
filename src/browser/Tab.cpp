@@ -98,15 +98,13 @@ void Tab::process_scripts() {
       std::string script_url_string = attributes.at("src");
       try {
         Url resolved_script_url = navigator_.url().resolve(script_url_string);
-
         if (!security_policy_.is_allowed(resolved_script_url, "script-src")) {
-          std::cout << "[SOP/CSP] Blocked script loading from: "
-                    << script_url_string << " (CSP Violation)" << std::endl;
+          CS_LOG_WARN(
+              "[SOP/CSP] Blocked script loading from: {} (CSP Violation)",
+              script_url_string);
           continue;
         }
-
-        std::cout << "[Tab] Loading external script: " << script_url_string
-                  << std::endl;
+        CS_LOG_INFO("[Tab] Loading external script: {}", script_url_string);
         std::string script_content =
             navigator_.network_engine()
                 ->request(resolved_script_url, "", navigator_.url())

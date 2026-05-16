@@ -1,10 +1,9 @@
 #include "StyleComputation.h"
 #include "CSSParser.h"
 #include "config/Config.h"
+#include "utils/Logger.h"
 #include "utils/StringUtils.h"
 #include <sstream>
-
-#include <iostream>
 
 namespace CSS {
 
@@ -70,8 +69,7 @@ void compute_style(Element *current_element,
         }
       }
     } catch (const std::exception &e) {
-      std::cerr << "[CSS] Error parsing inline style: " << e.what()
-                << std::endl;
+      CS_LOG_ERROR("[CSS] Error parsing inline style: {}", e.what());
     }
   }
 
@@ -104,8 +102,7 @@ void compute_style(Element *current_element,
             std::to_string(percentage * parent_pixels) + "px";
         current_element->add_style("font-size", final_size);
       } catch (const std::exception &e) {
-        std::cerr << "[CSS] Error resolving relative font-size: " << e.what()
-                  << std::endl;
+        CS_LOG_ERROR("[CSS] Error resolving relative font-size: {}", e.what());
       }
     }
   }

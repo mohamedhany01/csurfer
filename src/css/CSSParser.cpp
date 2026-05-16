@@ -1,8 +1,8 @@
 #include "CSSParser.h"
+#include "utils/Logger.h"
 #include "utils/StringUtils.h"
 #include <algorithm>
 #include <cctype>
-#include <iostream>
 #include <stdexcept>
 
 CSSParser::CSSParser(std::string css_text)
@@ -82,12 +82,11 @@ std::unordered_map<std::string, std::string> CSSParser::consume_body() {
     try {
       auto declaration_pair = consume_declaration();
       declarations[declaration_pair.first] = declaration_pair.second;
-      consume_whitespace();
       consume_literal(';');
       consume_whitespace();
     } catch (const std::exception &e) {
-      std::cerr << "[CSS Parser] Recovery: skipping malformed declaration: "
-                << e.what() << std::endl;
+      CS_LOG_WARN("[CSS Parser] Recovery: skipping malformed declaration: {}",
+                  e.what());
       char stop_char = ignore_until({';', '}'});
       if (stop_char == ';') {
         consume_literal(';');
@@ -133,14 +132,12 @@ std::vector<CSSRule> CSSParser::parse() {
 
       auto current_selector = consume_selector();
       consume_literal('{');
-      consume_whitespace();
       auto declarations = consume_body();
       consume_literal('}');
-
       rules.push_back({current_selector, declarations});
     } catch (const std::exception &e) {
-      std::cerr << "[CSS Parser] Recovery: skipping malformed rule block: "
-                << e.what() << std::endl;
+      CS_LOG_WARN("[CSS Parser] Recovery: skipping malformed rule block: {}",
+                  e.what());
       char stop_char = ignore_until({'}', '{'});
       if (stop_char == '}') {
         consume_literal('}');

@@ -326,29 +326,3 @@ std::unique_ptr<Element> HTMLParser::finish() {
   unfinished_.pop_back();
   return root;
 }
-
-// Pretty-print the tree starting at the given node.
-// Each line shows one node, indented to make the parent/child
-// structure visible
-// Example:
-//   <html>
-//     <body>
-//       <p>
-//         'Hello'
-void HTMLParser::print_tree(const Element &node, int indent) {
-  std::cout << std::string(indent, ' ') << node.get_string() << '\n';
-
-  for (const auto &child : node.children()) {
-    if (child->type() == LexemeType::Element) {
-      const auto *el = dynamic_cast<const Element *>(child.get());
-      if (el) {
-        print_tree(*el, indent + 2);
-      }
-    } else if (child->type() == LexemeType::Text) {
-      const auto *txt = dynamic_cast<const Text *>(child.get());
-      if (txt) {
-        std::cout << std::string(indent + 2, ' ') << txt->get_string() << '\n';
-      }
-    }
-  }
-}

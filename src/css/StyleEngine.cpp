@@ -5,6 +5,7 @@
 #include "StyleComputation.h"
 #include "dom/Element.h"
 #include "dom/TreeWalker.h"
+#include "utils/Logger.h"
 
 #include <algorithm>
 #include <functional>
@@ -49,26 +50,19 @@ static void sort_rules_by_specificity(std::vector<CSSRule> &rules) {
                    });
 }
 
-/**
- * Story: Fetches external stylesheets from the network and parses them.
- * Respects Content Security Policy (CSP) by checking each URL before fetching.
- */
 void StyleEngine::fetch_external_stylesheets(
     Element *root, const Url &base_url, const Url &referrer,
     std::function<bool(const Url &, const std::string &)> csp_check,
     std::vector<CSSRule> &all_rules) {
   auto hrefs = collect_stylesheet_hrefs(root);
-
   for (const auto &href : hrefs) {
     try {
       Url style_url = base_url.resolve(href);
-
       if (csp_check && !csp_check(style_url, "style-src")) {
-        std::cout << "[SOP/CSP] Blocked stylesheet from " << style_url.href()
-                  << " (CSP Violation)" << std::endl;
+        CS_LOG_WARN("[SOP/CSP] Blocked stylesheet from {} (CSP Violation)",
+                    style_url.href());
         continue;
       }
-
       std::string css_content =
           network_engine_->request(style_url, "", referrer).body;
       CSSParser external_parser(css_content);
@@ -76,8 +70,8 @@ void StyleEngine::fetch_external_stylesheets(
 
       all_rules.insert(all_rules.end(), extra_rules.begin(), extra_rules.end());
     } catch (const std::exception &error) {
-      std::cerr << "[StyleEngine] Failed to load stylesheet: " << href << " - "
-                << error.what() << "\n";
+      CS_LOG_ERROR("[StyleEngine] Failed to load stylesheet: {} - {}", href,
+                   error.what());
     }
   }
 }

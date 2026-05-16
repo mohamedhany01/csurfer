@@ -2,9 +2,9 @@
 #include "dom/Element.h"
 #include "dom/TreeWalker.h"
 #include "request/IRequest.h"
+#include "utils/Logger.h"
 
 #include <fstream>
-#include <iostream>
 
 JSContext::JSContext(IJSHost *host) : host_(host) {
   duktape_context_ = duk_create_heap_default();
@@ -65,8 +65,8 @@ JSContext *JSContext::get_context(duk_context *ctx) {
 
 void JSContext::run(const std::string &script_name, const std::string &code) {
   if (duk_peval_string(duktape_context_, code.c_str()) != 0) {
-    std::cerr << "[JS] Error in " << script_name << ": "
-              << duk_safe_to_string(duktape_context_, -1) << std::endl;
+    CS_LOG_ERROR("[JS] Error in {}: {}", script_name,
+                 duk_safe_to_string(duktape_context_, -1));
   }
   duk_pop(duktape_context_);
 }
@@ -76,14 +76,12 @@ bool JSContext::dispatch_event(const std::string &event_type,
   duk_get_global_string(duktape_context_, "dispatchEvent");
   duk_push_string(duktape_context_, event_type.c_str());
   duk_push_int(duktape_context_, get_handle(element));
-
   if (duk_pcall(duktape_context_, 2) != 0) {
-    std::cerr << "[JS] Event Dispatch Error: "
-              << duk_safe_to_string(duktape_context_, -1) << std::endl;
+    CS_LOG_ERROR("[JS] Event Dispatch Error: {}",
+                 duk_safe_to_string(duktape_context_, -1));
     duk_pop(duktape_context_);
     return false;
   }
-
   bool prevent_default = duk_get_boolean(duktape_context_, -1);
   duk_pop(duktape_context_);
   return prevent_default;
@@ -108,7 +106,7 @@ Element *JSContext::get_element(int handle) {
 }
 
 duk_ret_t JSContext::native_print(duk_context *ctx) {
-  std::cout << "JS log: " << duk_safe_to_string(ctx, 0) << std::endl;
+  CS_LOG_INFO("JS log: {}", duk_safe_to_string(ctx, 0));
   return 0;
 }
 
@@ -173,14 +171,13 @@ duk_ret_t JSContext::native_xml_http_request_send(duk_context *ctx) {
 
   // Story: Same-Origin Policy (SOP) check
   if (page_origin != target_origin) {
-    std::cout << "[SOP] Blocked cross-origin request from " << page_origin
-              << " to " << target_origin << std::endl;
+    CS_LOG_WARN("[SOP] Blocked cross-origin request from {} to {}", page_origin,
+                target_origin);
     duk_push_string(ctx, "");
     return 1;
   }
 
-  std::cout << "[JS XHR] Sending " << method << " request to "
-            << target_url.href() << std::endl;
+  CS_LOG_INFO("[JS XHR] Sending {} request to {}", method, target_url.href());
   auto response =
       self->host_->network_engine()->request(target_url, request_body);
 

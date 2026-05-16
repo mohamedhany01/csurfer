@@ -69,28 +69,3 @@ tree_to_list(const LayoutObject &root_node) {
   }
   return flattened_list;
 }
-
-#include <iostream>
-/**
- * Story: Prints a human-readable representation of the layout tree to stdout.
- */
-inline void debug_print_layout_tree(const LayoutObject &current_node,
-                                    int indent_level = 0) {
-  const auto &rect = current_node.bounds();
-  std::cout << std::string(indent_level, ' ') << "Node: bounds ("
-            << rect.origin.x << "," << rect.origin.y << "," << rect.width << ","
-            << rect.height << ") ";
-
-  if (const Lexeme *dom_node = current_node.node()) {
-    if (dom_node->type() == LexemeType::Element) {
-      std::cout << "(Element " << dom_node->tag() << ") ";
-    } else {
-      std::cout << "(Text '" << dom_node->text() << "')";
-    }
-  }
-  std::cout << "\n";
-
-  for (const auto &child : current_node.children()) {
-    debug_print_layout_tree(*child, indent_level + 2);
-  }
-}
