@@ -1,22 +1,21 @@
 #include "CookieJar.h"
+#include "config/Config.h"
 #include "url/Url.h"
+#include "utils/StringUtils.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-namespace {
-const std::string COOKIE_FILE = ".csurfer_cookies";
-
-std::string to_lower(std::string s) {
-  std::transform(s.begin(), s.end(), s.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  return s;
-}
-} // namespace
-
 CookieJar::CookieJar() { load_from_disk(); }
 
+/**
+ * Story: Parses a 'Set-Cookie' header and stores it in the jar.
+ * This implementation supports Domain, Path, and SameSite attributes.
+ *
+ * Use-case: When a server responds with a cookie, this method ensures
+ * it is persisted and available for future requests to the same domain.
+ */
 void CookieJar::store_cookie(const Url &url,
                              const std::string &set_cookie_header) {
   std::stringstream ss(set_cookie_header);
@@ -26,9 +25,7 @@ void CookieJar::store_cookie(const Url &url,
 
   bool first = true;
   while (std::getline(ss, part, ';')) {
-    // Trim
-    part.erase(0, part.find_first_not_of(" "));
-    part.erase(part.find_last_not_of(" ") + 1);
+    part = utils::trim(part);
 
     auto eq = part.find('=');
     if (first) {
@@ -40,14 +37,14 @@ void CookieJar::store_cookie(const Url &url,
     } else {
       std::string key = (eq == std::string::npos) ? part : part.substr(0, eq);
       std::string val = (eq == std::string::npos) ? "" : part.substr(eq + 1);
-      key = to_lower(key);
+      key = utils::to_lower(key);
 
       if (key == "domain")
         cookie.domain = val;
       else if (key == "path")
         cookie.path = val;
       else if (key == "samesite")
-        cookie.same_site = to_lower(val);
+        cookie.same_site = utils::to_lower(val);
     }
   }
 
@@ -67,18 +64,22 @@ void CookieJar::store_cookie(const Url &url,
   }
 }
 
+/**
+ * Story: Retrieves all valid cookies for a target URL.
+ * Implements SameSite (Lax/Strict) security policies to prevent CSRF.
+ */
 std::string CookieJar::get_cookies(const Url &target_url,
                                    const Url &referrer_url,
-                                   const std::string &method) const {
-  std::string host = target_url.host();
-  if (cookies_.count(host) == 0)
+                                   const std::string &http_method) const {
+  std::string target_host = target_url.host();
+  if (cookies_.count(target_host) == 0)
     return "";
 
-  std::string cookie_string;
-  const auto &domain_cookies = cookies_.at(host);
+  std::string cookie_header_value;
+  const auto &domain_cookies = cookies_.at(target_host);
 
   for (const auto &cookie : domain_cookies) {
-    bool allow = true;
+    bool is_allowed = true;
 
     // SameSite=Lax enforcement
     if (cookie.same_site == "lax") {
@@ -86,28 +87,31 @@ std::string CookieJar::get_cookies(const Url &target_url,
       // prevention)
       if (!referrer_url.origin().empty() &&
           referrer_url.origin() != target_url.origin()) {
-        if (method != "GET") {
-          allow = false;
+        if (http_method != "GET") {
+          is_allowed = false;
         }
       }
     } else if (cookie.same_site == "strict") {
       if (referrer_url.origin() != target_url.origin()) {
-        allow = false;
+        is_allowed = false;
       }
     }
 
-    if (allow) {
-      if (!cookie_string.empty())
-        cookie_string += "; ";
-      cookie_string += cookie.name + "=" + cookie.value;
+    if (is_allowed) {
+      if (!cookie_header_value.empty())
+        cookie_header_value += "; ";
+      cookie_header_value += cookie.name + "=" + cookie.value;
     }
   }
 
-  return cookie_string;
+  return cookie_header_value;
 }
 
+/**
+ * Story: Persists the current cookie state to a local file.
+ */
 void CookieJar::save_to_disk() const {
-  std::ofstream f(COOKIE_FILE);
+  std::ofstream f{std::string{config::COOKIE_FILE_NAME}};
   if (!f.is_open())
     return;
 
@@ -119,8 +123,11 @@ void CookieJar::save_to_disk() const {
   }
 }
 
+/**
+ * Story: Loads cookies from local storage on startup.
+ */
 void CookieJar::load_from_disk() {
-  std::ifstream f(COOKIE_FILE);
+  std::ifstream f{std::string{config::COOKIE_FILE_NAME}};
   if (!f.is_open())
     return;
 

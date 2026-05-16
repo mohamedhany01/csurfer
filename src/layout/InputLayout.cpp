@@ -1,97 +1,112 @@
 #include "layout/InputLayout.h"
+#include "dom/Element.h"
 #include "layout/DisplayItem.h"
-#include "lexer/Element.h"
 
-InputLayout::InputLayout(const Lexeme *node, LayoutObject *parent,
-                         LayoutObject *previous,
-                         std::shared_ptr<gfx::Font> font, gfx::Color color)
-    : node_(node), parent_(parent), previous_(previous), font_(std::move(font)),
-      color_(color) {}
+InputLayout::InputLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
+                         LayoutObject *previous_sibling,
+                         std::shared_ptr<gfx::Font> font_handle,
+                         gfx::Color text_color)
+    : node_(dom_node), parent_(parent_layout), previous_(previous_sibling),
+      font_(std::move(font_handle)), color_(text_color) {}
 
 void InputLayout::layout() {
-  width = DEFAULT_INPUT_WIDTH;
+  utils::Rect new_bounds;
+  new_bounds.width = DEFAULT_INPUT_WIDTH;
 
   // Position relative to previous element in the same line
   if (previous_) {
-    int space_w = 0;
-    int h = 0;
+    int space_width = 0;
+    int height = 0;
     if (font_) {
-      font_->measure_text(" ", space_w, h);
+      font_->measure_text(" ", space_width, height);
     }
-    x = previous_->x + previous_->width + space_w;
+    new_bounds.origin.x =
+        previous_->bounds().origin.x + previous_->bounds().width + space_width;
   } else {
-    x = parent_ ? parent_->x : 0;
+    new_bounds.origin.x = parent_ ? parent_->bounds().origin.x : 0;
   }
 
   // Height is determined by the font line skip
-  height = font_ ? font_->get_height() : 16;
+  new_bounds.height = font_ ? font_->get_height() : config::DEFAULT_FONT_SIZE;
+  set_bounds(new_bounds);
 }
 
-void InputLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
-  const auto *el = dynamic_cast<const Element *>(node_);
-  if (!el)
+void InputLayout::paint(
+    std::vector<std::unique_ptr<DrawCommand>> &display_list) const {
+  const auto *element = dynamic_cast<const Element *>(node_);
+  if (!element)
     return;
 
   // 1. Draw background/border of the input/button
-  gfx::Color border_color = gfx::Color::FromRGB(160, 160, 160); // Light Gray
-  gfx::Color bg_color = gfx::Color::FromRGB(240, 240, 240);     // Default
+  gfx::Color border_color = gfx::Color::from_rgb(160, 160, 160); // Light Gray
+  gfx::Color background_color = gfx::Color::from_rgb(240, 240, 240); // Default
 
-  if (el->tag() == "input") {
-    bg_color = gfx::Color::FromRGB(173, 216, 230); // Light Blue
-  } else if (el->tag() == "button") {
-    bg_color = gfx::Color::FromRGB(255, 165, 0); // Orange
+  if (element->tag() == "input") {
+    background_color = gfx::Color::from_rgb(173, 216, 230); // Light Blue
+  } else if (element->tag() == "button") {
+    background_color = gfx::Color::from_rgb(255, 165, 0); // Orange
   }
 
   if (node_ && node_->is_focused()) {
-    border_color = gfx::Color::FromRGB(0, 0, 255); // Blue when focused
+    border_color = gfx::Color::from_rgb(0, 0, 255); // Blue when focused
   }
 
   // Draw background
-  out.push_back(
-      std::make_unique<DrawRect>(x, y, x + width, y + height, bg_color));
+  display_list.push_back(std::make_unique<DrawRect>(
+      bounds_.origin.x, bounds_.origin.y, bounds_.origin.x + bounds_.width,
+      bounds_.origin.y + bounds_.height, background_color));
 
   // Draw simple border (4 lines)
-  out.push_back(
-      std::make_unique<DrawLine>(x, y, x + width, y, border_color, 1));
-  out.push_back(std::make_unique<DrawLine>(x, y + height, x + width, y + height,
-                                           border_color, 1));
-  out.push_back(
-      std::make_unique<DrawLine>(x, y, x, y + height, border_color, 1));
-  out.push_back(std::make_unique<DrawLine>(x + width, y, x + width, y + height,
-                                           border_color, 1));
+  display_list.push_back(std::make_unique<DrawLine>(
+      bounds_.origin.x, bounds_.origin.y, bounds_.origin.x + bounds_.width,
+      bounds_.origin.y, border_color, 1));
+  display_list.push_back(std::make_unique<DrawLine>(
+      bounds_.origin.x, bounds_.origin.y + bounds_.height,
+      bounds_.origin.x + bounds_.width, bounds_.origin.y + bounds_.height,
+      border_color, 1));
+  display_list.push_back(std::make_unique<DrawLine>(
+      bounds_.origin.x, bounds_.origin.y, bounds_.origin.x,
+      bounds_.origin.y + bounds_.height, border_color, 1));
+  display_list.push_back(std::make_unique<DrawLine>(
+      bounds_.origin.x + bounds_.width, bounds_.origin.y,
+      bounds_.origin.x + bounds_.width, bounds_.origin.y + bounds_.height,
+      border_color, 1));
 
   // 2. Determine display text
-  std::string text;
-  if (el->tag() == "input") {
-    auto attrs = el->attributes();
-    if (attrs.count("value")) {
-      text = attrs.at("value");
+  std::string display_text;
+  if (element->tag() == "input") {
+    auto attributes = element->attributes();
+    if (attributes.count("value")) {
+      display_text = attributes.at("value");
     }
-  } else if (el->tag() == "button") {
+  } else if (element->tag() == "button") {
     // For buttons, use the text content of the first child
-    if (!el->children().empty()) {
-      const auto &child = el->children().front();
+    if (!element->children().empty()) {
+      const auto &child = element->children().front();
       if (child->type() == LexemeType::Text) {
-        text = child->text();
+        display_text = child->text();
       }
     }
   }
 
   // 3. Draw the text
-  if (!text.empty()) {
-    out.push_back(std::make_unique<DrawText>(x + 4, y, text, font_, color_));
+  if (!display_text.empty()) {
+    display_list.push_back(std::make_unique<DrawText>(
+        bounds_.origin.x + config::DEFAULT_INPUT_PADDING, bounds_.origin.y,
+        display_text, font_, color_));
   }
 
   // 4. Draw Caret if focused
   if (node_ && node_->is_focused()) {
-    int text_w = 0;
-    int h = 0;
+    int text_width = 0;
+    int height = 0;
     if (font_) {
-      font_->measure_text(text, text_w, h);
+      font_->measure_text(display_text, text_width, height);
     }
-    int caret_x = x + 4 + text_w;
-    out.push_back(std::make_unique<DrawLine>(
-        caret_x, y + 2, caret_x, y + height - 2, gfx::Color::Black(), 2));
+    int caret_x = bounds_.origin.x + config::DEFAULT_INPUT_PADDING + text_width;
+    display_list.push_back(std::make_unique<DrawLine>(
+        caret_x, bounds_.origin.y + 2, caret_x,
+        bounds_.origin.y + bounds_.height - 2, gfx::Color::Black(), 2));
   }
 }
 

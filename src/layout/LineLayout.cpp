@@ -1,63 +1,61 @@
 #include "layout/LineLayout.h"
+#include "config/Config.h"
 
 #include <algorithm>
 
-LineLayout::LineLayout(const Lexeme *node, LayoutObject *parent,
-                       LayoutObject *previous)
-    : node_(node), parent_(parent), previous_(previous) {}
+LineLayout::LineLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
+                       LayoutObject *previous_sibling)
+    : node_(dom_node), parent_(parent_layout), previous_(previous_sibling) {}
 
 void LineLayout::layout() {
   if (!parent_)
     return;
 
-  width = parent_->width;
-  x = parent_->x;
+  utils::Rect new_bounds;
+  new_bounds.width = parent_->bounds().width;
+  new_bounds.origin.x = parent_->bounds().origin.x;
 
   if (previous_) {
-    y = previous_->y + previous_->height;
+    new_bounds.origin.y =
+        previous_->bounds().origin.y + previous_->bounds().height;
   } else {
-    y = parent_->y;
+    new_bounds.origin.y = parent_->bounds().origin.y;
   }
+  set_bounds(new_bounds);
 
   for (auto &child : children_) {
     child->layout();
   }
 
   if (children_.empty()) {
-    // If a line is empty (like an isolated <br>), give it a default height
-    // so it actually produces vertical spacing. 16px font * 1.25 line-height =
-    // 20
-    height = 20;
+    // Story: Empty lines (e.g., isolated <br>) need a default height to
+    // produce vertical spacing.
+    new_bounds = bounds();
+    new_bounds.height = config::DEFAULT_LINE_HEIGHT;
+    set_bounds(new_bounds);
     return;
   }
 
-  int max_ascent = 0;
-
+  int max_child_height = 0;
   for (const auto &child : children_) {
-    // Only TextLayouts sit inside LineLayout.
-    // They don't expose ascent/descent directly since we don't store
-    // FontMetrics on them. For simplicity, we just take the max height
-    // as our line height, but properly we'd need the TTF_Font metrics.
-    // Here we approximate based on child heights since child layout measured
-    // it. To match BlockLayout's 1.25 multiplier:
-
-    // As a simplification for now, since TextLayout height is just the bounding
-    // box from TTF_SizeUTF8 (which includes ascent and descent), we'll do
-    // simple stacking.
-    max_ascent = std::max(max_ascent, child->height);
+    max_child_height = std::max(max_child_height, child->bounds().height);
   }
 
   for (auto &child : children_) {
-    // Top-align text within the line for now, to keep it simple without full
-    // TTF metrics
-    child->y = y;
+    // Story: Top-align all children within the line.
+    utils::Rect child_bounds = child->bounds();
+    child_bounds.origin.y = bounds().origin.y;
+    child->set_bounds(child_bounds);
   }
 
-  height = static_cast<int>(max_ascent * 1.25);
+  new_bounds = bounds();
+  new_bounds.height =
+      static_cast<int>(max_child_height * config::LINE_HEIGHT_MULTIPLIER);
+  set_bounds(new_bounds);
 }
 
-void LineLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
-  (void)out;
-  // LineLayout itself is invisible.
-  // Painting is entirely delegated to TextLayout children via paint_tree()
+void LineLayout::paint(
+    std::vector<std::unique_ptr<DrawCommand>> &display_list) const {
+  (void)display_list;
+  // Story: LineLayout is a logical container and has no visual representation.
 }

@@ -3,35 +3,49 @@
 #include <memory>
 #include <string>
 
-// Forward declaration of Element to avoid including full header here
+/**
+ * Story: The base interface for CSS Selectors (e.g., "div", "p a").
+ *
+ * Use-case: Used by the Style Engine to determine which CSS rules apply to
+ * a given DOM Element. Selectors can be simple (tags) or complex (descendants).
+ */
 class Element;
 
 class CSSSelector {
 public:
   virtual ~CSSSelector() = default;
 
-  // Checks if this selector matches a given Element.
+  /**
+   * Story: Checks if the given element matches this selector.
+   */
   virtual bool matches(const Element *element) const = 0;
 
-  // Returns the specificity/priority of the selector for cascade sorting.
+  /**
+   * Story: Returns the specificity (priority) of this selector.
+   * Higher priority rules overwrite lower ones.
+   */
   virtual int priority() const = 0;
 };
 
-// Matches elements by their HTML tag name (e.g., "div", "a").
+/**
+ * Story: Matches elements by their HTML tag name.
+ * Use-case: The most basic selector, e.g., "body { ... }".
+ */
 class TagSelector : public CSSSelector {
 public:
-  explicit TagSelector(std::string tag);
+  explicit TagSelector(std::string tag_name);
 
   bool matches(const Element *element) const override;
   int priority() const override;
 
 private:
   std::string tag_;
-  int priority_;
 };
 
-// Matches an element if it is a descendant of another matched element (e.g.,
-// "div p").
+/**
+ * Story: Matches an element if it is a descendant of another matched element.
+ * Use-case: Supports nested selection like "div p { ... }".
+ */
 class DescendantSelector : public CSSSelector {
 public:
   DescendantSelector(std::shared_ptr<CSSSelector> ancestor,
@@ -43,5 +57,4 @@ public:
 private:
   std::shared_ptr<CSSSelector> ancestor_;
   std::shared_ptr<CSSSelector> descendant_;
-  int priority_;
 };

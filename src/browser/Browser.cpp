@@ -2,63 +2,46 @@
 #include "gfx/SkiaContext.h"
 #include "gfx/SkiaFont.h"
 #include "request/HttpRequest.h"
-#include <iostream>
+#include "utils/Logger.h"
 
-Browser::Browser() : Browser(std::make_shared<HttpRequest>()) {}
+Browser::Browser() : Browser(std::make_shared<HttpRequest>(&cookie_jar_)) {}
 
-Browser::Browser(std::shared_ptr<IRequest> http)
-    : http_(std::move(http)), ui_(this) {
-  http_->set_cookie_jar(&cookie_jar_);
-  initSDL();
-  initTTF();
-  loadFont();
-  createWindow();
-  createRenderer();
-  skia_ctx_ = std::make_unique<gfx::SkiaContext>(WIDTH, HEIGHT);
+Browser::Browser(std::shared_ptr<IRequest> network_engine)
+    : network_engine_(std::move(network_engine)), ui_(this) {
+  load_ui_font();
+  create_window();
+  create_renderer();
+  SDL_StartTextInput();
+  skia_ctx_ = std::make_unique<gfx::SkiaContext>(width_, height_);
   font_manager_ = std::make_unique<gfx::SkiaFontManager>();
 }
 
-Browser::Browser::~Browser() { shutdown(); }
+Browser::~Browser() { shutdown(); }
 
-void Browser::initSDL() {
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
-    running = false;
-  }
-  SDL_StartTextInput(); // Enable for address bar
-}
-
-void Browser::initTTF() {
-  if (TTF_Init() != 0) {
-    std::cerr << "TTF_Init Error: " << TTF_GetError() << std::endl;
-    running = false;
-  }
-}
-
-void Browser::loadFont() {
+void Browser::load_ui_font() {
   std::string font_path = std::string(ASSETS_DIR) + "/fonts/Ubuntu-Regular.ttf";
-  font = TTF_OpenFont(font_path.c_str(), 16);
-  if (!font) {
-    std::cerr << "Font error: " << TTF_GetError() << std::endl;
-    running = false;
+  ui_font_ = TTF_OpenFont(font_path.c_str(), config::DEFAULT_FONT_SIZE);
+  if (!ui_font_) {
+    CS_LOG_ERROR("Font error: {}", TTF_GetError());
+    is_running_ = false;
   }
 }
 
-void Browser::createWindow() {
-  window =
-      SDL_CreateWindow("C Surfer 🌊", SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-  if (!window) {
-    std::cerr << "Window error: " << SDL_GetError() << std::endl;
-    running = false;
+void Browser::create_window() {
+  window_ = SDL_CreateWindow("C Surfer \xf0\x9f\x8c\x8a",
+                             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                             width_, height_, SDL_WINDOW_SHOWN);
+  if (!window_) {
+    CS_LOG_ERROR("Window error: {}", SDL_GetError());
+    is_running_ = false;
   }
 }
 
-void Browser::createRenderer() {
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-  if (!renderer) {
-    std::cerr << "Renderer error: " << SDL_GetError() << std::endl;
-    running = false;
+void Browser::create_renderer() {
+  renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
+  if (!renderer_) {
+    CS_LOG_ERROR("Renderer error: {}", SDL_GetError());
+    is_running_ = false;
   }
 }
 
@@ -66,18 +49,30 @@ void Browser::shutdown() {
   SDL_StopTextInput();
   if (skia_texture_)
     SDL_DestroyTexture(skia_texture_);
-  if (renderer)
-    SDL_DestroyRenderer(renderer);
-  if (window)
-    SDL_DestroyWindow(window);
-  if (font)
-    TTF_CloseFont(font);
-  TTF_Quit();
-  SDL_Quit();
+  if (renderer_)
+    SDL_DestroyRenderer(renderer_);
+  if (window_)
+    SDL_DestroyWindow(window_);
+  if (ui_font_)
+    TTF_CloseFont(ui_font_);
+}
+
+void Browser::load(const std::string &raw_url) {
+  if (!is_running_)
+    return;
+
+  try {
+    load(Url(raw_url));
+  } catch (const utils::UrlError &error) {
+    CS_LOG_ERROR("URL Error: {}", error.what());
+    if (active_tab()) {
+      active_tab()->process_document(error.what());
+    }
+  }
 }
 
 void Browser::load(const Url &url) {
-  if (!running)
+  if (!is_running_)
     return;
 
   if (tabs_.empty()) {
@@ -88,7 +83,7 @@ void Browser::load(const Url &url) {
 }
 
 void Browser::new_tab(const Url &url) {
-  auto tab = std::make_unique<Tab>(http_, WIDTH, *font_manager_);
+  auto tab = std::make_unique<Tab>(network_engine_, width_, *font_manager_);
   tab->load(url);
   tabs_.push_back(std::move(tab));
   active_tab_index_ = tabs_.size() - 1;
@@ -126,83 +121,88 @@ Tab *Browser::active_tab() const {
   return tabs_[active_tab_index_].get();
 }
 
-void Browser::mainLoop() {
-  while (running) {
-    handleEvents();
-    if (!running)
+void Browser::main_loop() {
+  while (is_running_) {
+    handle_events();
+    if (!is_running_)
       break;
     draw();
-    SDL_Delay(16);
+    SDL_Delay(config::FRAME_DELAY_MS); // Story: Target ~60 FPS
   }
 }
 
-void Browser::handleEvents() {
-  SDL_Event e;
-  while (SDL_PollEvent(&e)) {
-    if (e.type == SDL_QUIT)
-      running = false;
+void Browser::handle_events() {
+  SDL_Event event;
+  while (SDL_PollEvent(&event)) {
+    if (event.type == SDL_QUIT)
+      is_running_ = false;
 
-    if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-      if (e.button.y < ui_.height()) {
-        ui_.click(e.button.x, e.button.y);
+    if (event.type == SDL_MOUSEBUTTONDOWN &&
+        event.button.button == SDL_BUTTON_LEFT) {
+      utils::Point point = {event.button.x, event.button.y};
+      if (point.y < ui_.height()) {
+        ui_.click(point);
       } else if (active_tab()) {
-        active_tab()->handle_mousedown(e.button.x, e.button.y - ui_.height());
+        active_tab()->handle_mousedown(point.x, point.y - ui_.height());
       }
     }
 
-    if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+    if (event.type == SDL_MOUSEBUTTONUP &&
+        event.button.button == SDL_BUTTON_LEFT) {
       if (active_tab()) {
-        active_tab()->handle_mouseup(e.button.x, e.button.y - ui_.height());
+        active_tab()->handle_mouseup(event.button.x,
+                                     event.button.y - ui_.height());
       }
     }
 
-    if (e.type == SDL_MOUSEMOTION) {
+    if (event.type == SDL_MOUSEMOTION) {
       if (active_tab()) {
-        active_tab()->handle_mousemove(e.button.x, e.button.y - ui_.height());
+        active_tab()->handle_mousemove(event.button.x,
+                                       event.button.y - ui_.height());
       }
     }
 
-    if (e.type == SDL_KEYDOWN) {
-      if (e.key.keysym.sym == SDLK_RETURN) {
+    if (event.type == SDL_KEYDOWN) {
+      if (event.key.keysym.sym == SDLK_RETURN) {
         ui_.enter();
       } else {
         if (ui_.address_bar_focused()) {
-          ui_.keypress(e.key.keysym.sym, "");
+          ui_.keypress(event.key.keysym.sym, "");
         } else if (active_tab()) {
-          active_tab()->handle_keypress(e.key.keysym.sym, "");
+          active_tab()->handle_keypress(event.key.keysym.sym, "");
         }
       }
 
       if (active_tab()) {
-        if (e.key.keysym.sym == SDLK_DOWN)
-          active_tab()->scrolldown();
-        if (e.key.keysym.sym == SDLK_UP)
-          active_tab()->scrollup();
+        if (event.key.keysym.sym == SDLK_DOWN)
+          active_tab()->scroll_down();
+        if (event.key.keysym.sym == SDLK_UP)
+          active_tab()->scroll_up();
       }
     }
 
-    if (e.type == SDL_MOUSEWHEEL && active_tab()) {
-      if (e.wheel.y > 0)
-        active_tab()->scrollup();
-      else if (e.wheel.y < 0)
-        active_tab()->scrolldown();
+    if (event.type == SDL_MOUSEWHEEL && active_tab()) {
+      if (event.wheel.y > 0)
+        active_tab()->scroll_up();
+      else if (event.wheel.y < 0)
+        active_tab()->scroll_down();
     }
 
-    if (e.type == SDL_TEXTINPUT) {
+    if (event.type == SDL_TEXTINPUT) {
       if (ui_.address_bar_focused()) {
-        ui_.keypress(0, e.text.text);
+        ui_.keypress(0, event.text.text);
       } else if (active_tab()) {
-        active_tab()->handle_keypress(0, e.text.text);
+        active_tab()->handle_keypress(0, event.text.text);
       }
     }
   }
 }
 
-void Browser::click(int x, int y) {
-  if (y < ui_.height()) {
-    ui_.click(x, y);
+void Browser::click(utils::Point point) {
+  if (point.y < ui_.height()) {
+    ui_.click(point);
   } else if (active_tab()) {
-    active_tab()->click(x, y - ui_.height());
+    active_tab()->click(point.x, point.y - ui_.height());
   }
 }
 
@@ -212,35 +212,31 @@ void Browser::go_back() {
 }
 
 void Browser::draw() {
-  // Clear the screen to a light gray for UI area contrast
-  SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
-  SDL_RenderClear(renderer);
+  // Story: Clear the screen to a light gray for UI contrast
+  SDL_SetRenderDrawColor(renderer_, 240, 240, 240, 255);
+  SDL_RenderClear(renderer_);
 
   if (active_tab() && skia_ctx_) {
-    // 1. Clear the Skia surface to white
     skia_ctx_->clear(gfx::Color::White());
 
-    // 2. Render the current tab's content into the Skia surface
+    // Story: Delegate rendering to the active tab's display list
     active_tab()->render(*skia_ctx_, ui_.height());
 
-    // 3. Prepare SDL Texture for blitting (Create if first time)
     if (!skia_texture_) {
       skia_texture_ =
-          SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                            SDL_TEXTUREACCESS_STREAMING, WIDTH, HEIGHT);
+          SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888,
+                            SDL_TEXTUREACCESS_STREAMING, width_, height_);
     }
 
-    // 4. Copy raw pixels from Skia surface to SDL Texture
     void *pixels = skia_ctx_->get_pixels();
     int pitch = skia_ctx_->row_bytes();
     if (pixels) {
       SDL_UpdateTexture(skia_texture_, nullptr, pixels, pitch);
     }
 
-    // 5. Present the Skia texture
-    SDL_RenderCopy(renderer, skia_texture_, nullptr, nullptr);
+    SDL_RenderCopy(renderer_, skia_texture_, nullptr, nullptr);
   }
 
-  ui_.render(renderer);
-  SDL_RenderPresent(renderer);
+  ui_.render(renderer_);
+  SDL_RenderPresent(renderer_);
 }

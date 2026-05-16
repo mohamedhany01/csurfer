@@ -21,24 +21,25 @@ public:
   ~SkiaContext() override = default;
 
   // Implementation of GraphicsContext
-  void draw_rect(const Rect &rect, const Color &color) override;
-  void draw_line(int x1, int y1, int x2, int y2, const Color &color,
-                 int thickness = 1) override;
-  void draw_text(int x, int y, const std::string &text, const Color &color,
+  void draw_rect(const utils::Rect &rect, const Color &color) override;
+  void draw_line(int start_x, int start_y, int end_x, int end_y,
+                 const Color &color, int thickness = 1) override;
+  void draw_text(int x_position, int y_position, const std::string &text,
+                 const Color &color,
                  std::shared_ptr<Font> font = nullptr) override;
-  void draw_rounded_rect(const Rect &rect, float radius,
+  void draw_rounded_rect(const utils::Rect &rect, float radius,
                          const Color &color) override;
 
-  void draw_box_shadow(const Rect &rect, float radius, int dx, int dy,
-                       const Color &color) override;
+  void draw_box_shadow(const utils::Rect &rect, float radius, int offset_x,
+                       int offset_y, const Color &color) override;
 
-  void draw_linear_gradient(const Rect &rect, const Color &color1,
+  void draw_linear_gradient(const utils::Rect &rect, const Color &color1,
                             const Color &color2,
                             const std::string &direction) override;
 
   void save_layer(float opacity, const std::string &blend_mode = "") override;
   void restore() override;
-  void clip_rect(const Rect &rect) override;
+  void clip_rect(const utils::Rect &rect) override;
   void clear(const Color &color) override;
 
   // Pixel Access for SDL

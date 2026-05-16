@@ -13,7 +13,7 @@
 namespace gfx {
 
 static SkColor ToSkColor(const Color &c) {
-  return SkColorSetARGB(c.a, c.r, c.g, c.b);
+  return SkColorSetARGB(c.alpha, c.red, c.green, c.blue);
 }
 
 SkiaContext::SkiaContext(int width, int height)
@@ -40,27 +40,29 @@ SkiaContext::SkiaContext(int width, int height)
   paint_.setAntiAlias(true);
 }
 
-void SkiaContext::draw_rect(const Rect &rect, const Color &color) {
+void SkiaContext::draw_rect(const utils::Rect &rect, const Color &color) {
   if (!canvas_)
     return;
   paint_.setColor(ToSkColor(color));
   paint_.setStyle(SkPaint::kFill_Style);
-  canvas_->drawRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
-                    paint_);
+  canvas_->drawRect(
+      SkRect::MakeXYWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
+      paint_);
 }
 
-void SkiaContext::draw_line(int x1, int y1, int x2, int y2, const Color &color,
-                            int thickness) {
+void SkiaContext::draw_line(int start_x, int start_y, int end_x, int end_y,
+                            const Color &color, int thickness) {
   if (!canvas_)
     return;
   paint_.setColor(ToSkColor(color));
   paint_.setStrokeWidth(thickness);
   paint_.setStyle(SkPaint::kStroke_Style);
-  canvas_->drawLine(x1, y1, x2, y2, paint_);
+  canvas_->drawLine(start_x, start_y, end_x, end_y, paint_);
 }
 
-void SkiaContext::draw_text(int x, int y, const std::string &text,
-                            const Color &color, std::shared_ptr<Font> font) {
+void SkiaContext::draw_text(int x_position, int y_position,
+                            const std::string &text, const Color &color,
+                            std::shared_ptr<Font> font) {
   if (!canvas_)
     return;
   paint_.setColor(ToSkColor(color));
@@ -80,61 +82,66 @@ void SkiaContext::draw_text(int x, int y, const std::string &text,
   // Shifting downward by the font's ascent correctly aligns the two.
   SkFontMetrics metrics;
   sk_font.getMetrics(&metrics);
-  float y_baseline = y + std::abs(metrics.fAscent);
+  float y_baseline = y_position + std::abs(metrics.fAscent);
 
-  canvas_->drawString(text.c_str(), x, y_baseline, sk_font, paint_);
+  canvas_->drawString(text.c_str(), x_position, y_baseline, sk_font, paint_);
 }
 
-void SkiaContext::draw_rounded_rect(const Rect &rect, float radius,
+void SkiaContext::draw_rounded_rect(const utils::Rect &rect, float radius,
                                     const Color &color) {
   if (!canvas_)
     return;
   paint_.setColor(ToSkColor(color));
   paint_.setStyle(SkPaint::kFill_Style);
   SkRRect rrect;
-  rrect.setRectXY(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
-                  radius, radius);
+  rrect.setRectXY(
+      SkRect::MakeXYWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
+      radius, radius);
   canvas_->drawRRect(rrect, paint_);
 }
 
-void SkiaContext::draw_box_shadow(const Rect &rect, float radius, int dx,
-                                  int dy, const Color &color) {
+void SkiaContext::draw_box_shadow(const utils::Rect &rect, float radius,
+                                  int offset_x, int offset_y,
+                                  const Color &color) {
   if (!canvas_)
     return;
 
   SkPaint paint;
-  paint.setColor(SkColorSetARGB(color.a, color.r, color.g, color.b));
+  paint.setColor(
+      SkColorSetARGB(color.alpha, color.red, color.green, color.blue));
 
   // Note: Skia's DropShadow filter takes sigma, which is roughly radius/2
   float sigma = radius / 2.0f;
   paint.setImageFilter(SkImageFilters::DropShadow(
-      (float)dx, (float)dy, sigma, sigma,
-      SkColorSetARGB(color.a, color.r, color.g, color.b), nullptr));
+      (float)offset_x, (float)offset_y, sigma, sigma,
+      SkColorSetARGB(color.alpha, color.red, color.green, color.blue),
+      nullptr));
 
   // Draw the shadow using the same rect as the element
-  canvas_->drawRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
-                    paint);
+  canvas_->drawRect(
+      SkRect::MakeXYWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
+      paint);
 }
 
-void SkiaContext::draw_linear_gradient(const Rect &rect, const Color &color1,
-                                       const Color &color2,
+void SkiaContext::draw_linear_gradient(const utils::Rect &rect,
+                                       const Color &color1, const Color &color2,
                                        const std::string &direction) {
   if (!canvas_)
     return;
 
   SkPoint pts[2];
   if (direction == "to right") {
-    pts[0] = {(float)rect.x, (float)rect.y};
-    pts[1] = {(float)rect.x + rect.width, (float)rect.y};
+    pts[0] = {(float)rect.origin.x, (float)rect.origin.y};
+    pts[1] = {(float)rect.origin.x + rect.width, (float)rect.origin.y};
   } else if (direction == "to left") {
-    pts[0] = {(float)rect.x + rect.width, (float)rect.y};
-    pts[1] = {(float)rect.x, (float)rect.y};
+    pts[0] = {(float)rect.origin.x + rect.width, (float)rect.origin.y};
+    pts[1] = {(float)rect.origin.x, (float)rect.origin.y};
   } else if (direction == "to top") {
-    pts[0] = {(float)rect.x, (float)rect.y + rect.height};
-    pts[1] = {(float)rect.x, (float)rect.y};
+    pts[0] = {(float)rect.origin.x, (float)rect.origin.y + rect.height};
+    pts[1] = {(float)rect.origin.x, (float)rect.origin.y};
   } else { // Default to "to bottom"
-    pts[0] = {(float)rect.x, (float)rect.y};
-    pts[1] = {(float)rect.x, (float)rect.y + rect.height};
+    pts[0] = {(float)rect.origin.x, (float)rect.origin.y};
+    pts[1] = {(float)rect.origin.x, (float)rect.origin.y + rect.height};
   }
 
   SkColor colors[] = {ToSkColor(color1), ToSkColor(color2)};
@@ -143,8 +150,9 @@ void SkiaContext::draw_linear_gradient(const Rect &rect, const Color &color1,
 
   SkPaint paint;
   paint.setShader(shader);
-  canvas_->drawRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
-                    paint);
+  canvas_->drawRect(
+      SkRect::MakeXYWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
+      paint);
 }
 
 void SkiaContext::save_layer(float opacity, const std::string &blend_mode) {
@@ -173,11 +181,12 @@ void SkiaContext::restore() {
     canvas_->restore();
 }
 
-void SkiaContext::clip_rect(const Rect &rect) {
+void SkiaContext::clip_rect(const utils::Rect &rect) {
   if (!canvas_)
     return;
-  canvas_->clipRect(SkRect::MakeXYWH(rect.x, rect.y, rect.width, rect.height),
-                    SkClipOp::kIntersect, true);
+  canvas_->clipRect(
+      SkRect::MakeXYWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
+      SkClipOp::kIntersect, true);
 }
 
 void SkiaContext::clear(const Color &color) {

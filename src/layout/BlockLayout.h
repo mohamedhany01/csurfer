@@ -1,14 +1,19 @@
 #pragma once
+#include "dom/Element.h"
+#include "dom/Lexeme.h"
 #include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
-#include "lexer/Element.h"
-#include "lexer/Lexeme.h"
 #include <unordered_map>
 #include <vector>
 
+namespace layout {
+class BlockPainter;
+class InlineLayoutHelper;
+} // namespace layout
+
 /**
- * Font cache key for matching style states.
+ * Story: A cache key for matching font styles (size, weight, style).
  */
 struct FontKey {
   int size;
@@ -21,33 +26,35 @@ struct FontKey {
 };
 
 struct FontKeyHash {
-  std::size_t operator()(const FontKey &k) const {
-    return std::hash<int>()(k.size) ^ (std::hash<bool>()(k.bold) << 1) ^
-           (std::hash<bool>()(k.italic) << 2);
+  std::size_t operator()(const FontKey &key) const {
+    return std::hash<int>()(key.size) ^ (std::hash<bool>()(key.bold) << 1) ^
+           (std::hash<bool>()(key.italic) << 2);
   }
 };
 
 /**
- * A single block in the layout tree.
+ * Story: The primary layout engine for block and inline elements.
  *
- * A BlockLayout either:
- *   * stacks child blocks vertically (block mode), or
- *   * lays out inline text into lines (inline mode).
- *
- * Stage 1.2: Decoupled from SDL_ttf by using generic font handles.
+ * Use-case: A BlockLayout box handles two fundamental CSS layout modes:
+ * 1. Block Mode: Children are other block boxes stacked vertically.
+ * 2. Inline Mode: Children are text or inline elements wrapped into lines.
  */
 class BlockLayout final : public LayoutObject {
-public:
-  BlockLayout(const Lexeme *node, LayoutObject *parent, BlockLayout *previous,
-              gfx::FontManager &font_manager);
+  friend class layout::BlockPainter;
+  friend class layout::InlineLayoutHelper;
 
-  // For anonymous block boxes that hold runs of inline elements
+public:
+  BlockLayout(const Lexeme *dom_node, LayoutObject *parent_layout,
+              BlockLayout *previous_sibling, gfx::FontManager &font_manager);
+
+  // For anonymous block boxes created to wrap sequences of inline elements
   BlockLayout(std::vector<const Lexeme *> anonymous_children,
-              LayoutObject *parent, BlockLayout *previous,
+              LayoutObject *parent_layout, BlockLayout *previous_sibling,
               gfx::FontManager &font_manager);
 
   void layout() override;
-  void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const override;
+  void
+  paint(std::vector<std::unique_ptr<DrawCommand>> &display_list) const override;
 
   const Lexeme *node() const override { return node_; }
   float get_opacity() const override;
@@ -57,33 +64,19 @@ public:
 
 private:
   const Lexeme *node_;
-  LayoutObject *parent_;
-  BlockLayout *previous_;
+  LayoutObject *parent_layout_;
+  BlockLayout *previous_sibling_;
   gfx::FontManager &font_manager_;
 
   std::vector<const Lexeme *> anonymous_children_;
 
-  int cursor_x_;
+  int current_cursor_x_ = 0;
 
-  // Font cache using shared_ptr to gfx::Font
   std::unordered_map<FontKey, std::shared_ptr<gfx::Font>, FontKeyHash>
       font_cache_;
 
   enum class LayoutMode { Inline, Block };
-  LayoutMode layout_mode() const;
-
-  void recurse(const Lexeme *node);
-  void layoutNode(const Lexeme *node);
-  void layoutElement(const Element *element);
-  void layoutText(const Lexeme *text_node, const std::string &text,
-                  const Element *parent_element);
-
-  void word(const Lexeme *node, const std::string &word,
-            const Element *parent_element);
-
-  void new_line();
-
-  void input(const Lexeme *node);
-
-  std::shared_ptr<gfx::Font> currentFont(const Element *element);
+  LayoutMode determine_layout_mode() const;
+  void layout_block_children();
+  void layout_inline_children();
 };

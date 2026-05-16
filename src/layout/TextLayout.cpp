@@ -1,28 +1,32 @@
 #include "layout/TextLayout.h"
 
-TextLayout::TextLayout(const Lexeme *node, std::string word,
-                       std::shared_ptr<gfx::Font> font, gfx::Color color)
-    : node_(node), word_(std::move(word)), font_(std::move(font)),
-      color_(color) {}
+TextLayout::TextLayout(const Lexeme *dom_node, std::string word_text,
+                       std::shared_ptr<gfx::Font> font_handle,
+                       gfx::Color text_color)
+    : node_(dom_node), word_(std::move(word_text)),
+      font_(std::move(font_handle)), color_(text_color) {}
 
 void TextLayout::layout() {
   if (!font_ || word_.empty()) {
-    width = 0;
-    height = 0;
+    set_bounds({{0, 0}, 0, 0});
     return;
   }
 
-  int w = 0;
-  int h = 0;
-  font_->measure_text(word_, w, h);
+  int width = 0;
+  int height = 0;
+  font_->measure_text(word_, width, height);
 
-  width = w;
-  height = h;
+  utils::Rect new_bounds = bounds();
+  new_bounds.width = width;
+  new_bounds.height = height;
+  set_bounds(new_bounds);
 }
 
-void TextLayout::paint(std::vector<std::unique_ptr<DrawCommand>> &out) const {
-  if (width > 0 && height > 0 && font_) {
-    out.push_back(std::make_unique<DrawText>(x, y, word_, font_, color_));
+void TextLayout::paint(
+    std::vector<std::unique_ptr<DrawCommand>> &display_list) const {
+  if (bounds_.width > 0 && bounds_.height > 0 && font_) {
+    display_list.push_back(std::make_unique<DrawText>(
+        bounds_.origin.x, bounds_.origin.y, word_, font_, color_));
   }
 }
 

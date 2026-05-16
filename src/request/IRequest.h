@@ -4,6 +4,11 @@
 
 #include "url/Url.h"
 
+/**
+ * Story: Represents the response from an HTTP server.
+ * Use-case: Carries the raw body content and headers (like Content-Type)
+ * back to the browser for parsing and rendering.
+ */
 struct HttpResponse {
   std::map<std::string, std::string> headers;
   std::string body;
@@ -11,28 +16,37 @@ struct HttpResponse {
 
 class CookieJar;
 
+/**
+ * Story: Interface for the network request engine.
+ *
+ * Use-case: Abstracts the complexity of socket communication, SSL/TLS,
+ * and HTTP protocols. This allows the browser to fetch resources
+ * without knowing the details of how the bits are moved over the wire.
+ */
 class IRequest {
 public:
   virtual ~IRequest() = default;
+
   /**
-   * Request a page from a URL, optionally sending a POST payload.
-   * referrer is used for SameSite cookie policy and Referer header.
+   * Story: Fetches a resource from the given URL.
+   * referrer: Used for SameSite cookie checks and the 'Referer' header.
+   * payload: If provided, the request is sent as an HTTP POST.
    */
   virtual HttpResponse request(const Url &url, const std::string &payload = "",
                                const Url &referrer = {}) = 0;
 
   /**
-   * Associate a CookieJar with this request engine.
+   * Story: Attaches a cookie storage engine to this request handler.
    */
-  virtual void set_cookie_jar(CookieJar *jar) = 0;
+  virtual void set_cookie_jar(CookieJar *cookie_jar) = 0;
 
   /**
-   * Get cookies formatted for JavaScript document.cookie.
+   * Story: Retrieves cookies formatted for JavaScript's document.cookie.
    */
   virtual std::string get_cookies(const Url &url) = 0;
 
   /**
-   * Store a cookie from JavaScript document.cookie = "...".
+   * Story: Stores a cookie string (e.g., from a JS assignment).
    */
-  virtual void set_cookie(const Url &url, const std::string &value) = 0;
+  virtual void set_cookie(const Url &url, const std::string &cookie_value) = 0;
 };

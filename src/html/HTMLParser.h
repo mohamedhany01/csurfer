@@ -1,5 +1,5 @@
 #pragma once
-#include "lexer/Element.h"
+#include "dom/Element.h"
 
 #include <memory>
 #include <optional>
@@ -12,9 +12,6 @@ public:
   explicit HTMLParser(std::string body);
 
   std::unique_ptr<Element> parse();
-
-  // Debug helper: print the Element/Text tree with indentation
-  static void print_tree(const Element &node, int indent = 0);
 
 private:
   std::string body_;

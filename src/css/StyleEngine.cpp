@@ -1,70 +1,85 @@
 #include "StyleEngine.h"
-
 #include "CSSParser.h"
 #include "CSSRule.h"
 #include "DefaultStyles.h"
 #include "StyleComputation.h"
-#include "lexer/Element.h"
-#include "lexer/Lexeme.h"
+#include "dom/Element.h"
+#include "dom/TreeWalker.h"
+#include "utils/Logger.h"
 
 #include <algorithm>
 #include <functional>
 #include <iostream>
 
-StyleEngine::StyleEngine(std::shared_ptr<IRequest> http)
-    : http_(std::move(http)) {}
+StyleEngine::StyleEngine(std::shared_ptr<IRequest> network_engine)
+    : network_engine_(std::move(network_engine)) {}
 
-// Recursively collect all <link rel="stylesheet" href="..."> elements.
-//
-// We walk the entire DOM tree because <link> can theoretically appear
-// anywhere (though it's usually in <head>).
-//
-// Example: finds <link rel="stylesheet" href="style.css"> → returns its href
-static std::vector<std::string> collectStylesheetHrefs(const Element *root) {
+/**
+ * Story: Scans the DOM tree for <link rel="stylesheet"> elements.
+ * Use-case: This identifies all external assets that need to be fetched
+ * to complete the document's styling.
+ */
+static std::vector<std::string>
+collect_stylesheet_hrefs(const Element *root_element) {
   std::vector<std::string> hrefs;
+  auto links = dom::TreeWalker::find_elements(
+      const_cast<Element *>(root_element), "link");
 
-  std::function<void(const Lexeme *)> walk = [&](const Lexeme *node) {
-    if (!node)
-      return;
-    if (node->type() == LexemeType::Element) {
-      const auto *el = dynamic_cast<const Element *>(node);
-      if (!el)
-        return;
-
-      if (el->tag() == "link") {
-        auto attrs = el->attributes();
-        if (attrs.count("rel") && attrs.at("rel") == "stylesheet" &&
-            attrs.count("href")) {
-          hrefs.push_back(attrs.at("href"));
-        }
-      }
-
-      for (const auto &child : el->children()) {
-        walk(child.get());
-      }
+  for (auto *element : links) {
+    auto attributes = element->attributes();
+    if (attributes.count("rel") && attributes.at("rel") == "stylesheet" &&
+        attributes.count("href")) {
+      hrefs.push_back(attributes.at("href"));
     }
-  };
+  }
 
-  walk(root);
   return hrefs;
 }
 
-// Sort CSS rules so lower-specificity rules come first.
-// This ensures higher-specificity rules always overwrite lower ones
-// when computeStyle iterates through the list in order.
-//
-// Example:
-//   h1 { color: black }     → specificity 1  (comes first)
-//   body h1 { color: green} → specificity 2  (overwrites above)
-static void sortBySpecificity(std::vector<CSSRule> &rules) {
+/**
+ * Story: Sorts CSS rules based on their selector specificity.
+ * Higher priority rules (e.g. IDs) come later so they naturally
+ * override lower priority rules (e.g. tags) in the cascade.
+ */
+static void sort_rules_by_specificity(std::vector<CSSRule> &rules) {
   std::stable_sort(rules.begin(), rules.end(),
                    [](const CSSRule &a, const CSSRule &b) {
-                     int pA = a.selector ? a.selector->priority() : 0;
-                     int pB = b.selector ? b.selector->priority() : 0;
-                     return pA < pB;
+                     int priority_a = a.selector ? a.selector->priority() : 0;
+                     int priority_b = b.selector ? b.selector->priority() : 0;
+                     return priority_a < priority_b;
                    });
 }
 
+void StyleEngine::fetch_external_stylesheets(
+    Element *root, const Url &base_url, const Url &referrer,
+    std::function<bool(const Url &, const std::string &)> csp_check,
+    std::vector<CSSRule> &all_rules) {
+  auto hrefs = collect_stylesheet_hrefs(root);
+  for (const auto &href : hrefs) {
+    try {
+      Url style_url = base_url.resolve(href);
+      if (csp_check && !csp_check(style_url, "style-src")) {
+        CS_LOG_WARN("[SOP/CSP] Blocked stylesheet from {} (CSP Violation)",
+                    style_url.href());
+        continue;
+      }
+      std::string css_content =
+          network_engine_->request(style_url, "", referrer).body;
+      CSSParser external_parser(css_content);
+      auto extra_rules = external_parser.parse();
+
+      all_rules.insert(all_rules.end(), extra_rules.begin(), extra_rules.end());
+    } catch (const std::exception &error) {
+      CS_LOG_ERROR("[StyleEngine] Failed to load stylesheet: {} - {}", href,
+                   error.what());
+    }
+  }
+}
+
+/**
+ * Story: Main entry point for the styling pipeline.
+ * Coordinates defaults, external fetches, sorting, and computation.
+ */
 void StyleEngine::apply(
     Element *root, const Url &base_url,
     std::function<bool(const Url &, const std::string &)> csp_check,
@@ -72,36 +87,16 @@ void StyleEngine::apply(
   if (!root)
     return;
 
-  // Step 1: Start with the default browser stylesheet (h1, b, i, etc.)
-  CSSParser default_parser(CSS::DEFAULT_BROWSER_CSS);
-  std::vector<CSSRule> rules = default_parser.parse();
+  // 1. Load built-in browser default styles (lowest priority)
+  CSSParser default_parser(config::DEFAULT_BROWSER_CSS);
+  std::vector<CSSRule> all_rules = default_parser.parse();
 
-  // Step 2: Find and fetch external stylesheets from <link> elements
-  auto hrefs = collectStylesheetHrefs(root);
-  for (const auto &href : hrefs) {
-    try {
-      Url style_url = base_url.resolve(href);
+  // 2. Fetch and parse external stylesheets
+  fetch_external_stylesheets(root, base_url, referrer, csp_check, all_rules);
 
-      // Phase 4: CSP Enforcement
-      if (csp_check && !csp_check(style_url, "style-src")) {
-        std::cout << "[SOP/CSP] Blocked stylesheet from " << style_url.href()
-                  << " (CSP Violation)" << std::endl;
-        continue;
-      }
+  // 3. Sort by specificity for correct cascading behavior
+  sort_rules_by_specificity(all_rules);
 
-      std::string css_text = http_->request(style_url, "", referrer).body;
-      CSSParser parser(css_text);
-      auto extra = parser.parse();
-      rules.insert(rules.end(), extra.begin(), extra.end());
-    } catch (const std::exception &e) {
-      std::cerr << "[StyleEngine] Failed to load stylesheet: " << href << " — "
-                << e.what() << "\n";
-    }
-  }
-
-  // Step 3: Sort all rules by specificity (ascending)
-  sortBySpecificity(rules);
-
-  // Step 4: Walk the DOM and compute each element's final style map
-  CSS::computeStyle(root, rules);
+  // 4. Compute final style maps for every element in the tree
+  CSS::compute_style(root, all_rules);
 }

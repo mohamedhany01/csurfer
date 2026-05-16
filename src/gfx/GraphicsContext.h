@@ -1,7 +1,7 @@
 #pragma once
 #include "Color.h"
 #include "Font.h"
-#include "layout/Rect.h"
+#include "utils/Geometry.h"
 #include <memory>
 #include <string>
 
@@ -20,24 +20,25 @@ public:
   virtual ~GraphicsContext() = default;
 
   // Basic Primitives
-  virtual void draw_rect(const Rect &rect, const Color &color) = 0;
-  virtual void draw_line(int x1, int y1, int x2, int y2, const Color &color,
-                         int thickness = 1) = 0;
+  virtual void draw_rect(const utils::Rect &rect, const Color &color) = 0;
+  virtual void draw_line(int start_x, int start_y, int end_x, int end_y,
+                         const Color &color, int thickness = 1) = 0;
 
   // Text Rendering (Using a simplified font abstraction)
-  virtual void draw_text(int x, int y, const std::string &text,
-                         const Color &color,
+  virtual void draw_text(int x_position, int y_position,
+                         const std::string &text, const Color &color,
                          std::shared_ptr<Font> font = nullptr) = 0;
 
   // Rounded Rectangles
-  virtual void draw_rounded_rect(const Rect &rect, float radius,
+  virtual void draw_rounded_rect(const utils::Rect &rect, float radius,
                                  const Color &color) = 0;
 
-  virtual void draw_box_shadow(const Rect &rect, float radius, int dx, int dy,
+  virtual void draw_box_shadow(const utils::Rect &rect, float radius,
+                               int offset_x, int offset_y,
                                const Color &color) = 0;
 
-  virtual void draw_linear_gradient(const Rect &rect, const Color &color1,
-                                    const Color &color2,
+  virtual void draw_linear_gradient(const utils::Rect &rect,
+                                    const Color &color1, const Color &color2,
                                     const std::string &direction) = 0;
 
   // Stacking Contexts & Visual Effects
@@ -53,7 +54,7 @@ public:
 
   // Theory: clipping limits all future drawing to the given bounds.
   // Essential for 'overflow: hidden' or 'overflow: clip'.
-  virtual void clip_rect(const Rect &rect) = 0;
+  virtual void clip_rect(const utils::Rect &rect) = 0;
 
   // Canvas Management
   virtual void clear(const Color &color) = 0;

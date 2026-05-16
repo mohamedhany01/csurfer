@@ -1,13 +1,12 @@
 #pragma once
-
+#include "IBrowserCommands.h"
+#include "config/Config.h"
 #include "layout/DisplayItem.h"
-#include "layout/Rect.h"
 #include "url/Url.h"
+#include "utils/Geometry.h"
 #include <SDL2/SDL.h>
 #include <string>
 #include <vector>
-
-class Browser; // Forward declaration
 
 /**
  * CSurferUI handles the browser's graphical interface (GUI).
@@ -17,11 +16,11 @@ class Browser; // Forward declaration
  */
 class CSurferUI {
 public:
-  explicit CSurferUI(Browser *browser);
+  explicit CSurferUI(IBrowserCommands *browser);
   ~CSurferUI() = default;
 
   // Interaction
-  void click(int x, int y);
+  void click(utils::Point point);
   void keypress(SDL_Keycode key, const std::string &text);
   void enter();
 
@@ -29,24 +28,18 @@ public:
   void render(SDL_Renderer *renderer) const;
 
   // Metrics
-  int height() const { return BOTTOM; }
+  int height() const { return config::UI_HEIGHT; }
   bool address_bar_focused() const { return address_bar_focused_; }
 
 private:
-  Browser *browser_;
+  IBrowserCommands *browser_;
 
   // UI State
   std::string address_bar_text_;
   bool address_bar_focused_ = false;
 
   // Bounding boxes for hit-testing
-  Rect back_button_rect_;
-  Rect address_bar_rect_;
-  Rect new_tab_rect_;
-
-  // Visual Constants
-  const int PADDING = 10;
-  const int TAB_HEIGHT = 40;
-  const int ADDR_HEIGHT = 40;
-  const int BOTTOM = TAB_HEIGHT + ADDR_HEIGHT + 10; // Total UI height
+  utils::Rect back_button_rect_;
+  utils::Rect address_bar_rect_;
+  utils::Rect new_tab_rect_;
 };

@@ -1,41 +1,59 @@
 #pragma once
-
+#include "utils/Geometry.h"
 #include <memory>
 #include <vector>
 
 class DrawCommand;
 
-// Base class for all nodes in the layout tree.
-//
-// Each node has a rectangle (x, y, width, height) in page coordinates.
-// Layout runs in two phases:
-//   1. layout() computes sizes and positions.
-//   2. paint() writes DrawCommand objects into the display list.
+/**
+ * Story: The base class for all nodes in the visual "Layout Tree".
+ *
+ * Use-case: While the DOM Tree represents the structure of the document,
+ * the Layout Tree represents its visual geometry. Each node here
+ * corresponds to a "box" on the screen.
+ */
 class LayoutObject {
 public:
   virtual ~LayoutObject() = default;
 
-  int x = 0;
-  int y = 0;
-  int width = 0;
-  int height = 0;
-
-  // Compute this node's box and recursively lay out children.
+  /**
+   * Story: Computes the size and position of this node and its children.
+   */
   virtual void layout() = 0;
 
-  // Add this node's drawing commands to the output list.
-  virtual void paint(std::vector<std::unique_ptr<DrawCommand>> &out) const = 0;
+  /**
+   * Story: Records drawing commands into a display list.
+   * This is separated from layout() to allow for efficient re-paints.
+   */
+  virtual void
+  paint(std::vector<std::unique_ptr<DrawCommand>> &display_list) const = 0;
 
-  // Return the DOM node this layout object was built from, or nullptr.
-  // Overridden by TextLayout to enable hit-testing.
+  /**
+   * Story: Returns the DOM node that generated this layout object.
+   */
   virtual const class Lexeme *node() const { return nullptr; }
 
-  // Return the opacity of this layout object, typically parsed from CSS.
-  // Returns 1.0f by default (fully opaque).
+  // Visual property accessors
   virtual float get_opacity() const { return 1.0f; }
   virtual std::string get_blend_mode() const { return ""; }
   virtual bool is_overflow_clip() const { return false; }
   virtual float get_border_radius() const { return 0.0f; }
 
+  // Geometry accessors
+  const utils::Rect &bounds() const { return bounds_; }
+  void set_bounds(const utils::Rect &new_bounds) { bounds_ = new_bounds; }
+
+  // Tree management
+  const std::vector<std::unique_ptr<LayoutObject>> &children() const {
+    return children_;
+  }
+  std::vector<std::unique_ptr<LayoutObject>> &children() { return children_; }
+
+  void add_child(std::unique_ptr<LayoutObject> child) {
+    children_.push_back(std::move(child));
+  }
+
+protected:
+  utils::Rect bounds_ = {{0, 0}, 0, 0};
   std::vector<std::unique_ptr<LayoutObject>> children_;
 };

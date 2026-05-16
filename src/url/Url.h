@@ -1,4 +1,5 @@
 #pragma once
+#include "utils/Exceptions.h"
 #include <string>
 
 class Url {

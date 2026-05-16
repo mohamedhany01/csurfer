@@ -93,6 +93,13 @@ if (duktape_ADDED)
     # Duktape needs certain flags on some systems, but default should work for now.
 endif()
 
+# GoogleTest
+CPMAddPackage(
+    NAME GTest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG v1.14.0
+)
+
 include(ExternalProject)
 
 set(SKIA_DIR "${PROJECT_SOURCE_DIR}/external/skia")
@@ -118,16 +125,17 @@ target_link_libraries(skia INTERFACE
 )
 
 # ------------------------------------------------------------------------------
-# Main executable
+# Core Library
 # ------------------------------------------------------------------------------
-add_executable(csurfer
-    src/main.cpp
-    src/lexer/Lexeme.cpp
-    src/lexer/Text.cpp
-    src/lexer/Element.cpp
+add_library(csurfer_lib STATIC
+    src/dom/Lexeme.cpp
+    src/dom/Text.cpp
+    src/dom/Element.cpp
     src/html/HTMLParser.cpp
     src/layout/InputLayout.cpp
     src/layout/BlockLayout.cpp
+    src/layout/BlockPainter.cpp
+    src/layout/InlineLayoutHelper.cpp
     src/layout/DocumentLayout.cpp
     src/layout/DisplayItem.cpp
     src/layout/LineLayout.cpp
@@ -136,8 +144,13 @@ add_executable(csurfer
     src/request/HttpRequest.cpp
     src/request/CookieJar.cpp
     src/utils/Parser.cpp
+    src/utils/StringUtils.cpp
     src/browser/Browser.cpp
     src/browser/Tab.cpp
+    src/browser/TabSecurityPolicy.cpp
+    src/browser/TabNavigator.cpp
+    src/browser/TabRenderer.cpp
+    src/browser/TabInputHandler.cpp
     src/browser/CSurferUI.cpp
     src/css/CSSSelector.cpp
     src/css/CSSParser.cpp
@@ -146,14 +159,14 @@ add_executable(csurfer
     src/js/JSContext.cpp
     src/gfx/SkiaContext.cpp
     src/gfx/SkiaFont.cpp
+    src/gfx/Color.cpp
 )
 
-# Add include directories for src/
-target_include_directories(csurfer PRIVATE
+target_include_directories(csurfer_lib PUBLIC
     ${PROJECT_SOURCE_DIR}/src
 )
 
-target_link_libraries(csurfer PRIVATE
+target_link_libraries(csurfer_lib PUBLIC
     project_warnings
     skia
     SDL2::SDL2
@@ -165,11 +178,22 @@ target_link_libraries(csurfer PRIVATE
 )
 
 # ------------------------------------------------------------------------------
+# Main executable
+# ------------------------------------------------------------------------------
+add_executable(csurfer
+    src/main.cpp
+)
+
+target_link_libraries(csurfer PRIVATE
+    csurfer_lib
+)
+
+# ------------------------------------------------------------------------------
 # Assets configuration(compile-time)
 # ------------------------------------------------------------------------------
 
 # Assuming your assets folder is at project-root/assets
-target_compile_definitions(csurfer PRIVATE
+target_compile_definitions(csurfer_lib PUBLIC
     ASSETS_DIR="${PROJECT_SOURCE_DIR}/assets"
 )
 
@@ -186,3 +210,53 @@ else()
     target_compile_definitions(csurfer PRIVATE ENABLE_LOGGING=0)
     message(STATUS "Logging disabled")
 endif()
+
+# ------------------------------------------------------------------------------
+# Tests
+# ------------------------------------------------------------------------------
+if (GTest_ADDED)
+    enable_testing()
+    
+    # Config Tests
+    add_executable(test_config
+        unit-tests/config/test_config.cpp
+    )
+    target_link_libraries(test_config PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME ConfigTests COMMAND test_config)
+
+    # URL Tests
+    add_executable(test_url
+        unit-tests/url/test_url.cpp
+    )
+    target_link_libraries(test_url PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME UrlTests COMMAND test_url)
+
+    # String Utils Tests
+    add_executable(test_string_utils
+        unit-tests/utils/test_string_utils.cpp
+    )
+    target_link_libraries(test_string_utils PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME StringUtilsTests COMMAND test_string_utils)
+
+    # Parser Tests
+    add_executable(test_parser
+        unit-tests/utils/test_parser.cpp
+    )
+    target_link_libraries(test_parser PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME ParserTests COMMAND test_parser)
+
+    # Geometry Tests
+    add_executable(test_geometry
+        unit-tests/utils/test_geometry.cpp
+    )
+    target_link_libraries(test_geometry PRIVATE GTest::gtest_main csurfer_lib)
+    add_test(NAME GeometryTests COMMAND test_geometry)
+endif()
+
+add_executable(test_color unit-tests/gfx/test_color.cpp)
+target_link_libraries(test_color PRIVATE csurfer_lib GTest::gtest_main)
+add_test(NAME ColorTests COMMAND test_color)
+
+add_executable(test_http_request unit-tests/request/test_http_request.cpp)
+target_link_libraries(test_http_request PRIVATE csurfer_lib GTest::gtest_main)
+add_test(NAME HttpRequestTests COMMAND test_http_request)

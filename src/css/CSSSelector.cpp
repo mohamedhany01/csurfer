@@ -1,44 +1,49 @@
 #include "CSSSelector.h"
-#include "../lexer/Element.h"
+#include "dom/Element.h"
 
-// TagSelector Implementation
-TagSelector::TagSelector(std::string tag)
-    : tag_(std::move(tag)), priority_(1) {}
+TagSelector::TagSelector(std::string tag_name) : tag_(std::move(tag_name)) {}
 
+/**
+ * Story: A tag selector matches if the element's tag matches the selector's
+ * tag.
+ */
 bool TagSelector::matches(const Element *element) const {
-  if (!element)
-    return false;
-  return element->tag() == tag_;
+  return element && element->tag() == tag_;
 }
 
-int TagSelector::priority() const { return priority_; }
+/**
+ * Story: Tag selectors have a base priority of 1.
+ */
+int TagSelector::priority() const { return 1; }
 
-// DescendantSelector Implementation
 DescendantSelector::DescendantSelector(std::shared_ptr<CSSSelector> ancestor,
                                        std::shared_ptr<CSSSelector> descendant)
-    : ancestor_(std::move(ancestor)), descendant_(std::move(descendant)) {
-  priority_ = (ancestor_ ? ancestor_->priority() : 0) +
-              (descendant_ ? descendant_->priority() : 0);
-}
+    : ancestor_(std::move(ancestor)), descendant_(std::move(descendant)) {}
 
+/**
+ * Story: Matches if 'element' matches the descendant selector AND one of its
+ * ancestors matches the ancestor selector.
+ */
 bool DescendantSelector::matches(const Element *element) const {
-  if (!element)
-    return false;
-
-  // The target element must first match the descendant selector part
-  if (!descendant_ || !descendant_->matches(element)) {
+  if (!element || !descendant_->matches(element)) {
     return false;
   }
 
-  // Traverse upwards to see if any ancestor matches the ancestor selector part
-  Element *current = element->parent();
+  // Walk up the tree to find a matching ancestor
+  const Element *current = element->parent();
   while (current) {
-    if (ancestor_ && ancestor_->matches(current)) {
+    if (ancestor_->matches(current)) {
       return true;
     }
     current = current->parent();
   }
+
   return false;
 }
 
-int DescendantSelector::priority() const { return priority_; }
+/**
+ * Story: The priority of a descendant selector is the sum of its parts.
+ */
+int DescendantSelector::priority() const {
+  return ancestor_->priority() + descendant_->priority();
+}

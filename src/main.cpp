@@ -4,10 +4,18 @@
 #include <iostream>
 
 int main(int argc, char *argv[]) {
-  std::string user_url = (argc > 1) ? argv[1] : "about:welcome";
-  Url url(user_url);
+  // Story: The entry point of C Surfer. It accepts an optional URL argument.
+  std::string user_url_string = (argc > 1) ? argv[1] : "about:welcome";
 
-  Browser browser;
-  browser.load(url);
-  browser.mainLoop();
+  try {
+    Url initial_url(user_url_string);
+    Browser browser;
+    browser.load(initial_url);
+    browser.main_loop();
+  } catch (const std::exception &error) {
+    std::cerr << "Fatal Error: " << error.what() << std::endl;
+    return 1;
+  }
+
+  return 0;
 }
