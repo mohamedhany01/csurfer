@@ -17,12 +17,13 @@
 Tab::Tab(std::shared_ptr<IRequest> network_engine, int window_width,
          gfx::FontManager &font_manager)
     : window_width_(window_width), font_manager_(font_manager),
-      navigator_(std::move(network_engine)) {}
+      navigator_(std::move(network_engine)),
+      input_handler_(renderer_, navigator_) {}
 
 Tab::~Tab() = default;
 
 void Tab::load(const Url &url, const std::string &payload) {
-  focused_element_ = nullptr;
+  input_handler_.set_focused_element(nullptr);
   std::string body = navigator_.load(url, payload, security_policy_);
   process_document(body);
 }
@@ -155,184 +156,28 @@ void Tab::render(gfx::GraphicsContext &ctx, int y_screen_offset) const {
 }
 
 void Tab::handle_mousedown(int x, int y) {
-  if (!document_layout_)
-    return;
-
-  int ui_height = config::UI_HEIGHT;
-  int viewport_height = config::WINDOW_HEIGHT - ui_height;
-  int document_height = (int)document_layout_->bounds().height + 100;
-
-  if (document_height > viewport_height &&
-      x >= window_width_ - config::SCROLLBAR_WIDTH) {
-    renderer_.set_dragging_scrollbar(true);
-    handle_mousemove(x, y);
-    return;
+  if (auto navigation = input_handler_.handle_mousedown(
+          x, y, document_layout_.get(), window_width_,
+          javascript_context_.get())) {
+    load(navigation->first, navigation->second);
   }
-
-  click(x, y);
 }
 
 void Tab::handle_mousemove(int x, int y) {
-  if (!renderer_.is_dragging_scrollbar() || !document_layout_)
-    return;
-
-  int ui_height = config::UI_HEIGHT;
-  int viewport_height = config::WINDOW_HEIGHT - ui_height;
-  int document_height = (int)document_layout_->bounds().height + 100;
-
-  double scroll_ratio = (double)y / viewport_height;
-  int max_scroll = std::max(0, document_height - viewport_height);
-  renderer_.set_scroll(
-      std::min(max_scroll, std::max(0, (int)(scroll_ratio * document_height -
-                                             viewport_height / 2))));
+  input_handler_.handle_mousemove(x, y, document_layout_.get());
 }
 
-void Tab::handle_mouseup(int /*x*/, int /*y*/) {
-  renderer_.set_dragging_scrollbar(false);
+void Tab::handle_mouseup(int x, int y) { input_handler_.handle_mouseup(x, y); }
+
+void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
+  input_handler_.handle_keypress(key, text, document_layout_.get(),
+                                 javascript_context_.get());
 }
 
 void Tab::click(int x, int y) {
-  if (!document_layout_)
-    return;
-
-  auto total_y = y + renderer_.current_scroll();
-
-  auto all_nodes = tree_to_list(*document_layout_);
-  const Lexeme *clicked_node = nullptr;
-
-  for (auto it = all_nodes.rbegin(); it != all_nodes.rend(); ++it) {
-    const LayoutObject *object = *it;
-    if (object->bounds().contains({x, total_y})) {
-      clicked_node = object->node();
-      if (clicked_node)
-        break;
-    }
-  }
-
-  if (clicked_node) {
-    if (focused_element_) {
-      focused_element_->set_focused(false);
-    }
-    focused_element_ = nullptr;
-
-    const Lexeme *current_lexeme = clicked_node;
-    while (current_lexeme) {
-      if (current_lexeme->type() == LexemeType::Element) {
-        const auto *element = dynamic_cast<const Element *>(current_lexeme);
-        if (element) {
-          if (javascript_context_ &&
-              javascript_context_->dispatch_event(
-                  "click", const_cast<Element *>(element))) {
-            return;
-          }
-          if (element->tag() == "a" && element->attributes().contains("href")) {
-            try {
-              load(navigator_.url().resolve(element->attributes().at("href")));
-            } catch (const utils::UrlError &error) {
-              process_document(error.what());
-            }
-            return;
-          } else if (element->tag() == "input") {
-            focused_element_ = const_cast<Element *>(element);
-            focused_element_->set_focused(true);
-            focused_element_->set_attribute("value", "");
-
-            renderer_.rebuild_display_list(*document_layout_);
-            return;
-          } else if (element->tag() == "button") {
-            const Element *form_search = element;
-            while (form_search) {
-              if (form_search->tag() == "form" &&
-                  form_search->attributes().contains("action")) {
-                submit_form(form_search);
-                return;
-              }
-              form_search =
-                  dynamic_cast<const Element *>(form_search->parent());
-            }
-          }
-        }
-      }
-      current_lexeme = current_lexeme->parent();
-    }
-  }
-
-  renderer_.rebuild_display_list(*document_layout_);
-}
-
-void Tab::handle_keypress(SDL_Keycode key, const std::string &text) {
-  if (!focused_element_)
-    return;
-
-  auto *element = dynamic_cast<Element *>(focused_element_);
-  if (!element)
-    return;
-
-  if (javascript_context_ &&
-      javascript_context_->dispatch_event("keydown", element)) {
-    return;
-  }
-
-  auto attributes = element->attributes();
-  std::string value_string =
-      attributes.count("value") ? attributes.at("value") : "";
-
-  if (key == SDLK_BACKSPACE) {
-    if (!value_string.empty()) {
-      value_string.pop_back();
-    }
-  } else if (!text.empty()) {
-    value_string += text;
-  }
-
-  element->set_attribute("value", value_string);
-
-  document_layout_->layout();
-  renderer_.rebuild_display_list(*document_layout_);
-}
-
-void Tab::submit_form(const Element *form_element) {
-  if (!form_element)
-    return;
-
-  if (javascript_context_ &&
-      javascript_context_->dispatch_event(
-          "submit", const_cast<Element *>(form_element))) {
-    return;
-  }
-
-  std::string payload_string;
-
-  std::vector<const Lexeme *> queue = {form_element};
-  while (!queue.empty()) {
-    const Lexeme *node = queue.front();
-    queue.erase(queue.begin());
-
-    if (node->type() == LexemeType::Element) {
-      const auto *element = dynamic_cast<const Element *>(node);
-      if (element->tag() == "input" && element->attributes().contains("name")) {
-        std::string name = element->attributes().at("name");
-        std::string value = element->attributes().count("value")
-                                ? element->attributes().at("value")
-                                : "";
-        if (!payload_string.empty())
-          payload_string += "&";
-        payload_string += utils::url_percent_encode(name) + "=" +
-                          utils::url_percent_encode(value);
-      }
-      for (const auto &child : element->children()) {
-        queue.push_back(child.get());
-      }
-    }
-  }
-
-  std::string action_url_string = form_element->attributes().at("action");
-  CS_LOG_INFO("Submitting form to: {} with payload: {}", action_url_string,
-              payload_string);
-  try {
-    load(navigator_.url().resolve(action_url_string), payload_string);
-  } catch (const utils::UrlError &error) {
-    process_document(error.what());
+  if (auto navigation = input_handler_.click(x, y, document_layout_.get(),
+                                             javascript_context_.get())) {
+    load(navigation->first, navigation->second);
   }
 }
 

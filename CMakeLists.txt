@@ -150,6 +150,7 @@ add_library(csurfer_lib STATIC
     src/browser/TabSecurityPolicy.cpp
     src/browser/TabNavigator.cpp
     src/browser/TabRenderer.cpp
+    src/browser/TabInputHandler.cpp
     src/browser/CSurferUI.cpp
     src/css/CSSSelector.cpp
     src/css/CSSParser.cpp

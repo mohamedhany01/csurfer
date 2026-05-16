@@ -1,5 +1,6 @@
 #pragma once
 
+#include "browser/TabInputHandler.h"
 #include "browser/TabNavigator.h"
 #include "browser/TabRenderer.h"
 #include "browser/TabSecurityPolicy.h"
@@ -40,8 +41,6 @@ public:
   void handle_mousemove(int x, int y);
   void handle_mouseup(int x, int y);
   void handle_keypress(SDL_Keycode key, const std::string &text);
-
-  void submit_form(const Element *form_element);
   void scroll_down();
   void scroll_up();
   void go_back();
@@ -67,11 +66,11 @@ private:
 
   TabNavigator navigator_;
   TabRenderer renderer_;
+  TabInputHandler input_handler_;
+
   std::unique_ptr<Element> root_;
   std::unique_ptr<DocumentLayout> document_layout_;
   std::unique_ptr<JSContext> javascript_context_;
-
-  Element *focused_element_ = nullptr;
 
   TabSecurityPolicy security_policy_;
   void process_scripts();
