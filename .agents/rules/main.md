@@ -44,6 +44,7 @@ Welcome, AI Agent! When assisting with the `csurfer` repository, you MUST adhere
     *   **Simplicity**: Use simple, readable logic over "clever" but complex logic.
     *   **Story Comments**: Write a comment block describing the "story" of each function/method (Why, How, and What) above its declaration/definition.
     *   **No Inner Comments**: Do not use inline comments inside the body of a method or function unless absolutely necessary to explain a non-obvious workaround.
+    *   **No Namespace Pollution**: Never use `using namespace std;` in header files, and avoid it in source files. Always use explicit `std::` prefixes.
 
 ## 6. Error Management
 *   **Exceptions**: Use exceptions (`try`, `catch`, `throw`) to control code flow and manage errors globally, rather than returning error codes or booleans.
@@ -54,6 +55,9 @@ Welcome, AI Agent! When assisting with the `csurfer` repository, you MUST adhere
     *   Keep commits atomic and small.
     *   The commit header must be all lowercase and concise.
     *   **Body is REQUIRED**: Do not commit without a body. The body must contain the "story" of the commit: what was changed, why it was changed, and how the enhancement was implemented.
+*   **File Operations**:
+    *   When moving files, use `git mv` instead of `mv`.
+    *   When deleting files, use `git rm` instead of `rm`.
 
 ## 8. AI-Specific Rules
 *   **Do not break the build**: Compile and run tests after significant changes.
@@ -61,3 +65,4 @@ Welcome, AI Agent! When assisting with the `csurfer` repository, you MUST adhere
 *   **No placeholders**: Write complete, working code. Never output `// ... implement here ...`.
 *   **Mandatory Brainstorming Phase**: Always start any task with a brainstorming session. DO NOT write or modify any code until the user explicitly confirms and says "YES". If they haven't explicitly said "YES", assume you are still in the thinking/brainstorming phase and no concrete solution is authorized yet.
 *   **Keep Architecture Docs Updated**: If a change significantly alters the flow, data structures, or introduces a new component, update the relevant markdown files in the `arch/` directory to keep the documentation in sync with the codebase.
+*   **CMake Integration**: When adding new source files (`.cpp`), always ensure they are added to the corresponding `CMakeLists.txt` file so they are included in the build.
