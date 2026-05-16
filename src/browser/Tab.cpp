@@ -1,4 +1,5 @@
 #include "Tab.h"
+#include "config/Config.h"
 #include "css/CSSParser.h"
 #include "css/CSSSelector.h"
 #include "css/StyleEngine.h"
@@ -223,14 +224,14 @@ void Tab::render_scrollbar(gfx::GraphicsContext &ctx, int y_offset) const {
   if (!document_)
     return;
 
-  int viewport_height = 600 - y_offset;
+  int viewport_height = config::WINDOW_HEIGHT - y_offset;
   int doc_height = (int)document_->height + 60; // Increased padding
 
   if (doc_height <= viewport_height)
     return; // No need to scroll
 
   // Bar dimensions
-  int bar_width = 12;
+  int bar_width = config::SCROLLBAR_WIDTH;
   int bar_x = window_width_ - bar_width;
 
   // Track (Background)
@@ -255,22 +256,11 @@ void Tab::handle_mousedown(int x, int y) {
   if (!document_)
     return;
 
-  int viewport_height =
-      600 - (600 - (600 - 150)); // This is wrong, let's use document_ height
-  // Actually, I need to know the y_offset that was passed to render.
-  // Browser passes ui_.height(). Let's assume standard UI height for
-  // calculation if not stored. Better: store it or pass it. For now, let's use
-  // the UI height constant.
-  int y_offset = 540; // Approx viewport is 540-ish.
-  // Wait, Browser.cpp says WIDTH=800, HEIGHT=600. ui_.height() is around
-  // 80-100. Tab.h viewport height logic: doc_height = document_->height + 100.
-
-  // Re-calculating metrics to check hits
-  int ui_height = 600 - (600 - 80); // Roughly 80
-  int v_height = 600 - ui_height;
+  int ui_height = config::UI_HEIGHT;
+  int v_height = config::WINDOW_HEIGHT - ui_height;
   int d_height = (int)document_->height + 100;
 
-  if (d_height > v_height && x >= window_width_ - 12) {
+  if (d_height > v_height && x >= window_width_ - config::SCROLLBAR_WIDTH) {
     is_dragging_scrollbar_ = true;
     handle_mousemove(x, y); // Initial jump to position
     return;
@@ -284,8 +274,8 @@ void Tab::handle_mousemove(int x, int y) {
   if (!is_dragging_scrollbar_ || !document_)
     return;
 
-  int ui_height = 80; // Standard UI height
-  int v_height = 600 - ui_height;
+  int ui_height = config::UI_HEIGHT;
+  int v_height = config::WINDOW_HEIGHT - ui_height;
   int d_height = (int)document_->height + 100;
 
   double scroll_ratio = (double)y / v_height;
@@ -440,11 +430,12 @@ void Tab::scrolldown() {
     return;
   // Total height = content height + bottom padding
   int total_height = (int)document_->height + 60;
-  int max_scroll = std::max(0, total_height - 520); // Viewport is approx 520
-  scroll_ = std::min(scroll_ + SCROLL_STEP, max_scroll);
+  int max_scroll =
+      std::max(0, total_height - (config::WINDOW_HEIGHT - config::UI_HEIGHT));
+  scroll_ = std::min(scroll_ + config::SCROLL_STEP, max_scroll);
 }
 
-void Tab::scrollup() { scroll_ = std::max(0, scroll_ - SCROLL_STEP); }
+void Tab::scrollup() { scroll_ = std::max(0, scroll_ - config::SCROLL_STEP); }
 
 void Tab::go_back() {
   if (history_.size() > 1) {

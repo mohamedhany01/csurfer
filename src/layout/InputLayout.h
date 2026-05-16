@@ -1,4 +1,5 @@
 #pragma once
+#include "config/Config.h"
 #include "gfx/Font.h"
 #include "layout/DisplayItem.h"
 #include "layout/LayoutObject.h"
@@ -31,5 +32,5 @@ private:
   std::shared_ptr<gfx::Font> font_;
   gfx::Color color_;
 
-  static constexpr int DEFAULT_INPUT_WIDTH = 200;
+  static constexpr int DEFAULT_INPUT_WIDTH = config::DEFAULT_INPUT_WIDTH;
 };

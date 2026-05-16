@@ -1,11 +1,12 @@
 #include "StyleComputation.h"
 #include "CSSParser.h"
+#include "config/Config.h"
 
 namespace CSS {
 
 static const std::unordered_map<std::string, std::string> INHERITED_PROPERTIES =
     {
-        {"font-size", "16px"},
+        {"font-size", std::to_string(config::DEFAULT_FONT_SIZE) + "px"},
         {"font-style", "normal"},
         {"font-weight", "normal"},
         {"color", "black"},
@@ -78,7 +79,7 @@ void computeStyle(Element *node, const std::vector<CSSRule> &rules) {
         double pct =
             std::stod(font_size.substr(0, font_size.length() - 1)) / 100.0;
         // remove "px" from parent string
-        double parent_px = 16.0;
+        double parent_px = static_cast<double>(config::DEFAULT_FONT_SIZE);
         if (parent_font_size.length() > 2 &&
             parent_font_size.substr(parent_font_size.length() - 2) == "px") {
           parent_px = std::stod(

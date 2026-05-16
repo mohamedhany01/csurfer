@@ -1,5 +1,5 @@
 #pragma once
-
+#include "config/Config.h"
 #include "layout/DisplayItem.h"
 #include "layout/Rect.h"
 #include "url/Url.h"
@@ -29,7 +29,7 @@ public:
   void render(SDL_Renderer *renderer) const;
 
   // Metrics
-  int height() const { return BOTTOM; }
+  int height() const { return config::UI_HEIGHT; }
   bool address_bar_focused() const { return address_bar_focused_; }
 
 private:
@@ -43,10 +43,4 @@ private:
   Rect back_button_rect_;
   Rect address_bar_rect_;
   Rect new_tab_rect_;
-
-  // Visual Constants
-  const int PADDING = 10;
-  const int TAB_HEIGHT = 40;
-  const int ADDR_HEIGHT = 40;
-  const int BOTTOM = TAB_HEIGHT + ADDR_HEIGHT + 10; // Total UI height
 };

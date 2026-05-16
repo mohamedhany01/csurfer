@@ -1,5 +1,5 @@
 #include "layout/DocumentLayout.h"
-#include "layout/LayoutConstants.h"
+#include "config/Config.h"
 
 DocumentLayout::DocumentLayout(const Element *node,
                                gfx::FontManager &font_manager,
@@ -11,9 +11,9 @@ void DocumentLayout::layout() {
   children_.clear();
 
   // The document has padding on all sides so text does not touch window edges.
-  width = viewport_width_ - 2 * HSTEP;
-  x = HSTEP;
-  y = VSTEP;
+  width = viewport_width_ - 2 * config::HORIZONTAL_STEP;
+  x = config::HORIZONTAL_STEP;
+  y = config::VERTICAL_STEP;
 
   if (!node_) {
     height = 0;

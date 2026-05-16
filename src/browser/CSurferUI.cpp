@@ -1,22 +1,27 @@
 #include "CSurferUI.h"
 #include "Browser.h"
+#include "config/Config.h"
 #include <iostream>
 
 CSurferUI::CSurferUI(Browser *browser) : browser_(browser) {
   // Initialize bounding boxes (coordinates relative to window 0,0)
 
   // Back button (<)
-  back_button_rect_ = {PADDING, TAB_HEIGHT + PADDING / 2, 40,
-                       ADDR_HEIGHT - PADDING};
+  back_button_rect_ = {config::UI_PADDING,
+                       config::TAB_HEIGHT + config::UI_PADDING / 2, 40,
+                       config::ADDRESS_BAR_HEIGHT - config::UI_PADDING};
 
   // Address bar (Input field)
-  address_bar_rect_ = {back_button_rect_.x + back_button_rect_.width + PADDING,
-                       TAB_HEIGHT + PADDING / 2,
+  address_bar_rect_ = {back_button_rect_.x + back_button_rect_.width +
+                           config::UI_PADDING,
+                       config::TAB_HEIGHT + config::UI_PADDING / 2,
                        600, // Width
-                       ADDR_HEIGHT - PADDING};
+                       config::ADDRESS_BAR_HEIGHT - config::UI_PADDING};
 
   // New Tab (+) button placeholder (Far right)
-  new_tab_rect_ = {800 - PADDING - 40, PADDING / 2, 40, TAB_HEIGHT - PADDING};
+  new_tab_rect_ = {config::WINDOW_WIDTH - config::UI_PADDING - 40,
+                   config::UI_PADDING / 2, 40,
+                   config::TAB_HEIGHT - config::UI_PADDING};
 }
 
 void CSurferUI::render(SDL_Renderer *renderer) const {
@@ -25,14 +30,14 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
 
   // 1. Draw UI Background
   SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
-  SDL_Rect ui_bg = {0, 0, 800, BOTTOM};
+  SDL_Rect ui_bg = {0, 0, config::WINDOW_WIDTH, config::UI_HEIGHT};
   SDL_RenderFillRect(renderer, &ui_bg);
 
   // 2. Draw Tab Bar
-  int tab_width = 150;
   for (size_t i = 0; i < browser_->tab_count(); ++i) {
-    SDL_Rect tab_rect = {PADDING + (int)i * (tab_width + 5), PADDING / 2,
-                         tab_width, TAB_HEIGHT - PADDING};
+    SDL_Rect tab_rect = {config::UI_PADDING + (int)i * (config::TAB_WIDTH + 5),
+                         config::UI_PADDING / 2, config::TAB_WIDTH,
+                         config::TAB_HEIGHT - config::UI_PADDING};
 
     if (i == browser_->active_tab_index()) {
       SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -49,8 +54,8 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
     if (s) {
       SDL_Texture *t = SDL_CreateTextureFromSurface(renderer, s);
       SDL_Rect tr = {tab_rect.x + 5, tab_rect.y + 5, s->w, s->h};
-      if (tr.w > tab_width - 10)
-        tr.w = tab_width - 10;
+      if (tr.w > config::TAB_WIDTH - 10)
+        tr.w = config::TAB_WIDTH - 10;
       SDL_RenderCopy(renderer, t, NULL, &tr);
       SDL_DestroyTexture(t);
       SDL_FreeSurface(s);
@@ -60,7 +65,8 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
     SDL_Surface *xs = TTF_RenderText_Blended(font, "x", black);
     if (xs) {
       SDL_Texture *t = SDL_CreateTextureFromSurface(renderer, xs);
-      SDL_Rect xr = {tab_rect.x + tab_width - 20, tab_rect.y + 5, xs->w, xs->h};
+      SDL_Rect xr = {tab_rect.x + config::TAB_WIDTH - 20, tab_rect.y + 5, xs->w,
+                     xs->h};
       SDL_RenderCopy(renderer, t, NULL, &xr);
       SDL_DestroyTexture(t);
       SDL_FreeSurface(xs);
@@ -83,7 +89,8 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
 
   // 4. Draw Address Bar Area Background
   SDL_SetRenderDrawColor(renderer, 230, 230, 230, 255);
-  SDL_Rect addr_area = {0, TAB_HEIGHT, 800, ADDR_HEIGHT + 10};
+  SDL_Rect addr_area = {0, config::TAB_HEIGHT, config::WINDOW_WIDTH,
+                        config::ADDRESS_BAR_HEIGHT + 10};
   SDL_RenderFillRect(renderer, &addr_area);
 
   // 5. Draw Back Button
@@ -139,20 +146,21 @@ void CSurferUI::render(SDL_Renderer *renderer) const {
 
   // 7. Draw Bottom Border
   SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
-  SDL_RenderDrawLine(renderer, 0, BOTTOM - 1, 800, BOTTOM - 1);
+  SDL_RenderDrawLine(renderer, 0, config::UI_HEIGHT - 1, config::WINDOW_WIDTH,
+                     config::UI_HEIGHT - 1);
 }
 
 void CSurferUI::click(int x, int y) {
   address_bar_focused_ = false;
 
   // Check Tabs
-  int tab_width = 150;
   for (size_t i = 0; i < browser_->tab_count(); ++i) {
-    Rect tr = {PADDING + (int)i * (tab_width + 5), PADDING / 2, tab_width,
-               TAB_HEIGHT - PADDING};
+    Rect tr = {config::UI_PADDING + (int)i * (config::TAB_WIDTH + 5),
+               config::UI_PADDING / 2, config::TAB_WIDTH,
+               config::TAB_HEIGHT - config::UI_PADDING};
     if (tr.contains(x, y)) {
       // Check if 'x' button was portion of the tab clicked
-      if (x > tr.x + tab_width - 25) {
+      if (x > tr.x + config::TAB_WIDTH - 25) {
         browser_->close_tab(i);
       } else {
         browser_->switch_to_tab(i);

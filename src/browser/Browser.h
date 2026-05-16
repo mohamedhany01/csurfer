@@ -1,5 +1,6 @@
 #include "CSurferUI.h"
 #include "Tab.h"
+#include "config/Config.h"
 #include "request/CookieJar.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -43,8 +44,8 @@ private:
   std::shared_ptr<IRequest> http_;
 
   // SDL2 Shell
-  const int WIDTH = 800;
-  const int HEIGHT = 600;
+  const int WIDTH = config::WINDOW_WIDTH;
+  const int HEIGHT = config::WINDOW_HEIGHT;
   SDL_Window *window = nullptr;
   SDL_Renderer *renderer = nullptr;
   bool running = true;
