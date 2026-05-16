@@ -21,56 +21,6 @@ Tab::Tab(std::shared_ptr<IRequest> network_engine, int window_width,
 
 Tab::~Tab() = default;
 
-void Tab::parse_csp(const std::string &header_value) {
-  csp_directives_.clear();
-  std::stringstream ss(header_value);
-  std::string directive;
-  while (std::getline(ss, directive, ';')) {
-    directive = utils::trim(directive);
-    if (directive.empty())
-      continue;
-
-    std::stringstream dss(directive);
-    std::string name;
-    dss >> name; // First word is directive name (e.g. script-src)
-
-    std::vector<std::string> origins;
-    std::string origin;
-    while (dss >> origin) {
-      if (origin == "'self'") {
-        origins.push_back(url_.origin());
-      } else {
-        origins.push_back(origin);
-      }
-    }
-    csp_directives_[name] = origins;
-  }
-}
-
-bool Tab::is_allowed(const Url &target_url,
-                     const std::string &directive) const {
-  if (csp_directives_.empty())
-    return true; // Story: No policy = allow all
-
-  std::vector<std::string> allowed;
-  if (csp_directives_.count(directive)) {
-    allowed = csp_directives_.at(directive);
-  } else if (csp_directives_.count("default-src")) {
-    allowed = csp_directives_.at("default-src");
-  } else {
-    return true; // Directive not specified and no default-src
-  }
-
-  std::string target_origin = target_url.origin();
-
-  for (const auto &origin : allowed) {
-    if (origin == target_origin)
-      return true;
-  }
-
-  return false;
-}
-
 void Tab::load(const Url &url, const std::string &payload) {
   focused_element_ = nullptr;
   if (history_.empty() || history_.back().href() != url.href()) {
@@ -101,9 +51,10 @@ void Tab::load(const Url &url, const std::string &payload) {
       body = response.body;
 
       if (response.headers.count("content-security-policy")) {
-        parse_csp(response.headers.at("content-security-policy"));
+        security_policy_.parse_csp(
+            response.headers.at("content-security-policy"), url_);
       } else {
-        csp_directives_.clear();
+        security_policy_.clear();
       }
     } catch (const std::exception &error) {
       process_document(std::string("Network Error: ") + error.what());
@@ -145,7 +96,9 @@ void Tab::process_document(const std::string &content_or_message) {
   StyleEngine style_engine(network_engine_);
   style_engine.apply(
       dynamic_cast<Element *>(root_.get()), url_,
-      [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
+      [this](const Url &u, const std::string &d) {
+        return security_policy_.is_allowed(u, d);
+      },
       url_);
 
   document_layout_ = std::make_unique<DocumentLayout>(
@@ -190,7 +143,7 @@ void Tab::process_scripts() {
       try {
         Url resolved_script_url = url_.resolve(script_url_string);
 
-        if (!is_allowed(resolved_script_url, "script-src")) {
+        if (!security_policy_.is_allowed(resolved_script_url, "script-src")) {
           std::cout << "[SOP/CSP] Blocked script loading from: "
                     << script_url_string << " (CSP Violation)" << std::endl;
           continue;
@@ -226,7 +179,9 @@ void Tab::rebuild_layout() {
   StyleEngine style_engine(network_engine_);
   style_engine.apply(
       dynamic_cast<Element *>(root_.get()), url_,
-      [this](const Url &u, const std::string &d) { return is_allowed(u, d); },
+      [this](const Url &u, const std::string &d) {
+        return security_policy_.is_allowed(u, d);
+      },
       url_);
   document_layout_ = std::make_unique<DocumentLayout>(
       root_.get(), font_manager_, window_width_);

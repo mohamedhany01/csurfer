@@ -147,6 +147,7 @@ add_library(csurfer_lib STATIC
     src/utils/StringUtils.cpp
     src/browser/Browser.cpp
     src/browser/Tab.cpp
+    src/browser/TabSecurityPolicy.cpp
     src/browser/CSurferUI.cpp
     src/css/CSSSelector.cpp
     src/css/CSSParser.cpp

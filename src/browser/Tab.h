@@ -1,5 +1,6 @@
 #pragma once
 
+#include "browser/TabSecurityPolicy.h"
 #include "dom/Element.h"
 #include "js/IJSHost.h"
 #include "js/JSContext.h"
@@ -44,10 +45,6 @@ public:
   void go_back();
   void rebuild_layout();
 
-  // Security (CSP)
-  void parse_csp(const std::string &header_value);
-  bool is_allowed(const Url &target_url, const std::string &directive) const;
-
   /**
    * Story: Paints the tab's content into the graphics context.
    */
@@ -79,7 +76,7 @@ private:
 
   Element *focused_element_ = nullptr;
 
-  std::map<std::string, std::vector<std::string>> csp_directives_;
+  TabSecurityPolicy security_policy_;
 
   void render_scrollbar(gfx::GraphicsContext &ctx, int y_screen_offset) const;
   void process_scripts();
