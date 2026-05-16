@@ -1,4 +1,5 @@
 #include "CSSParser.h"
+#include "utils/StringUtils.h"
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
@@ -40,20 +41,7 @@ std::string CSSParser::value() {
   while (pos_ < text_.length() && text_[pos_] != ';' && text_[pos_] != '}') {
     pos_++;
   }
-  // Trim trailing whitespace
-  size_t end = pos_;
-  while (end > start &&
-         std::isspace(static_cast<unsigned char>(text_[end - 1]))) {
-    end--;
-  }
-  return text_.substr(start, end - start);
-}
-
-// Convert a string to lowercase to handle case-insensitive properties
-static std::string casefold(std::string s) {
-  std::transform(s.begin(), s.end(), s.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  return s;
+  return utils::trim(text_.substr(start, pos_ - start));
 }
 
 std::pair<std::string, std::string> CSSParser::pair() {
@@ -62,7 +50,7 @@ std::pair<std::string, std::string> CSSParser::pair() {
   literal(':');
   whitespace();
   std::string val = value();
-  return {casefold(prop), val};
+  return {utils::to_lower(prop), val};
 }
 
 char CSSParser::ignore_until(const std::vector<char> &chars) {
@@ -99,12 +87,12 @@ std::unordered_map<std::string, std::string> CSSParser::body() {
 }
 
 std::shared_ptr<CSSSelector> CSSParser::selector() {
-  std::string tag = casefold(word());
+  std::string tag = utils::to_lower(word());
   std::shared_ptr<CSSSelector> out = std::make_shared<TagSelector>(tag);
   whitespace();
 
   while (pos_ < text_.length() && text_[pos_] != '{') {
-    std::string descendant_tag = casefold(word());
+    std::string descendant_tag = utils::to_lower(word());
     std::shared_ptr<CSSSelector> descendant =
         std::make_shared<TagSelector>(descendant_tag);
     out = std::make_shared<DescendantSelector>(out, descendant);

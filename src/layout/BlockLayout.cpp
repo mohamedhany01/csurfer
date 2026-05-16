@@ -463,8 +463,10 @@ void BlockLayout::input(const Lexeme *node) {
   }
 }
 
+#include "config/Config.h"
+
 std::shared_ptr<gfx::Font> BlockLayout::currentFont(const Element *element) {
-  int f_size = 16;
+  int f_size = config::DEFAULT_FONT_SIZE;
   bool f_bold = false;
   bool f_italic = false;
 
